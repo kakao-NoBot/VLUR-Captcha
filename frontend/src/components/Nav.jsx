@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useId, useState } from 'react';
 import vlurLogo from '../assets/vlur-logo-transparent-hq-2x.png';
 
 const DESKTOP_SECTION_LINKS = [
@@ -9,8 +9,9 @@ const DESKTOP_SECTION_LINKS = [
   { label: '가이드', target: 'guide' },
 ];
 
-export default function Nav({ openPage, isLoggedIn, onLogout }) {
+export default function Nav({ openPage, isLoggedIn, onLogout, onHome, embedded = false }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const mobileMenuId = useId();
 
   useEffect(() => {
     if (!mobileOpen) return undefined;
@@ -32,9 +33,21 @@ export default function Nav({ openPage, isLoggedIn, onLogout }) {
 
   const closeMobileMenu = () => setMobileOpen(false);
 
+  const handleHomeClick = (event) => {
+    closeMobileMenu();
+    if (!onHome) return;
+    event.preventDefault();
+    onHome();
+    window.setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 0);
+  };
+
   const handleSectionClick = (event, target) => {
     event.preventDefault();
-    document.getElementById(target)?.scrollIntoView({ behavior: 'smooth' });
+    closeMobileMenu();
+    if (onHome) onHome();
+    window.setTimeout(() => {
+      document.getElementById(target)?.scrollIntoView({ behavior: 'smooth' });
+    }, 0);
   };
 
   const handleMobilePageClick = (event, page) => {
@@ -50,13 +63,13 @@ export default function Nav({ openPage, isLoggedIn, onLogout }) {
   };
 
   return (
-    <header className="site-header">
+    <header className={`site-header${embedded ? ' overlay-site-header' : ''}`}>
       <div className="wrap nav">
-        <a className="brand" href="#top" aria-label="VLUR 홈" onClick={closeMobileMenu}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid var(--line)', borderRadius: 8, width: 38, height: 38, flexShrink: 0 }}>
-            <img src={vlurLogo} alt="VLUR" style={{ width: 34, height: 34, objectFit: 'contain', display: 'block' }} />
+        <a className="brand" href="#top" aria-label="VLUR 홈" onClick={handleHomeClick}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 38, height: 38, flexShrink: 0 }}>
+            <img src={vlurLogo} alt="VLUR" style={{ width: 52, height: 52, objectFit: 'contain', display: 'block' }} />
           </div>
-          <span style={{ fontFamily: 'var(--disp)', fontWeight: 800, fontSize: 16, letterSpacing: '-.01em', color: 'var(--ink)' }}>
+          <span style={{ fontFamily: 'var(--disp)', fontWeight: 800, fontSize: 18, letterSpacing: '-.01em', color: 'var(--ink)' }}>
             VLUR <span style={{ color: 'var(--orange)' }}>CAPTCHA</span>
           </span>
         </a>
@@ -92,7 +105,7 @@ export default function Nav({ openPage, isLoggedIn, onLogout }) {
             type="button"
             aria-label={mobileOpen ? '메뉴 닫기' : '메뉴 열기'}
             aria-expanded={mobileOpen}
-            aria-controls="mobile-home-menu"
+            aria-controls={mobileMenuId}
             onClick={() => setMobileOpen((open) => !open)}
           >
             <span />
@@ -103,10 +116,20 @@ export default function Nav({ openPage, isLoggedIn, onLogout }) {
       </div>
       <div
         className={`mobile-menu${mobileOpen ? ' open' : ''}`}
-        id="mobile-home-menu"
+        id={mobileMenuId}
       >
         <a href="#faq" onClick={handleNoticeClick}>공지사항</a>
-        <a href="#login" onClick={(event) => handleMobilePageClick(event, 'login')}>로그인</a>
+        {isLoggedIn ? (
+          <>
+            <a href="#mypage" onClick={(event) => handleMobilePageClick(event, 'mypage')}>마이페이지</a>
+            <a href="#logout" onClick={(event) => { event.preventDefault(); closeMobileMenu(); onLogout(); }}>로그아웃</a>
+          </>
+        ) : (
+          <>
+            <a href="#login" onClick={(event) => handleMobilePageClick(event, 'login')}>로그인</a>
+            <a href="#signup" onClick={(event) => handleMobilePageClick(event, 'signup')}>회원가입</a>
+          </>
+        )}
       </div>
     </header>
   );
