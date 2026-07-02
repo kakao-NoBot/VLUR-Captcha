@@ -1,23 +1,16 @@
-import React, { useState } from 'react';
+import React from 'react';
 
-const WIDGET_CODE = '<div class="vlur-captcha" data-sitekey="YOUR_SITE_KEY"></div>\n'
-  + '<script src="https://js.vlur.dev/v1/api.js" async defer><' + '/script>';
-
-const STEPS = [
+export const GUIDE_STEPS = [
   {
     n: '01',
     color: 'var(--orange)',
-    bg: '#fff4ee',
-    shadow: '0 8px 24px rgba(240,105,30,0.18)',
     title: 'API Key 발급',
-    desc: '마이페이지 또는 이용신청에서 API Key를 발급받으세요.',
     body: (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         <p style={{ margin: 0, fontSize: 14, color: 'var(--ink-soft)', lineHeight: 1.7 }}>
           VLUR CAPTCHA를 서비스에 연동하려면 먼저 API Key가 필요합니다.<br/>
           API Key는 요청 인증에 사용되며, 반드시 서버 환경에서만 관리하세요.
         </p>
-
         <div>
           <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10 }}>발급 절차</div>
           {[
@@ -34,14 +27,12 @@ const STEPS = [
             </div>
           ))}
         </div>
-
         <div>
           <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>API Key 형식</div>
           <pre style={{ margin: 0, background: '#1a1a1a', color: '#C8E87A', padding: '14px 16px', borderRadius: 10, fontSize: 13, fontFamily: 'monospace', lineHeight: 1.7 }}>
 {`vlur_live_sk_AbC1dEfGhIjKlMnOpQ23rStUvWxYz`}
           </pre>
         </div>
-
         <div style={{ background: '#fff4ee', border: '1px solid #fcd9b8', borderRadius: 10, padding: '14px 16px' }}>
           <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--orange)', marginBottom: 8 }}>⚠ 보안 주의사항</div>
           <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.8 }}>
@@ -60,17 +51,13 @@ VLUR_API_KEY=vlur_live_sk_AbC1dEfG...`}
   {
     n: '02',
     color: 'var(--gold)',
-    bg: '#fffbeb',
-    shadow: '0 8px 24px rgba(202,138,4,0.18)',
     title: 'CAPTCHA 요청',
-    desc: '엔드포인트 + API Key로 ASCII 아트 CAPTCHA 문제를 요청합니다.',
     body: (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         <p style={{ margin: 0, fontSize: 14, color: 'var(--ink-soft)', lineHeight: 1.7 }}>
           백엔드 서버에서 VLUR API에 CAPTCHA 문제를 요청합니다.<br/>
           응답으로 ASCII 아트 이미지와 문제 유형이 반환됩니다.
         </p>
-
         <div>
           <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>요청</div>
           <pre style={{ margin: 0, background: '#1a1a1a', color: '#C8E87A', padding: '14px 16px', borderRadius: 10, fontSize: 12, fontFamily: 'monospace', lineHeight: 1.8 }}>
@@ -78,7 +65,6 @@ VLUR_API_KEY=vlur_live_sk_AbC1dEfG...`}
 Authorization: Bearer $VLUR_API_KEY`}
           </pre>
         </div>
-
         <div>
           <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>응답 예시</div>
           <pre style={{ margin: 0, background: '#1a1a1a', color: '#93c5fd', padding: '14px 16px', borderRadius: 10, fontSize: 12, fontFamily: 'monospace', lineHeight: 1.8 }}>
@@ -90,7 +76,6 @@ Authorization: Bearer $VLUR_API_KEY`}
 }`}
           </pre>
         </div>
-
         <div>
           <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10 }}>ui_type 종류</div>
           {[
@@ -103,7 +88,6 @@ Authorization: Bearer $VLUR_API_KEY`}
             </div>
           ))}
         </div>
-
         <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '14px 16px' }}>
           <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--gold)', marginBottom: 6 }}>💡 권장 구현</div>
           <p style={{ margin: 0, fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.7 }}>
@@ -117,17 +101,13 @@ Authorization: Bearer $VLUR_API_KEY`}
   {
     n: '03',
     color: 'var(--ok)',
-    bg: '#f0fdf4',
-    shadow: '0 8px 24px rgba(34,197,94,0.18)',
     title: '검증 / Token',
-    desc: '사용자 응답 전송 후 일회성 통과 Token을 수신합니다.',
     body: (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         <p style={{ margin: 0, fontSize: 14, color: 'var(--ink-soft)', lineHeight: 1.7 }}>
           사용자가 CAPTCHA를 완료하면 서버에서 응답을 검증합니다.<br/>
           검증 성공 시 일회성 Token이 발급되며, 이후 요청에 사용합니다.
         </p>
-
         <div>
           <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>검증 요청</div>
           <pre style={{ margin: 0, background: '#1a1a1a', color: '#C8E87A', padding: '14px 16px', borderRadius: 10, fontSize: 12, fontFamily: 'monospace', lineHeight: 1.8 }}>
@@ -138,7 +118,6 @@ Content-Type: application/x-www-form-urlencoded
 captcha_id=cap_abc123&answer=banana`}
           </pre>
         </div>
-
         <div>
           <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>응답 예시</div>
           <pre style={{ margin: 0, background: '#1a1a1a', color: '#86efac', padding: '14px 16px', borderRadius: 10, fontSize: 12, fontFamily: 'monospace', lineHeight: 1.8 }}>
@@ -149,7 +128,6 @@ captcha_id=cap_abc123&answer=banana`}
 }`}
           </pre>
         </div>
-
         <div>
           <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>Token 활용</div>
           <p style={{ margin: '0 0 8px', fontSize: 13, color: 'var(--ink-soft)' }}>발급된 Token을 이후 결제·주문 요청 헤더에 포함하세요.</p>
@@ -161,9 +139,8 @@ Content-Type: application/json
 { "seat_id": "B-12-08", "amount": 134000 }`}
           </pre>
         </div>
-
         <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, padding: '14px 16px' }}>
-          <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--ok)', marginBottom: 6 }}>✓ Token 규칙</div>
+          <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--ok)', marginBottom: 6 }}>Token 규칙</div>
           <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.8 }}>
             <li>1회 사용 후 즉시 만료됩니다.</li>
             <li>발급 후 <strong>180초(3분)</strong> 이내에 사용해야 합니다.</li>
@@ -175,9 +152,9 @@ Content-Type: application/json
   },
 ];
 
-function StepModal({ stepIndex, onClose, onMove }) {
-  const step = STEPS[stepIndex];
-  const total = STEPS.length;
+export default function GuideStepModal({ stepIndex, onClose, onMove }) {
+  const step = GUIDE_STEPS[stepIndex];
+  const total = GUIDE_STEPS.length;
 
   return (
     <div
@@ -195,10 +172,8 @@ function StepModal({ stepIndex, onClose, onMove }) {
             </div>
             <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--muted)', lineHeight: 1, padding: 4 }}>✕</button>
           </div>
-
-          {/* Step dots */}
           <div style={{ display: 'flex', gap: 6, marginTop: 14 }}>
-            {STEPS.map((_, i) => (
+            {GUIDE_STEPS.map((_, i) => (
               <button
                 key={i}
                 onClick={() => onMove(i)}
@@ -246,66 +221,5 @@ function StepModal({ stepIndex, onClose, onMove }) {
         </div>
       </div>
     </div>
-  );
-}
-
-export default function GuidePage({ openPage }) {
-  const [hovered, setHovered] = useState(null);
-  const [modalStep, setModalStep] = useState(null);
-
-  return (
-    <section className="band" id="guide">
-      <div className="wrap">
-        <div className="sec-head" data-reveal>
-          <span className="eyebrow">Guide · API 사용법</span>
-          <h2>VLUR CAPTCHA 연동 가이드</h2>
-          <p>3단계로 봇 차단을 시작하세요. API Key 발급부터 토큰 검증까지 모두 안내합니다.</p>
-        </div>
-
-        <div className="flow" style={{ marginBottom: 48 }}>
-          {STEPS.map((s, i) => {
-            const isHovered = hovered === s.n;
-            return (
-              <div
-                className="step"
-                key={s.n}
-                data-reveal
-                data-reveal-delay={i * 200}
-                onClick={() => setModalStep(i)}
-                style={{
-                  borderTop: `3px solid ${s.color}`,
-                  transition: 'opacity 0.6s cubic-bezier(0.25, 0.10, 0.25, 1.00), transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease',
-                  transform: isHovered ? 'scale(1.04)' : 'scale(1)',
-                  background: isHovered ? s.bg : undefined,
-                  boxShadow: isHovered ? s.shadow : undefined,
-                  cursor: 'pointer',
-                }}
-                onMouseEnter={() => setHovered(s.n)}
-                onMouseLeave={() => setHovered(null)}
-              >
-                <h3>{s.title}</h3>
-                <p>{s.desc}</p>
-                <span style={{ fontSize: 12, color: s.color, fontWeight: 700, marginTop: 8, display: 'inline-block' }}>자세히 보기 →</span>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="case-card" data-reveal style={{ marginTop: 0, background: 'var(--peach)', border: '1px solid var(--peach-deep)' }}>
-          <div className="case-icon">📌</div>
-          <h3>빠른 연동 — 위젯 한 줄</h3>
-          <p>프론트엔드에 스크립트 태그 하나로 위젯을 추가할 수 있습니다.</p>
-          <pre className="pg-code" style={{ margin: '10px 0 0' }}>{WIDGET_CODE}</pre>
-        </div>
-      </div>
-
-      {modalStep !== null && (
-        <StepModal
-          stepIndex={modalStep}
-          onClose={() => setModalStep(null)}
-          onMove={setModalStep}
-        />
-      )}
-    </section>
   );
 }
