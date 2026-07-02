@@ -45,7 +45,10 @@ export default function App() {
   const [planPayArgs, setPlanPayArgs] = useState({ plan: 'Pro' });
   const [mypageTab, setMypageTab] = useState('info');
   const [mypageKey, setMypageKey] = useState(0);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('access_token'));
+  const [currentUser, setCurrentUser] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('user') || 'null'); } catch { return null; }
+  });
 
   const openPage = (id) => {
   if (id === 'mypage') {
@@ -57,8 +60,18 @@ export default function App() {
   const closePage = () => {
     setPage(null);
   };
-  const handleLogin = () => { setIsLoggedIn(true); closePage(); };
-  const handleLogout = () => { setIsLoggedIn(false); closePage(); };
+  const handleLogin = (user) => {
+    setIsLoggedIn(true);
+    setCurrentUser(user);
+    closePage();
+  };
+  const handleLogout = () => {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('user');
+    setIsLoggedIn(false);
+    setCurrentUser(null);
+    closePage();
+  };
 
   const openPlanPayment = (plan) => {
     setPlanPayArgs({ plan });
@@ -152,7 +165,7 @@ export default function App() {
       {/* Signup */}
       <div className={`page-overlay${page === 'signup' ? ' active' : ''}`}>
         <Nav embedded openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} onHome={closePage} />
-        <SignupPage openPage={openPage} />
+        <SignupPage openPage={openPage} onLogin={handleLogin} />
       </div>
 
       {/* Mypage */}

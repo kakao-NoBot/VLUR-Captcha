@@ -1,6 +1,7 @@
 // LoginPage.jsx
 
 import React, { useState } from 'react';
+import api from '../api/axios';
 
 /* ── 공통 모달 래퍼 ── */
 function Modal({ title, onClose, children }) {
@@ -210,17 +211,29 @@ export default function LoginPage({ openPage, closePage, onLogin }) {
   const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
   const [attempted, setAttempted] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const isValid = loginId.trim() && password.trim();
   const errorStyle = { border: '1.5px solid #c0392b' };
 
-  const handleLogin = () => {
-    if (!isValid) {
-      setAttempted(true);
-      return;
+  const handleLogin = async () => {
+    if (!isValid) { setAttempted(true); return; }
+    setLoading(true);
+    setError('');
+    try {
+      const { data } = await api.post('/auth/login', {
+        user_id: loginId.trim(),
+        password,
+      });
+      localStorage.setItem('access_token', data.access_token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      onLogin(data.user);
+    } catch (err) {
+      setError(err.response?.data?.detail || '로그인 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
     }
-
-    onLogin();
   };
 
   const handleSubmit = (event) => {
@@ -267,12 +280,18 @@ export default function LoginPage({ openPage, closePage, onLogin }) {
               width: '100%',
               padding: 15,
               fontSize: 16,
-              cursor: isValid ? 'pointer' : 'not-allowed'
+              cursor: isValid && !loading ? 'pointer' : 'not-allowed',
+              opacity: loading ? 0.7 : 1,
             }}
             onClick={handleLogin}
+            disabled={loading}
           >
-            로그인
+            {loading ? '로그인 중...' : '로그인'}
           </button>
+
+          {error && (
+            <p style={{ margin: 0, fontSize: 13, color: '#c0392b', textAlign: 'center' }}>{error}</p>
+          )}
 
           <div
             style={{

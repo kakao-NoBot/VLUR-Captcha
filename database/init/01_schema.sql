@@ -315,9 +315,7 @@ CREATE TABLE IF NOT EXISTS captcha_options (
         ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT fk_captcha_options_image
         FOREIGN KEY (image_id) REFERENCES captcha_images (image_id)
-        ON DELETE SET NULL ON UPDATE CASCADE,
-    CONSTRAINT chk_captcha_options_content
-        CHECK (image_id IS NOT NULL OR display_label IS NOT NULL)
+        ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================

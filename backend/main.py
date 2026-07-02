@@ -1,21 +1,22 @@
-import os
-import pymysql
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
+from db import get_conn
+from routers import auth as auth_router
 
 load_dotenv()
 
 app = FastAPI()
 
-def get_conn():
-    return pymysql.connect(
-        host=os.getenv("DB_HOST", "db"),
-        port=int(os.getenv("DB_PORT", 3306)),
-        user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASSWORD"),
-        database=os.getenv("DB_NAME"),
-        cursorclass=pymysql.cursors.DictCursor,
-    )
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(auth_router.router)
 
 
 @app.get("/health")
@@ -34,7 +35,7 @@ def db_check():
             cur.execute("SELECT plan_name, monthly_price, api_limit FROM plans")
             plans = cur.fetchall()
 
-            cur.execute("SELECT login_id, role FROM users")
+            cur.execute("SELECT user_id, role FROM users")
             users = cur.fetchall()
 
             cur.execute("SELECT captcha_type, target_label FROM captchas")
