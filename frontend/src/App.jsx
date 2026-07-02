@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import './styles/main.css';
-import homeIcon from './assets/home.png';
 import vlurLogo from './assets/vlur-logo-transparent-hq-2x.png';
 
 // Layout components
@@ -38,23 +37,31 @@ const PAGE_TITLES = {
   'plan-pay': '요금제 결제',
 };
 
-function BrandLogo() {
-  return (
-    <div className="brand">
-      <img src={vlurLogo} alt="VLUR" style={{ height: 36, width: 'auto' }} />
+function BrandLogo({ onClick }) {
+  const inner = (
+    <>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid var(--line)', borderRadius: 8, width: 38, height: 38, flexShrink: 0 }}>
+        <img src={vlurLogo} alt="VLUR" style={{ width: 34, height: 34, objectFit: 'contain', display: 'block' }} />
+      </div>
       <span style={{ fontFamily: 'var(--disp)', fontWeight: 800, fontSize: 16, letterSpacing: '-.01em', color: 'var(--ink)' }}>
         VLUR <span style={{ color: 'var(--orange)' }}>CAPTCHA</span>
       </span>
-    </div>
+    </>
   );
-}
 
-function HomeButton({ onClick }) {
-  return (
-    <button className="po-back po-home" onClick={onClick} aria-label="홈으로" title="홈으로">
-      <img src={homeIcon} alt="" />
-    </button>
-  );
+  if (onClick) {
+    return (
+      <button onClick={onClick} aria-label="홈으로" title="홈으로" style={{
+        display: 'flex', alignItems: 'center', gap: 11,
+        background: 'none', cursor: 'pointer',
+        border: 'none', padding: 0,
+      }}>
+        {inner}
+      </button>
+    );
+  }
+
+  return <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{inner}</div>;
 }
 
 // Page overlay wrapper
@@ -68,9 +75,7 @@ function PageOverlay({ id, activePage, title, onBack, extra, children }) {
   return (
     <div className={`page-overlay${isActive ? ' active' : ''}`}>
       <div className="po-nav login-po-nav">
-        <button type="button" className="po-brand-link" onClick={onBack} aria-label="메인 페이지로 이동">
-          <BrandLogo />
-        </button>
+        <BrandLogo onClick={onBack} />
         {extra}
       </div>
       {children}
@@ -193,9 +198,7 @@ export default function App() {
       {/* Signup */}
       <div className={`page-overlay${page === 'signup' ? ' active' : ''}`}>
         <div className="po-nav signup-po-nav">
-          <button type="button" className="po-brand-link" onClick={closePage} aria-label="메인 페이지로 이동">
-            <BrandLogo />
-          </button>
+          <BrandLogo onClick={closePage} />
         </div>
         <SignupPage openPage={openPage} />
       </div>
@@ -203,8 +206,7 @@ export default function App() {
       {/* Mypage */}
       <div className={`page-overlay${page === 'mypage' ? ' active' : ''}`}>
         <div className="po-nav">
-          <HomeButton onClick={closePage} />
-          <span className="po-title">마이페이지</span>
+          <BrandLogo onClick={closePage} />
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
             <span style={{ fontSize: 14, color: 'var(--ink-soft)', display: 'flex', alignItems: 'center' }}>홍길동님</span>
             <button className="pg-btn" style={{ fontSize: 13, padding: '7px 14px' }} onClick={handleLogout}>로그아웃</button>
@@ -229,9 +231,7 @@ export default function App() {
       <div className={`page-overlay${page === 'board' ? ' active' : ''}`}>
         {!boardDetailOpen && (
           <div className="po-nav">
-            <button type="button" className="po-brand-link" onClick={closePage} aria-label="메인 페이지로 이동">
-              <BrandLogo />
-            </button>
+            <BrandLogo onClick={closePage} />
           </div>
         )}
         <BoardPage
@@ -246,8 +246,7 @@ export default function App() {
       {/* Enterprise Inquiry */}
       <div className={`page-overlay${page === 'enterprise' ? ' active' : ''}`}>
         <div className="po-nav">
-          <HomeButton onClick={closePage} />
-          <BrandLogo />
+          <BrandLogo onClick={closePage} />
         </div>
         <EnterprisePage closePage={closePage} />
       </div>
@@ -255,8 +254,7 @@ export default function App() {
       {/* Plan Payment */}
       <div className={`page-overlay${page === 'plan-pay' ? ' active' : ''}`}>
         <div className="po-nav">
-          <HomeButton onClick={closePage} />
-          <BrandLogo />
+          <BrandLogo onClick={closePage} />
           <div style={{ marginLeft: 'auto' }}>
             <span style={{ fontSize: 11, background: 'var(--peach)', color: 'var(--orange-2)', padding: '4px 10px', borderRadius: 999, fontWeight: 600 }}>TEST MODE · 실제 결제 없음</span>
           </div>
