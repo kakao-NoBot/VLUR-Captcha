@@ -1,6 +1,7 @@
 // SignupPage.jsx
 
 import React, { useEffect, useRef, useState } from 'react';
+import api from '../api/axios';
 
 const EMAIL_DOMAIN_OPTIONS = [
   { value: 'gmail.com', label: 'gmail.com' },
@@ -12,7 +13,7 @@ const EMAIL_DOMAIN_OPTIONS = [
   { value: 'custom', label: '직접 입력' },
 ];
 
-export default function SignupPage({ openPage }) {
+export default function SignupPage({ openPage, onLogin }) {
   const [name, setName] = useState('');
   const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
@@ -23,6 +24,8 @@ export default function SignupPage({ openPage }) {
   const [phone, setPhone] = useState('');
   const [agreed, setAgreed] = useState(false);
   const [attempted, setAttempted] = useState(false);
+  const [apiError, setApiError] = useState('');
+  const [loading, setLoading] = useState(false);
   const [isPrivacyHelpOpen, setIsPrivacyHelpOpen] = useState(false);
   const [isEmailDomainMenuOpen, setIsEmailDomainMenuOpen] = useState(false);
   const emailDomainControlRef = useRef(null);
@@ -97,9 +100,26 @@ export default function SignupPage({ openPage }) {
     setIsEmailDomainMenuOpen(false);
   };
 
-  const handleSignup = () => {
+  const handleSignup = async () => {
     if (!isValid) { setAttempted(true); return; }
-    openPage('login');   // 'apply' → 'login'으로 변경
+    setLoading(true);
+    setApiError('');
+    try {
+      const { data } = await api.post('/auth/signup', {
+        user_id: loginId.trim(),
+        user_name: name.trim(),
+        password,
+        email: finalEmail,
+        phone: phone.trim() || null,
+      });
+      localStorage.setItem('access_token', data.access_token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      if (onLogin) onLogin(data.user);
+    } catch (err) {
+      setApiError(err.response?.data?.detail || '회원가입 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = (event) => {
@@ -425,9 +445,13 @@ export default function SignupPage({ openPage }) {
         </div>
         <button
           className="pg-btn primary"
-          style={{ width: '100%', padding: 15, fontSize: 16, cursor: isValid ? 'pointer' : 'not-allowed' }}
+          style={{ width: '100%', padding: 15, fontSize: 16, cursor: isValid && !loading ? 'pointer' : 'not-allowed', opacity: loading ? 0.7 : 1 }}
           onClick={handleSignup}
-        >회원가입</button>
+          disabled={loading}
+        >{loading ? '처리 중...' : '회원가입'}</button>
+        {apiError && (
+          <p style={{ margin: 0, fontSize: 13, color: '#c0392b', textAlign: 'center' }}>{apiError}</p>
+        )}
         <hr className="pg-divider"/>
         <div style={{ textAlign: 'center', fontSize: 14, color: 'var(--ink-soft)' }}>
           이미 계정이 있으신가요?
