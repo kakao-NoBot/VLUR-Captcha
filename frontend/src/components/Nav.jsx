@@ -53,7 +53,9 @@ export default function Nav({ openPage, isLoggedIn, onLogout }) {
     <header className="site-header">
       <div className="wrap nav">
         <a className="brand" href="#top" aria-label="VLUR 홈" onClick={closeMobileMenu}>
-          <img src={vlurLogo} alt="VLUR" style={{ height: 36, width: 'auto' }} />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid var(--line)', borderRadius: 8, width: 38, height: 38, flexShrink: 0 }}>
+            <img src={vlurLogo} alt="VLUR" style={{ width: 34, height: 34, objectFit: 'contain', display: 'block' }} />
+          </div>
           <span style={{ fontFamily: 'var(--disp)', fontWeight: 800, fontSize: 16, letterSpacing: '-.01em', color: 'var(--ink)' }}>
             VLUR <span style={{ color: 'var(--orange)' }}>CAPTCHA</span>
           </span>
