@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import './styles/main.css';
-import vlurLogo from './assets/vlur-logo-transparent-hq-2x.png';
 
 // Layout components
 import Nav from './components/Nav';
@@ -25,47 +24,8 @@ import BoardPage from './pages/BoardPage';
 import PlanPayPage from './pages/PlanPayPage';
 import EnterprisePage from './pages/EnterprisePage';
 
-const PAGE_TITLES = {
-  login:      '로그인',
-  signup:     '회원가입',
-  mypage:     '마이페이지',
-  payment:    '결제',
-  guide:      '사용자 가이드',
-  board:      '공지사항 / FAQ / CAPTCHA 연구',
-  apply:      '이용 신청',
-  'apply-done': '이용 신청 완료',
-  'plan-pay': '요금제 결제',
-};
-
-function BrandLogo({ onClick }) {
-  const inner = (
-    <>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid var(--line)', borderRadius: 8, width: 38, height: 38, flexShrink: 0 }}>
-        <img src={vlurLogo} alt="VLUR" style={{ width: 34, height: 34, objectFit: 'contain', display: 'block' }} />
-      </div>
-      <span style={{ fontFamily: 'var(--disp)', fontWeight: 800, fontSize: 16, letterSpacing: '-.01em', color: 'var(--ink)' }}>
-        VLUR <span style={{ color: 'var(--orange)' }}>CAPTCHA</span>
-      </span>
-    </>
-  );
-
-  if (onClick) {
-    return (
-      <button onClick={onClick} aria-label="홈으로" title="홈으로" style={{
-        display: 'flex', alignItems: 'center', gap: 11,
-        background: 'none', cursor: 'pointer',
-        border: 'none', padding: 0,
-      }}>
-        {inner}
-      </button>
-    );
-  }
-
-  return <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{inner}</div>;
-}
-
 // Page overlay wrapper
-function PageOverlay({ id, activePage, title, onBack, extra, children }) {
+function PageOverlay({ id, activePage, onBack, openPage, isLoggedIn, onLogout, children }) {
   const isActive = activePage === id;
 
   useEffect(() => {
@@ -74,10 +34,7 @@ function PageOverlay({ id, activePage, title, onBack, extra, children }) {
 
   return (
     <div className={`page-overlay${isActive ? ' active' : ''}`}>
-      <div className="po-nav login-po-nav">
-        <BrandLogo onClick={onBack} />
-        {extra}
-      </div>
+      <Nav embedded openPage={openPage} isLoggedIn={isLoggedIn} onLogout={onLogout} onHome={onBack} />
       {children}
     </div>
   );
@@ -89,10 +46,8 @@ export default function App() {
   const [mypageTab, setMypageTab] = useState('info');
   const [mypageKey, setMypageKey] = useState(0);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [boardDetailOpen, setBoardDetailOpen] = useState(false);
 
   const openPage = (id) => {
-  if (id === 'board') setBoardDetailOpen(false);
   if (id === 'mypage') {
     setMypageTab('info');
     setMypageKey(k => k + 1);
@@ -100,7 +55,6 @@ export default function App() {
   setPage(id);
 };
   const closePage = () => {
-    setBoardDetailOpen(false);
     setPage(null);
   };
   const handleLogin = () => { setIsLoggedIn(true); closePage(); };
@@ -191,27 +145,19 @@ export default function App() {
       {/* ── Page Overlays ── */}
 
       {/* Login */}
-      <PageOverlay id="login" activePage={page} onBack={closePage}>
+      <PageOverlay id="login" activePage={page} onBack={closePage} openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout}>
         <LoginPage openPage={openPage} closePage={closePage} onLogin={handleLogin} />
       </PageOverlay>
 
       {/* Signup */}
       <div className={`page-overlay${page === 'signup' ? ' active' : ''}`}>
-        <div className="po-nav signup-po-nav">
-          <BrandLogo onClick={closePage} />
-        </div>
+        <Nav embedded openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} onHome={closePage} />
         <SignupPage openPage={openPage} />
       </div>
 
       {/* Mypage */}
       <div className={`page-overlay${page === 'mypage' ? ' active' : ''}`}>
-        <div className="po-nav">
-          <BrandLogo onClick={closePage} />
-          <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-            <span style={{ fontSize: 14, color: 'var(--ink-soft)', display: 'flex', alignItems: 'center' }}>홍길동님</span>
-            <button className="pg-btn" style={{ fontSize: 13, padding: '7px 14px' }} onClick={handleLogout}>로그아웃</button>
-          </div>
-        </div>
+        <Nav embedded openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} onHome={closePage} />
         <div className="po-body">
           <MypagePage key={mypageKey} openPage={openPage} closePage={closePage} initialTab={mypageTab} />
         </div>
@@ -219,46 +165,25 @@ export default function App() {
 
       {/* Payment (ticketing) */}
       <div className={`page-overlay${page === 'payment' ? ' active' : ''}`}>
-        <div className="po-nav">
-          <button className="po-back" onClick={closePage}>← CAPTCHA로</button>
-          <span className="po-title">TICKETING · CHECKOUT</span>
-          <button className="pg-btn" style={{ marginLeft: 'auto', fontSize: 13, padding: '7px 14px' }}>주문 취소</button>
-        </div>
+        <Nav embedded openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} onHome={closePage} />
         <PaymentPage closePage={closePage} />
       </div>
 
       {/* Board */}
       <div className={`page-overlay${page === 'board' ? ' active' : ''}`}>
-        {!boardDetailOpen && (
-          <div className="po-nav">
-            <BrandLogo onClick={closePage} />
-          </div>
-        )}
-        <BoardPage
-          closePage={closePage}
-          openPage={openPage}
-          onDetailChange={setBoardDetailOpen}
-          isLoggedIn={isLoggedIn}
-          onLogout={handleLogout}
-        />
+        <Nav embedded openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} onHome={closePage} />
+        <BoardPage />
       </div>
 
       {/* Enterprise Inquiry */}
       <div className={`page-overlay${page === 'enterprise' ? ' active' : ''}`}>
-        <div className="po-nav">
-          <BrandLogo onClick={closePage} />
-        </div>
+        <Nav embedded openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} onHome={closePage} />
         <EnterprisePage closePage={closePage} />
       </div>
 
       {/* Plan Payment */}
       <div className={`page-overlay${page === 'plan-pay' ? ' active' : ''}`}>
-        <div className="po-nav">
-          <BrandLogo onClick={closePage} />
-          <div style={{ marginLeft: 'auto' }}>
-            <span style={{ fontSize: 11, background: 'var(--peach)', color: 'var(--orange-2)', padding: '4px 10px', borderRadius: 999, fontWeight: 600 }}>TEST MODE · 실제 결제 없음</span>
-          </div>
-        </div>
+        <Nav embedded openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} onHome={closePage} />
         <PlanPayPage planName={planPayArgs.plan} closePage={closePage} openPage={openPage} openMypageOnApiKey={openMypageOnApiKey} />
       </div>
     </>

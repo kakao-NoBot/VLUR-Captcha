@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from 'react';
-import vlurLogo from '../assets/vlur-logo-transparent-hq-2x.png';
 
 const PAGE_SIZE = 10;
 
@@ -227,97 +226,7 @@ function BoardSidebar({ tab, onChange }) {
   );
 }
 
-function BoardHeader({ onHome, openPage, isLoggedIn, onLogout }) {
-  const [mobileOpen, setMobileOpen] = useState(false);
-
-  useEffect(() => {
-    if (!mobileOpen) return undefined;
-
-    const handleKeyDown = (event) => {
-      if (event.key === 'Escape') setMobileOpen(false);
-    };
-    const handleResize = () => {
-      if (window.innerWidth > 940) setMobileOpen(false);
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('resize', handleResize);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('resize', handleResize);
-    };
-  }, [mobileOpen]);
-
-  const goToSection = (sectionId) => {
-    setMobileOpen(false);
-    onHome();
-    window.setTimeout(() => {
-      document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' });
-    }, 0);
-  };
-
-  return (
-    <header className="site-header board-site-header">
-      <div className="wrap nav board-site-header-inner">
-        <a className="brand board-site-brand" href="#top" onClick={(event) => { event.preventDefault(); onHome(); }} aria-label="VLUR 홈">
-          <img src={vlurLogo} alt="VLUR" style={{ height: 36, width: 'auto' }} />
-          <span style={{ fontFamily: 'var(--disp)', fontWeight: 800, fontSize: 16, letterSpacing: '-.01em', color: 'var(--ink)' }}>
-            VLUR <span style={{ color: 'var(--orange)' }}>CAPTCHA</span>
-          </span>
-        </a>
-
-        <nav className="nav-right" aria-label="주요 메뉴">
-          <div className="nav-links">
-            <a href="#compare" onClick={(event) => { event.preventDefault(); goToSection('compare'); }}>차별성</a>
-            <a href="#metrics" onClick={(event) => { event.preventDefault(); goToSection('metrics'); }}>성능</a>
-            <a href="#flow" onClick={(event) => { event.preventDefault(); goToSection('flow'); }}>검증 절차</a>
-            <a href="#cases" onClick={(event) => { event.preventDefault(); goToSection('cases'); }}>사용 사례</a>
-            <a href="#guide" onClick={(event) => { event.preventDefault(); goToSection('guide'); }}>가이드</a>
-            <a href="#faq" onClick={(event) => event.preventDefault()}>공지사항</a>
-          </div>
-
-          <div className="nav-auth">
-            {isLoggedIn ? (
-              <>
-                <a className="btn btn-ghost" href="#" onClick={(event) => { event.preventDefault(); openPage('mypage'); }} style={{ textDecoration: 'underline', color: 'var(--ink-soft)' }}>홍길동님</a>
-                <a className="btn btn-outline" href="#" onClick={(event) => { event.preventDefault(); onLogout(); }} style={{ padding: '7px 13px', fontSize: 13.5 }}>로그아웃</a>
-              </>
-            ) : (
-              <>
-                <a className="btn btn-ghost" href="#" onClick={(event) => { event.preventDefault(); openPage('login'); }}>로그인</a>
-                <a className="btn btn-primary" href="#" onClick={(event) => { event.preventDefault(); openPage('signup'); }}>회원가입</a>
-              </>
-            )}
-          </div>
-
-          <button
-            className={`menu-toggle${mobileOpen ? ' open' : ''}`}
-            type="button"
-            aria-label={mobileOpen ? '메뉴 닫기' : '메뉴 열기'}
-            aria-expanded={mobileOpen}
-            aria-controls="mobile-board-menu"
-            onClick={() => setMobileOpen(open => !open)}
-          >
-            <span />
-            <span />
-            <span />
-          </button>
-        </nav>
-      </div>
-
-      <div className={`mobile-menu${mobileOpen ? ' open' : ''}`} id="mobile-board-menu">
-        <a href="#faq" onClick={(event) => { event.preventDefault(); setMobileOpen(false); }}>공지사항</a>
-        {isLoggedIn ? (
-          <a href="#mypage" onClick={(event) => { event.preventDefault(); setMobileOpen(false); openPage('mypage'); }}>마이페이지</a>
-        ) : (
-          <a href="#login" onClick={(event) => { event.preventDefault(); setMobileOpen(false); openPage('login'); }}>로그인</a>
-        )}
-      </div>
-    </header>
-  );
-}
-
-export default function BoardPage({ closePage, openPage, onDetailChange, isLoggedIn, onLogout }) {
+export default function BoardPage() {
   const [tab, setTab] = useState('notice');
   const [noticePage, setNoticePage] = useState(1);
   const [notices, setNotices] = useState(NOTICES);
@@ -326,11 +235,10 @@ export default function BoardPage({ closePage, openPage, onDetailChange, isLogge
   const [editingPost, setEditingPost] = useState(null);
 
   useEffect(() => {
-    onDetailChange?.(Boolean(selectedPost || isWriting));
     if (selectedPost || isWriting) {
       document.querySelector('.page-overlay.active')?.scrollTo({ top: 0, behavior: 'smooth' });
     }
-  }, [selectedPost, isWriting, onDetailChange]);
+  }, [selectedPost, isWriting]);
 
   /* 공지사항 페이지네이션 */
   const noticeSlice = notices.slice((noticePage - 1) * PAGE_SIZE, noticePage * PAGE_SIZE);
@@ -379,13 +287,6 @@ export default function BoardPage({ closePage, openPage, onDetailChange, isLogge
   if (selectedPost || isWriting) {
     return (
       <div className="board-page-shell">
-        <BoardHeader
-          onHome={() => { setSelectedPost(null); setIsWriting(false); setEditingPost(null); closePage(); }}
-          openPage={(pageId) => { setSelectedPost(null); setIsWriting(false); setEditingPost(null); openPage(pageId); }}
-          isLoggedIn={isLoggedIn}
-          onLogout={() => { setSelectedPost(null); setIsWriting(false); setEditingPost(null); onLogout(); }}
-        />
-
         <main className="board-page-main">
           <div className="po-body board-layout">
             <BoardSidebar tab={tab} onChange={changeTab} />
