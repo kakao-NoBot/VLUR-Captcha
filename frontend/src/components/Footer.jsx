@@ -16,7 +16,13 @@ export default function Footer() {
             <div className="foot-links">
               <a href="#">이용약관</a>
               <a href="#">개인정보처리방침</a>
-              <a href="#">GitHub</a>
+              <a
+                href="https://github.com/kakao-NoBot"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                GitHub
+              </a>
               <a href="#">문의하기</a>
             </div>
           </div>
