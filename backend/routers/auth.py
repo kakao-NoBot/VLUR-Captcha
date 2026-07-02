@@ -27,7 +27,7 @@ def login(body: LoginRequest):
     with conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT user_id, user_name, password_hash, role, user_status "
+                "SELECT user_id, user_name, password_hash, email, phone, role, user_status "
                 "FROM users WHERE user_id = %s",
                 (body.user_id,),
             )
@@ -55,6 +55,8 @@ def login(body: LoginRequest):
         "user": {
             "user_id": user["user_id"],
             "user_name": user["user_name"],
+            "email": user["email"],
+            "phone": user["phone"],
             "role": user["role"],
         },
     }
@@ -99,6 +101,8 @@ def signup(body: SignupRequest):
         "user": {
             "user_id": body.user_id,
             "user_name": body.user_name,
+            "email": body.email,
+            "phone": body.phone,
             "role": "user",
         },
     }

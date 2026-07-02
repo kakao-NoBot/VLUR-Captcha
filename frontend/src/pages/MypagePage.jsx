@@ -130,22 +130,24 @@ function ChangePwModal({ onClose }) {
   );
 }
 
-function EditInfoModal({ onClose }) {
+function EditInfoModal({ onClose, user }) {
   const [done, setDone] = useState(false);
-  const [name, setName] = useState('홍길동');
+  const [name, setName] = useState(user?.user_name || '');
 
-  const initialEmail = 'user@example.com';
-  const [initialLocal, initialDomain] = initialEmail.split('@');
+  const initialEmail = user?.email || '';
+  const [initialLocal, initialDomain] = initialEmail.includes('@')
+    ? initialEmail.split('@')
+    : [initialEmail, ''];
   const knownDomain = EMAIL_DOMAIN_OPTIONS.some(o => o.value === initialDomain);
 
   const [emailLocalPart, setEmailLocalPart] = useState(initialLocal);
-  const [emailDomain, setEmailDomain] = useState(knownDomain ? initialDomain : 'custom');
-  const [customEmailDomain, setCustomEmailDomain] = useState(knownDomain ? '' : initialDomain);
+  const [emailDomain, setEmailDomain] = useState(initialDomain && knownDomain ? initialDomain : initialDomain ? 'custom' : 'gmail.com');
+  const [customEmailDomain, setCustomEmailDomain] = useState(!knownDomain && initialDomain ? initialDomain : '');
   const [isEmailDomainMenuOpen, setIsEmailDomainMenuOpen] = useState(false);
   const emailDomainControlRef = useRef(null);
   const customEmailDomainInputRef = useRef(null);
 
-  const [phone, setPhone] = useState('010-1234-5678');
+  const [phone, setPhone] = useState(user?.phone || '');
   const [attempted, setAttempted] = useState(false);
 
   const errorStyle = { border: '1.5px solid #c0392b' };
@@ -414,7 +416,7 @@ function EditInfoModal({ onClose }) {
 }
 
 /* ── SC-07 내 정보 탭 ── */
-function InfoTab() {
+function InfoTab({ user }) {
   const [modal, setModal] = useState(null); // null | 'pw' | 'edit'
 
   const readOnlyInputStyle = {
@@ -432,20 +434,22 @@ function InfoTab() {
           <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 6 }}>이름</div>
           <input
             className="pg-input"
-            defaultValue="홍길동"
+            value={user?.user_name || ''}
             readOnly
             style={readOnlyInputStyle}
             onFocus={preventFocus}
+            onChange={() => {}}
           />
         </div>
         <div>
           <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 6 }}>이메일</div>
           <input
             className="pg-input"
-            defaultValue="user@example.com"
+            value={user?.email || ''}
             readOnly
             style={readOnlyInputStyle}
             onFocus={preventFocus}
+            onChange={() => {}}
           />
         </div>
         <div>
@@ -475,7 +479,7 @@ function InfoTab() {
       </div>
 
       {modal === 'pw'   && <ChangePwModal onClose={() => setModal(null)} />}
-      {modal === 'edit' && <EditInfoModal onClose={() => setModal(null)} />}
+      {modal === 'edit' && <EditInfoModal onClose={() => setModal(null)} user={user} />}
     </>
   );
 }
@@ -1164,7 +1168,7 @@ const TABS = [
   { id: 'deactivate', label: '계정 탈퇴', danger: true },
 ];
 
-export default function MypagePage({ openPage, closePage, initialTab = 'info' }) {
+export default function MypagePage({ openPage, closePage, initialTab = 'info', user = null }) {
   const [activeTab, setActiveTab] = useState(initialTab);
 
   useEffect(() => {
@@ -1184,7 +1188,7 @@ export default function MypagePage({ openPage, closePage, initialTab = 'info' })
         ))}
       </div>
       <div className="mp-content">
-        {activeTab === 'info'       && <InfoTab />}
+        {activeTab === 'info'       && <InfoTab user={user} />}
         {activeTab === 'apikey'     && <ApiKeyTab openPage={openPage} />}
         {activeTab === 'usage'      && <UsageTab />}
         {activeTab === 'deactivate' && <DeactivateTab closePage={closePage} />}

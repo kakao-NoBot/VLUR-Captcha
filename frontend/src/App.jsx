@@ -141,7 +141,7 @@ export default function App() {
   return (
     <>
       {/* Main page */}
-      <Nav openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} />
+      <Nav openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} user={currentUser} />
       <a id="top"/>
       <Hero openPage={openPage} />
       <Compare />
@@ -164,39 +164,39 @@ export default function App() {
 
       {/* Signup */}
       <div className={`page-overlay${page === 'signup' ? ' active' : ''}`}>
-        <Nav embedded openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} onHome={closePage} />
+        <Nav embedded openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} onHome={closePage} user={currentUser} />
         <SignupPage openPage={openPage} onLogin={handleLogin} />
       </div>
 
       {/* Mypage */}
       <div className={`page-overlay${page === 'mypage' ? ' active' : ''}`}>
-        <Nav embedded openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} onHome={closePage} />
+        <Nav embedded openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} onHome={closePage} user={currentUser} />
         <div className="po-body">
-          <MypagePage key={mypageKey} openPage={openPage} closePage={closePage} initialTab={mypageTab} />
+          <MypagePage key={mypageKey} openPage={openPage} closePage={closePage} initialTab={mypageTab} user={currentUser} />
         </div>
       </div>
 
       {/* Payment (ticketing) */}
       <div className={`page-overlay${page === 'payment' ? ' active' : ''}`}>
-        <Nav embedded openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} onHome={closePage} />
+        <Nav embedded openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} onHome={closePage} user={currentUser} />
         <PaymentPage closePage={closePage} />
       </div>
 
       {/* Board */}
       <div className={`page-overlay${page === 'board' ? ' active' : ''}`}>
-        <Nav embedded openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} onHome={closePage} />
+        <Nav embedded openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} onHome={closePage} user={currentUser} />
         <BoardPage />
       </div>
 
       {/* Enterprise Inquiry */}
       <div className={`page-overlay${page === 'enterprise' ? ' active' : ''}`}>
-        <Nav embedded openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} onHome={closePage} />
+        <Nav embedded openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} onHome={closePage} user={currentUser} />
         <EnterprisePage closePage={closePage} />
       </div>
 
       {/* Plan Payment */}
       <div className={`page-overlay${page === 'plan-pay' ? ' active' : ''}`}>
-        <Nav embedded openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} onHome={closePage} />
+        <Nav embedded openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} onHome={closePage} user={currentUser} />
         <PlanPayPage planName={planPayArgs.plan} closePage={closePage} openPage={openPage} openMypageOnApiKey={openMypageOnApiKey} />
       </div>
     </>

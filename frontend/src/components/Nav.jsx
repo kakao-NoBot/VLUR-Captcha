@@ -9,7 +9,7 @@ const DESKTOP_SECTION_LINKS = [
   { label: '가이드', target: 'guide' },
 ];
 
-export default function Nav({ openPage, isLoggedIn, onLogout, onHome, embedded = false }) {
+export default function Nav({ openPage, isLoggedIn, onLogout, onHome, embedded = false, user = null }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const mobileMenuId = useId();
 
@@ -90,7 +90,7 @@ export default function Nav({ openPage, isLoggedIn, onLogout, onHome, embedded =
           <div className="nav-auth">
             {isLoggedIn ? (
               <>
-              <a className="btn btn-ghost" href="#" onClick={e => { e.preventDefault(); openPage('mypage'); }} style={{ textDecoration: 'underline', color: 'var(--ink-soft)' }}>홍길동님</a>
+              <a className="btn btn-ghost" href="#" onClick={e => { e.preventDefault(); openPage('mypage'); }} style={{ textDecoration: 'underline', color: 'var(--ink-soft)' }}>{user?.user_name || ''}님</a>
               <a className="btn btn-outline" href="#" onClick={e => { e.preventDefault(); onLogout(); }} style={{ padding: '7px 13px', fontSize: 13.5 }}>로그아웃</a>
               </>
             ) : (
