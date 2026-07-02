@@ -618,7 +618,6 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
   align-items: stretch;
   min-width: 0;
   height: 100%;
-  border-left: 1px solid var(--line-soft);
   border-radius: 0 10px 10px 0;
   background: #fff;
 }

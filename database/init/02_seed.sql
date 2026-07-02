@@ -83,23 +83,27 @@ INSERT INTO captcha_images (role, render_type, filename, label, instruction) VAL
 -- ============================================================
 -- [7] captchas — type1_drag 1건 (ASCII 드래그, MVP)
 -- ============================================================
-INSERT INTO captchas (captcha_type, question_image_id, target_label, choice_labels)
+INSERT INTO captchas (captcha_type, question_image_id, target_label, choice_labels, challenge_token_hash, expires_at)
 VALUES (
     'type1_drag',
     (SELECT image_id FROM captcha_images WHERE filename = 'q_drag_zone_001.txt'),
     'target_zone',
-    NULL
+    NULL,
+    SHA2('seed-drag-challenge-token-001', 256),
+    DATE_ADD(NOW(), INTERVAL 30 DAY)
 );
 
 -- ============================================================
 -- [8] captchas — type2_identify 1건 (이미지 4지선다, 확장)
 -- ============================================================
-INSERT INTO captchas (captcha_type, question_image_id, target_label, choice_labels)
+INSERT INTO captchas (captcha_type, question_image_id, target_label, choice_labels, challenge_token_hash, expires_at)
 VALUES (
     'type2_identify',
     (SELECT image_id FROM captcha_images WHERE filename = 'q_apple_001.jpg'),
     'apple',
-    JSON_ARRAY('사과', '바나나', '가방', '컵')
+    JSON_ARRAY('사과', '바나나', '가방', '컵'),
+    SHA2('seed-identify-challenge-token-001', 256),
+    DATE_ADD(NOW(), INTERVAL 30 DAY)
 );
 
 -- ============================================================

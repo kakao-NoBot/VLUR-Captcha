@@ -1,6 +1,7 @@
 // MypagePage.jsx
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import GuideStepModal from '../components/GuideStepModal';
 
 const realKey = 'sk-aicap_prod_7f3a91b2c4d5e6f789012345xxxx';
 
@@ -311,6 +312,7 @@ function ApiKeyTab({ openPage }) {
   const [copyLabel, setCopyLabel] = useState('복사');
   const [showReissueConfirm, setShowReissueConfirm] = useState(false);
   const [showReissueDone, setShowReissueDone] = useState(false);
+  const [guideStep, setGuideStep] = useState(null);
 
   const copy = () => {
     navigator.clipboard.writeText(key).catch(() => {});
@@ -351,7 +353,7 @@ function ApiKeyTab({ openPage }) {
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <button className="pg-btn primary" onClick={reissue}>재발급</button>
-          <button className="pg-btn" onClick={() => { closePage(); setTimeout(() => document.getElementById('guide')?.scrollIntoView({ behavior: 'smooth' }), 300); }}>사용 가이드 보기</button>
+          <button className="pg-btn" onClick={() => setGuideStep(0)}>사용 가이드 보기</button>
         </div>
         <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 12 }}>재발급 시 기존 Key는 즉시 만료됩니다.</p>
       </div>
@@ -367,6 +369,13 @@ function ApiKeyTab({ openPage }) {
       )}
       {showReissueDone && (
         <ReissueDoneModal onClose={() => setShowReissueDone(false)} />
+      )}
+      {guideStep !== null && (
+        <GuideStepModal
+          stepIndex={guideStep}
+          onClose={() => setGuideStep(null)}
+          onMove={setGuideStep}
+        />
       )}
     </>
   );

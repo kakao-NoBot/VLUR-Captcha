@@ -9,7 +9,7 @@ const EMAIL_DOMAIN_OPTIONS = [
   { value: 'kakao.com', label: 'kakao.com' },
   { value: 'hanmail.net', label: 'hanmail.net' },
   { value: 'outlook.com', label: 'outlook.com' },
-  { value: 'custom', label: '직접입력' },
+  { value: 'custom', label: '직접 입력' },
 ];
 
 export default function SignupPage({ openPage }) {
@@ -110,8 +110,19 @@ export default function SignupPage({ openPage }) {
   return (
     <div className="po-body" style={{ maxWidth: 480 }}>
 
-      <h1 className="pg-h1">회원가입</h1>
-      <p className="pg-sub">계정을 만들고 API Key를 발급받으세요.</p>
+      <h1 className="pg-h1" style={{ marginBottom: 20 }}>회원가입</h1>
+      <p
+        className="eyebrow"
+        style={{
+          marginTop: 0,
+          marginBottom: 28,
+          display: 'flex',
+          justifyContent: 'center',
+          width: '100%',
+        }}
+      >
+        계정을 만들고 API Key를 발급받으세요.
+      </p>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <input
           className="pg-input"
@@ -144,7 +155,18 @@ export default function SignupPage({ openPage }) {
           style={attempted && !passwordConfirm.trim() ? errorStyle : {}}
         />
         <div>
-          <div className={`signup-email-combo${emailErrorMessage ? ' is-error' : ''}`}>
+          <div
+            className={`signup-email-combo${emailErrorMessage ? ' is-error' : ''}`}
+            style={{
+              display: 'flex',
+              alignItems: 'stretch',
+              border: '1.5px solid var(--line)',
+              borderRadius: 12,
+              background: '#fff',
+              overflow: 'visible',
+              ...(emailErrorMessage ? errorStyle : {}),
+            }}
+          >
             <input
               type="text"
               inputMode="email"
@@ -152,31 +174,76 @@ export default function SignupPage({ openPage }) {
               aria-label="이메일 아이디"
               value={emailLocalPart}
               onChange={e => setEmailLocalPart(e.target.value)}
+              style={{
+                flex: 1,
+                minWidth: 0,
+                border: 'none',
+                outline: 'none',
+                padding: '13px 16px',
+                fontSize: 15,
+                fontFamily: 'var(--body)',
+                background: 'transparent',
+                color: 'var(--ink)',
+              }}
             />
-            <span className="signup-email-at">@</span>
             <div
               className={`signup-email-domain-control${isEmailDomainMenuOpen ? ' is-open' : ''}`}
               ref={emailDomainControlRef}
+              style={{
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                flex: 1,
+                minWidth: 0,
+                padding: '0 12px 0 14px',
+              }}
             >
               {isCustomEmailDomain ? (
-                <input
-                  ref={customEmailDomainInputRef}
-                  className="signup-email-domain-input"
-                  type="text"
-                  inputMode="email"
-                  placeholder="도메인 입력 예: example.com"
-                  aria-label="이메일 도메인 직접 입력"
-                  value={customEmailDomain}
-                  onChange={e => setCustomEmailDomain(e.target.value)}
-                />
+                <div style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0 }}>
+                  <span style={{ flexShrink: 0, color: 'var(--ink)', fontSize: 15, fontFamily: 'var(--body)' }}>@</span>
+                  <input
+                    ref={customEmailDomainInputRef}
+                    className="signup-email-domain-input"
+                    type="text"
+                    inputMode="email"
+                    placeholder="도메인 입력 예: example.com"
+                    aria-label="이메일 도메인 직접 입력"
+                    value={customEmailDomain}
+                    onChange={e => setCustomEmailDomain(e.target.value)}
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      border: 'none',
+                      outline: 'none',
+                      padding: '13px 0',
+                      fontSize: 15,
+                      fontFamily: 'var(--body)',
+                      background: 'transparent',
+                      color: 'var(--ink)',
+                    }}
+                  />
+                </div>
               ) : (
                 <button
                   type="button"
                   className="signup-email-domain-value"
                   aria-label={`이메일 도메인 ${emailDomain}`}
                   onClick={() => setIsEmailDomainMenuOpen(true)}
+                  style={{
+                    flex: 1,
+                    textAlign: 'left',
+                    minWidth: 0,
+                    border: 'none',
+                    background: 'none',
+                    padding: '13px 0',
+                    fontSize: 15,
+                    fontFamily: 'var(--body)',
+                    color: 'var(--ink)',
+                    cursor: 'pointer',
+                  }}
                 >
-                  {emailDomain}
+                  {`@${emailDomain}`}
                 </button>
               )}
               <button
@@ -186,11 +253,40 @@ export default function SignupPage({ openPage }) {
                 aria-haspopup="listbox"
                 aria-expanded={isEmailDomainMenuOpen}
                 onClick={() => setIsEmailDomainMenuOpen(current => !current)}
+                style={{
+                  flexShrink: 0,
+                  border: 'none',
+                  background: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--orange)',
+                  fontSize: 13,
+                  padding: 4,
+                }}
               >
                 <span aria-hidden="true">⌄</span>
               </button>
               {isEmailDomainMenuOpen && (
-                <div className="signup-email-domain-menu" role="listbox">
+                <div
+                  className="signup-email-domain-menu"
+                  role="listbox"
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 6px)',
+                    left: -14,
+                    right: -12,
+                    zIndex: 20,
+                    background: '#fff',
+                    border: '1px solid var(--line)',
+                    borderRadius: 12,
+                    boxShadow: '0 16px 38px -18px rgba(55,38,25,.34)',
+                    padding: 6,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 2,
+                    maxHeight: 260,
+                    overflowY: 'auto',
+                  }}
+                >
                   {EMAIL_DOMAIN_OPTIONS.map(option => (
                     <button
                       key={option.value}
@@ -199,8 +295,20 @@ export default function SignupPage({ openPage }) {
                       role="option"
                       aria-selected={emailDomain === option.value}
                       onClick={() => handleEmailDomainSelect(option.value)}
+                      style={{
+                        textAlign: 'left',
+                        border: 'none',
+                        borderRadius: 8,
+                        padding: '10px 12px',
+                        fontSize: 14,
+                        fontFamily: 'var(--body)',
+                        cursor: 'pointer',
+                        background: emailDomain === option.value ? 'var(--peach)' : 'transparent',
+                        color: emailDomain === option.value ? 'var(--orange-2)' : 'var(--ink-soft)',
+                        fontWeight: emailDomain === option.value ? 700 : 500,
+                      }}
                     >
-                      {option.label}
+                      {option.value === 'custom' ? option.label : `@${option.label}`}
                     </button>
                   ))}
                 </div>
@@ -208,7 +316,9 @@ export default function SignupPage({ openPage }) {
             </div>
           </div>
           {emailErrorMessage && (
-            <p className="signup-field-error">{emailErrorMessage}</p>
+            <p className="signup-field-error" style={{ margin: '6px 0 0', fontSize: 12.5, color: '#c0392b' }}>
+              {emailErrorMessage}
+            </p>
           )}
           <input type="hidden" name="email" value={finalEmail} readOnly />
         </div>
@@ -220,8 +330,8 @@ export default function SignupPage({ openPage }) {
           onChange={e => setPhone(e.target.value)}
           style={attempted && !phone.trim() ? errorStyle : {}}
         />
-        <div className="signup-agreement-row">
-          <label className="signup-agreement-label">
+        <div className="signup-agreement-row" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <label className="signup-agreement-label" style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: 'var(--ink-soft)', cursor: 'pointer' }}>
             <span style={{ position: 'relative', width: 20, height: 20, flexShrink: 0 }}>
               <input
                 type="checkbox"
@@ -281,14 +391,26 @@ export default function SignupPage({ openPage }) {
             className="signup-privacy-help"
             aria-label="개인정보 처리 안내 보기"
             onClick={() => setIsPrivacyHelpOpen(true)}
+            style={{
+              width: 20,
+              height: 20,
+              borderRadius: '50%',
+              border: '1.5px solid var(--line)',
+              background: 'none',
+              color: 'var(--muted)',
+              fontSize: 12,
+              lineHeight: 1,
+              cursor: 'pointer',
+              flexShrink: 0,
+            }}
           >
             ?
           </button>
         </div>
         <button
-          type="submit"
           className="pg-btn primary"
-          style={{ width: '100%', padding: 15, fontSize: 16, opacity: isValid ? 1 : 0.5, cursor: isValid ? 'pointer' : 'not-allowed' }}
+          style={{ width: '100%', padding: 15, fontSize: 16, cursor: isValid ? 'pointer' : 'not-allowed' }}
+          onClick={handleSignup}
         >회원가입</button>
         <hr className="pg-divider"/>
         <div style={{ textAlign: 'center', fontSize: 14, color: 'var(--ink-soft)' }}>
@@ -305,37 +427,39 @@ export default function SignupPage({ openPage }) {
           onClick={e => {
             if (e.target === e.currentTarget) setIsPrivacyHelpOpen(false);
           }}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            background: 'rgba(36,27,21,.45)', display: 'flex',
+            alignItems: 'center', justifyContent: 'center', padding: 24,
+          }}
         >
           <section
             className="signup-privacy-dialog"
             role="dialog"
             aria-modal="true"
             aria-labelledby="signup-privacy-title"
+            style={{
+              background: '#fff', borderRadius: 'var(--r)', padding: '28px 26px',
+              width: '100%', maxWidth: 420, boxShadow: 'var(--shadow-md)',
+            }}
           >
-            <div className="signup-privacy-head">
-              <h2 id="signup-privacy-title">개인정보 처리 안내</h2>
-              <button
-                type="button"
-                className="signup-privacy-close"
-                aria-label="개인정보 처리 안내 닫기"
-                onClick={() => setIsPrivacyHelpOpen(false)}
-              >
-                X
-              </button>
+            <div className="signup-privacy-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h2 id="signup-privacy-title" style={{ margin: 0, fontFamily: 'var(--disp)', fontSize: 18, fontWeight: 700 }}>개인정보 처리 안내</h2>
             </div>
-            <p>
+            <p style={{ fontSize: 13.5, color: 'var(--ink-soft)', lineHeight: 1.7, margin: '0 0 10px' }}>
               서비스 제공을 위해 이름, 아이디, 이메일, 휴대폰 번호 등 회원가입에 필요한 정보를 수집합니다.
             </p>
-            <p>
+            <p style={{ fontSize: 13.5, color: 'var(--ink-soft)', lineHeight: 1.7, margin: '0 0 10px' }}>
               수집된 정보는 계정 관리, 본인 확인, API Key 발급 및 서비스 이용 안내 목적으로만 사용됩니다.
             </p>
-            <p>
+            <p style={{ fontSize: 13.5, color: 'var(--ink-soft)', lineHeight: 1.7, margin: '0 0 20px' }}>
               자세한 약관은 추후 정식 서비스 정책에 맞춰 별도 제공될 예정입니다.
             </p>
             <button
               type="button"
               className="pg-btn primary signup-privacy-confirm"
               onClick={() => setIsPrivacyHelpOpen(false)}
+              style={{ width: '100%', padding: 13 }}
             >
               확인
             </button>

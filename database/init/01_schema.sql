@@ -63,13 +63,28 @@ CREATE TABLE IF NOT EXISTS users (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
+-- user_id 불변 트리거 — DB 레벨에서 user_id 변경 차단
+-- ============================================================
+DELIMITER //
+CREATE TRIGGER trg_users_immutable_user_id
+BEFORE UPDATE ON users
+FOR EACH ROW
+BEGIN
+    IF NEW.user_id <> OLD.user_id THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'user_id is immutable and cannot be changed';
+    END IF;
+END//
+DELIMITER ;
+
+-- ============================================================
 -- 3. api_keys: hashed API keys for client integration.
 -- ============================================================
 CREATE TABLE IF NOT EXISTS api_keys (
     api_key_id   BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     api_key_hash CHAR(64)        NOT NULL,
     user_id      VARCHAR(50)     NOT NULL,
-    plan_id      BIGINT UNSIGNED NULL,
+    plan_id      BIGINT UNSIGNED NULL COMMENT '키 발급 시점의 요금제 스냅샷 — users.plan_id와 별개로 관리',
     key_name     VARCHAR(120)    NULL,
     created_at   DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
     expired_at   DATETIME        NULL,
@@ -81,7 +96,7 @@ CREATE TABLE IF NOT EXISTS api_keys (
     KEY idx_api_keys_is_active (is_active),
     CONSTRAINT fk_api_keys_user
         FOREIGN KEY (user_id) REFERENCES users (user_id)
-        ON DELETE CASCADE ON UPDATE CASCADE,
+        ON DELETE CASCADE ON UPDATE RESTRICT,
     CONSTRAINT fk_api_keys_plan
         FOREIGN KEY (plan_id) REFERENCES plans (plan_id)
         ON DELETE SET NULL ON UPDATE CASCADE
@@ -111,7 +126,7 @@ CREATE TABLE IF NOT EXISTS payments (
     KEY idx_payments_payment_status (payment_status),
     CONSTRAINT fk_payments_user
         FOREIGN KEY (user_id) REFERENCES users (user_id)
-        ON DELETE CASCADE ON UPDATE CASCADE,
+        ON DELETE CASCADE ON UPDATE RESTRICT,
     CONSTRAINT fk_payments_plan
         FOREIGN KEY (plan_id) REFERENCES plans (plan_id)
         ON DELETE SET NULL ON UPDATE CASCADE
@@ -136,7 +151,7 @@ CREATE TABLE IF NOT EXISTS boards (
     KEY idx_boards_created_at (created_at),
     CONSTRAINT fk_boards_user
         FOREIGN KEY (user_id) REFERENCES users (user_id)
-        ON DELETE SET NULL ON UPDATE CASCADE
+        ON DELETE SET NULL ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
@@ -158,7 +173,7 @@ CREATE TABLE IF NOT EXISTS board_answers (
         ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT fk_board_answers_admin
         FOREIGN KEY (admin_id) REFERENCES users (user_id)
-        ON DELETE RESTRICT ON UPDATE CASCADE
+        ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
@@ -202,7 +217,7 @@ CREATE TABLE IF NOT EXISTS client_sites (
     KEY idx_client_sites_site_status (site_status),
     CONSTRAINT fk_client_sites_user
         FOREIGN KEY (user_id) REFERENCES users (user_id)
-        ON DELETE CASCADE ON UPDATE CASCADE,
+        ON DELETE CASCADE ON UPDATE RESTRICT,
     CONSTRAINT fk_client_sites_api_key
         FOREIGN KEY (api_key_id) REFERENCES api_keys (api_key_id)
         ON DELETE SET NULL ON UPDATE CASCADE
@@ -232,7 +247,9 @@ CREATE TABLE IF NOT EXISTS captcha_images (
     KEY idx_captcha_images_content_hash (content_hash),
     CONSTRAINT fk_captcha_images_site
         FOREIGN KEY (site_id) REFERENCES client_sites (site_id)
-        ON DELETE SET NULL ON UPDATE CASCADE
+        ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT chk_captcha_images_instruction
+        CHECK (role = 'question' OR instruction IS NULL)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
@@ -268,12 +285,10 @@ CREATE TABLE IF NOT EXISTS captchas (
         ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT fk_captchas_question_image
         FOREIGN KEY (question_image_id) REFERENCES captcha_images (image_id)
-        ON DELETE SET NULL ON UPDATE CASCADE,
+        ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_captchas_answer_image
         FOREIGN KEY (answer_image_id) REFERENCES captcha_images (image_id)
-        ON DELETE SET NULL ON UPDATE CASCADE,
-    CONSTRAINT chk_captchas_captcha_type
-        CHECK (captcha_type IN ('type1_drag','type2_identify'))
+        ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
@@ -360,8 +375,6 @@ CREATE TABLE IF NOT EXISTS captcha_verifications (
     CONSTRAINT fk_captcha_verifications_image
         FOREIGN KEY (selected_image_id) REFERENCES captcha_images (image_id)
         ON DELETE SET NULL ON UPDATE CASCADE,
-    CONSTRAINT chk_captcha_verifications_captcha_type
-        CHECK (captcha_type IN ('type1_drag','type2_identify')),
     CONSTRAINT chk_captcha_verifications_bot_score
         CHECK (bot_score IS NULL OR (bot_score >= 0 AND bot_score <= 1))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

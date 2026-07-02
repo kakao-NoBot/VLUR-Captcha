@@ -232,8 +232,19 @@ export default function LoginPage({ openPage, closePage, onLogin }) {
     <>
       <div className="po-body" style={{ maxWidth: 480 }}>
 
-        <h1 className="pg-h1">로그인</h1>
-
+        <h1 className="pg-h1" style={{ marginBottom: 20 }}>로그인</h1>
+        <p
+          className="eyebrow"
+          style={{
+            marginTop: 0,
+            marginBottom: 28,
+            display: 'flex',
+            justifyContent: 'center',
+            width: '100%',
+          }}
+        >
+          계정에 로그인하세요.
+        </p>
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <input
             className="pg-input"
@@ -252,15 +263,14 @@ export default function LoginPage({ openPage, closePage, onLogin }) {
           />
 
           <button
-            type="submit"
             className="pg-btn primary"
             style={{
               width: '100%',
               padding: 15,
               fontSize: 16,
-              opacity: isValid ? 1 : 0.5,
               cursor: isValid ? 'pointer' : 'not-allowed'
             }}
+            onClick={handleLogin}
           >
             로그인
           </button>
