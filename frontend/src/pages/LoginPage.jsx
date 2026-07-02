@@ -1,6 +1,15 @@
 // LoginPage.jsx
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+
+const SOCIAL_LOGIN_URLS = {
+  kakao: 'https://accounts.kakao.com/login',
+  naver: 'https://nid.naver.com/nidlogin.login',
+  google: 'https://accounts.google.com/signin',
+  apple: 'https://appleid.apple.com/sign-in',
+};
+
+const AUTO_LOGIN_ENABLED_KEY = 'aicaptcha_auto_login_enabled';
 
 /* ── 공통 모달 래퍼 ── */
 function Modal({ title, onClose, children }) {
@@ -209,10 +218,46 @@ export default function LoginPage({ openPage, closePage, onLogin }) {
   const [modal, setModal] = useState(null); // null | 'findId' | 'findPw'
   const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
+  const [autoLogin, setAutoLogin] = useState(false);
   const [attempted, setAttempted] = useState(false);
 
   const isValid = loginId.trim() && password.trim();
   const errorStyle = { border: '1.5px solid #c0392b' };
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    try {
+      const savedAutoLogin = window.localStorage.getItem(AUTO_LOGIN_ENABLED_KEY) === 'true';
+      setAutoLogin(savedAutoLogin);
+    } catch {
+      // localStorage may be unavailable in restricted browser modes.
+    }
+  }, []);
+
+  const updateAutoLogin = (checked) => {
+    setAutoLogin(checked);
+    try {
+      if (!checked) {
+        window.localStorage.removeItem(AUTO_LOGIN_ENABLED_KEY);
+      }
+    } catch {
+      // Ignore storage failures; login should still work.
+    }
+  };
+
+  const syncAutoLoginPreference = () => {
+    try {
+      // Actual auto login requires backend session/refresh token support later.
+      if (autoLogin) {
+        window.localStorage.setItem(AUTO_LOGIN_ENABLED_KEY, 'true');
+      } else {
+        window.localStorage.removeItem(AUTO_LOGIN_ENABLED_KEY);
+      }
+    } catch {
+      // Ignore storage failures; login should still work.
+    }
+  };
 
   const handleLogin = () => {
     if (!isValid) {
@@ -220,12 +265,21 @@ export default function LoginPage({ openPage, closePage, onLogin }) {
       return;
     }
 
+    syncAutoLoginPreference();
     onLogin();
   };
 
   const handleSubmit = (event) => {
     event.preventDefault();
     handleLogin();
+  };
+
+  const handleSocialLogin = (provider) => {
+    const url = SOCIAL_LOGIN_URLS[provider];
+    // Temporary external link behavior. Replace with backend OAuth endpoint later.
+    if (url) {
+      window.location.href = url;
+    }
   };
 
   return (
@@ -261,7 +315,62 @@ export default function LoginPage({ openPage, closePage, onLogin }) {
             style={attempted && !password.trim() ? errorStyle : {}}
           />
 
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'flex-start',
+              gap: 12,
+              flexWrap: 'wrap',
+              padding: '2px 1px 0',
+            }}
+          >
+            <label
+              title="공용 PC에서는 사용하지 마세요."
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                color: 'var(--ink-soft)',
+                fontSize: 13.5,
+                fontWeight: 600,
+                cursor: 'pointer',
+                userSelect: 'none',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={autoLogin}
+                onChange={e => updateAutoLogin(e.target.checked)}
+                style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}
+              />
+              <span
+                aria-hidden="true"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 18,
+                  height: 18,
+                  borderRadius: 6,
+                  border: `1.5px solid ${autoLogin ? 'var(--orange)' : '#d8d0c4'}`,
+                  background: autoLogin ? 'var(--orange)' : '#fff',
+                  color: '#fff',
+                  fontSize: 12,
+                  fontWeight: 800,
+                  lineHeight: 1,
+                  transition: '.18s',
+                  boxShadow: autoLogin ? '0 4px 12px -8px rgba(240,105,30,.8)' : 'none',
+                }}
+              >
+                {autoLogin ? '✓' : ''}
+              </span>
+              자동 로그인
+            </label>
+          </div>
+
           <button
+            type="submit"
             className="pg-btn primary"
             style={{
               width: '100%',
@@ -269,7 +378,6 @@ export default function LoginPage({ openPage, closePage, onLogin }) {
               fontSize: 16,
               cursor: isValid ? 'pointer' : 'not-allowed'
             }}
-            onClick={handleLogin}
           >
             로그인
           </button>
@@ -322,7 +430,7 @@ export default function LoginPage({ openPage, closePage, onLogin }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <button
             type="button"
-            onClick={() => alert('카카오 로그인은 준비 중입니다.')}
+            onClick={() => handleSocialLogin('kakao')}
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               width: '100%', padding: 13, borderRadius: 12, border: 'none',
@@ -338,7 +446,7 @@ export default function LoginPage({ openPage, closePage, onLogin }) {
 
           <button
             type="button"
-            onClick={() => alert('네이버 로그인은 준비 중입니다.')}
+            onClick={() => handleSocialLogin('naver')}
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               width: '100%', padding: 13, borderRadius: 12, border: 'none',
@@ -354,7 +462,7 @@ export default function LoginPage({ openPage, closePage, onLogin }) {
 
           <button
             type="button"
-            onClick={() => alert('구글 로그인은 준비 중입니다.')}
+            onClick={() => handleSocialLogin('google')}
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               width: '100%', padding: 13, borderRadius: 12,
@@ -370,20 +478,23 @@ export default function LoginPage({ openPage, closePage, onLogin }) {
             </svg>
             Google로 시작하기
           </button>
+
+          <button
+            type="button"
+            onClick={() => handleSocialLogin('apple')}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              width: '100%', padding: 13, borderRadius: 12,
+              border: '1.5px solid #111', background: '#111', color: '#fff',
+              fontSize: 14.5, fontWeight: 700, cursor: 'pointer',
+            }}
+          >
+            <span aria-hidden="true" style={{ fontSize: 18, lineHeight: 1 }}></span>
+            Apple로 시작하기
+          </button>
         </div>
 
         <hr className="pg-divider" />
-
-        <div
-          style={{
-            textAlign: 'center',
-            fontSize: 14,
-            color: 'var(--ink-soft)'
-          }}
-        >
-          계정이 없으신가요?
-          ...
-        </div>
 
           <div
             style={{
