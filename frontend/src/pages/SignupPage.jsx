@@ -255,15 +255,32 @@ export default function SignupPage({ openPage }) {
                 onClick={() => setIsEmailDomainMenuOpen(current => !current)}
                 style={{
                   flexShrink: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                   border: 'none',
                   background: 'none',
                   cursor: 'pointer',
                   color: 'var(--orange)',
-                  fontSize: 13,
                   padding: 4,
                 }}
               >
-                <span aria-hidden="true">⌄</span>
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{
+                    transform: isEmailDomainMenuOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                    transition: 'transform 0.15s ease',
+                  }}
+                >
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
               </button>
               {isEmailDomainMenuOpen && (
                 <div
