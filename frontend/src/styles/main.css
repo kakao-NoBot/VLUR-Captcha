@@ -87,10 +87,10 @@ header {
 .btn-ghost { background: transparent; color: var(--ink); padding: 9px 14px; font-size: 14.5px; }
 .btn-ghost:hover { background: var(--peach); }
 .btn-primary {
-  background: var(--orange); color: #fff; padding: 10px 18px; font-size: 14.5px;
+  background: linear-gradient(90deg, var(--gold), var(--orange)); color: #fff; padding: 10px 18px; font-size: 14.5px;
   box-shadow: 0 8px 20px -10px rgba(240,105,30,.7);
 }
-.btn-primary:hover { background: var(--orange-2); transform: translateY(-1px); }
+.btn-primary:hover { background: linear-gradient(90deg, var(--gold), var(--orange-2)); transform: translateY(-1px); }
 .menu-toggle {
   display: none;
   align-items: center;
@@ -462,10 +462,10 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
 /* FAB */
 .fab {
   position: fixed; right: 24px; bottom: 24px; z-index: 60; width: 58px; height: 58px; border-radius: 50%;
-  background: var(--orange); border: 0; cursor: pointer; box-shadow: 0 14px 30px -10px rgba(240,105,30,.7);
+  background: linear-gradient(90deg, var(--gold), var(--orange)); border: 0; cursor: pointer; box-shadow: 0 14px 30px -10px rgba(240,105,30,.7);
   display: flex; align-items: center; justify-content: center; transition: .18s;
 }
-.fab:hover { transform: translateY(-3px) scale(1.04); background: var(--orange-2); }
+.fab:hover { transform: translateY(-3px) scale(1.04); background: linear-gradient(90deg, var(--gold), var(--orange-2)); }
 .fab svg { width: 26px; height: 26px; }
 
 /* RESPONSIVE */
@@ -553,8 +553,8 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
   border: 1.5px solid var(--line); background: #fff; color: var(--ink); transition: .18s;
 }
 .pg-btn:hover { border-color: var(--orange); color: var(--orange-2); }
-.pg-btn.primary { background: var(--orange); color: #fff; border-color: var(--orange); box-shadow: 0 8px 20px -10px rgba(240,105,30,.6); }
-.pg-btn.primary:hover { background: var(--orange-2); border-color: var(--orange-2); }
+.pg-btn.primary { background: linear-gradient(90deg, var(--gold), var(--orange)); color: #fff; border: 0; box-shadow: 0 8px 20px -10px rgba(240,105,30,.6); }
+.pg-btn.primary:hover { background: linear-gradient(90deg, var(--gold), var(--orange-2)); border: 0; }
 .pg-btn.danger { color: #c0392b; border-color: #e8c0be; }
 .pg-btn.danger:hover { background: #fff0ef; border-color: #c0392b; }
 .pg-divider { border: none; border-top: 1px solid var(--line-soft); margin: 24px 0; }

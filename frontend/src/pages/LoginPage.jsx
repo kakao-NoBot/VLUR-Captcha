@@ -1,15 +1,7 @@
 // LoginPage.jsx
 
-import React, { useEffect, useState } from 'react';
-
-const SOCIAL_LOGIN_URLS = {
-  kakao: 'https://accounts.kakao.com/login',
-  naver: 'https://nid.naver.com/nidlogin.login',
-  google: 'https://accounts.google.com/signin',
-  apple: 'https://appleid.apple.com/sign-in',
-};
-
-const AUTO_LOGIN_ENABLED_KEY = 'aicaptcha_auto_login_enabled';
+import React, { useState } from 'react';
+import api from '../api/axios';
 
 /* ── 공통 모달 래퍼 ── */
 function Modal({ title, onClose, children }) {
@@ -220,53 +212,29 @@ export default function LoginPage({ openPage, closePage, onLogin }) {
   const [password, setPassword] = useState('');
   const [autoLogin, setAutoLogin] = useState(false);
   const [attempted, setAttempted] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const isValid = loginId.trim() && password.trim();
   const errorStyle = { border: '1.5px solid #c0392b' };
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
+  const handleLogin = async () => {
+    if (!isValid) { setAttempted(true); return; }
+    setLoading(true);
+    setError('');
     try {
-      const savedAutoLogin = window.localStorage.getItem(AUTO_LOGIN_ENABLED_KEY) === 'true';
-      setAutoLogin(savedAutoLogin);
-    } catch {
-      // localStorage may be unavailable in restricted browser modes.
+      const { data } = await api.post('/auth/login', {
+        user_id: loginId.trim(),
+        password,
+      });
+      localStorage.setItem('access_token', data.access_token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      onLogin(data.user);
+    } catch (err) {
+      setError(err.response?.data?.detail || '로그인 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
     }
-  }, []);
-
-  const updateAutoLogin = (checked) => {
-    setAutoLogin(checked);
-    try {
-      if (!checked) {
-        window.localStorage.removeItem(AUTO_LOGIN_ENABLED_KEY);
-      }
-    } catch {
-      // Ignore storage failures; login should still work.
-    }
-  };
-
-  const syncAutoLoginPreference = () => {
-    try {
-      // Actual auto login requires backend session/refresh token support later.
-      if (autoLogin) {
-        window.localStorage.setItem(AUTO_LOGIN_ENABLED_KEY, 'true');
-      } else {
-        window.localStorage.removeItem(AUTO_LOGIN_ENABLED_KEY);
-      }
-    } catch {
-      // Ignore storage failures; login should still work.
-    }
-  };
-
-  const handleLogin = () => {
-    if (!isValid) {
-      setAttempted(true);
-      return;
-    }
-
-    syncAutoLoginPreference();
-    onLogin();
   };
 
   const handleSubmit = (event) => {
@@ -376,11 +344,18 @@ export default function LoginPage({ openPage, closePage, onLogin }) {
               width: '100%',
               padding: 15,
               fontSize: 16,
-              cursor: isValid ? 'pointer' : 'not-allowed'
+              cursor: isValid && !loading ? 'pointer' : 'not-allowed',
+              opacity: loading ? 0.7 : 1,
             }}
+            onClick={handleLogin}
+            disabled={loading}
           >
-            로그인
+            {loading ? '로그인 중...' : '로그인'}
           </button>
+
+          {error && (
+            <p style={{ margin: 0, fontSize: 13, color: '#c0392b', textAlign: 'center' }}>{error}</p>
+          )}
 
           <div
             style={{
