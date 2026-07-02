@@ -5,6 +5,16 @@ import GuideStepModal from '../components/GuideStepModal';
 
 const realKey = 'sk-aicap_prod_7f3a91b2c4d5e6f789012345xxxx';
 
+const EMAIL_DOMAIN_OPTIONS = [
+  { value: 'gmail.com', label: 'gmail.com' },
+  { value: 'naver.com', label: 'naver.com' },
+  { value: 'daum.net', label: 'daum.net' },
+  { value: 'kakao.com', label: 'kakao.com' },
+  { value: 'hanmail.net', label: 'hanmail.net' },
+  { value: 'outlook.com', label: 'outlook.com' },
+  { value: 'custom', label: '직접 입력' },
+];
+
 /* ── 공통 모달 ── */
 function Modal({ title, onClose, children }) {
   return (
@@ -123,15 +133,62 @@ function ChangePwModal({ onClose }) {
 function EditInfoModal({ onClose }) {
   const [done, setDone] = useState(false);
   const [name, setName] = useState('홍길동');
-  const [email, setEmail] = useState('user@example.com');
-  const [phone, setPhone] = useState('010-1234-5678');
-  const [attempted, setAttempted] = useState(false);   // ← 추가
 
-  const isValid = name.trim() && email.trim() && phone.trim();
+  const initialEmail = 'user@example.com';
+  const [initialLocal, initialDomain] = initialEmail.split('@');
+  const knownDomain = EMAIL_DOMAIN_OPTIONS.some(o => o.value === initialDomain);
+
+  const [emailLocalPart, setEmailLocalPart] = useState(initialLocal);
+  const [emailDomain, setEmailDomain] = useState(knownDomain ? initialDomain : 'custom');
+  const [customEmailDomain, setCustomEmailDomain] = useState(knownDomain ? '' : initialDomain);
+  const [isEmailDomainMenuOpen, setIsEmailDomainMenuOpen] = useState(false);
+  const emailDomainControlRef = useRef(null);
+  const customEmailDomainInputRef = useRef(null);
+
+  const [phone, setPhone] = useState('010-1234-5678');
+  const [attempted, setAttempted] = useState(false);
 
   const errorStyle = { border: '1.5px solid #c0392b' };
+  const isCustomEmailDomain = emailDomain === 'custom';
+  const selectedEmailDomain = isCustomEmailDomain ? customEmailDomain.trim() : emailDomain;
+  const finalEmail =
+    emailLocalPart.trim() && selectedEmailDomain
+      ? `${emailLocalPart.trim()}@${selectedEmailDomain}`
+      : '';
+  const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(finalEmail);
 
-  const handleSave = () => {                            // ← 추가
+  const isValid = name.trim() && isEmailValid && phone.trim();
+
+  useEffect(() => {
+    if (!isEmailDomainMenuOpen) return undefined;
+    const handlePointerDown = (event) => {
+      if (emailDomainControlRef.current && !emailDomainControlRef.current.contains(event.target)) {
+        setIsEmailDomainMenuOpen(false);
+      }
+    };
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') setIsEmailDomainMenuOpen(false);
+    };
+    document.addEventListener('mousedown', handlePointerDown);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isEmailDomainMenuOpen]);
+
+  useEffect(() => {
+    if (isCustomEmailDomain) {
+      customEmailDomainInputRef.current?.focus();
+    }
+  }, [isCustomEmailDomain]);
+
+  const handleEmailDomainSelect = (domainValue) => {
+    setEmailDomain(domainValue);
+    setIsEmailDomainMenuOpen(false);
+  };
+
+  const handleSave = () => {
     if (!isValid) {
       setAttempted(true);
       return;
@@ -150,14 +207,184 @@ function EditInfoModal({ onClose }) {
             placeholder="이름"
             style={attempted && !name.trim() ? errorStyle : {}}
           />
-          <input
-            className="pg-input"
-            type="email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            placeholder="이메일"
-            style={attempted && !email.trim() ? errorStyle : {}}
-          />
+
+          <div
+            className={`signup-email-combo${attempted && !isEmailValid ? ' is-error' : ''}`}
+            style={{
+              display: 'flex',
+              alignItems: 'stretch',
+              border: '1.5px solid var(--line)',
+              borderRadius: 12,
+              background: '#fff',
+              overflow: 'visible',
+              ...(attempted && !isEmailValid ? errorStyle : {}),
+            }}
+          >
+            <input
+              type="text"
+              inputMode="email"
+              placeholder="이메일 아이디"
+              aria-label="이메일 아이디"
+              value={emailLocalPart}
+              onChange={e => setEmailLocalPart(e.target.value)}
+              style={{
+                flex: 1,
+                minWidth: 0,
+                border: 'none',
+                outline: 'none',
+                padding: '13px 16px',
+                fontSize: 15,
+                fontFamily: 'var(--body)',
+                background: 'transparent',
+                color: 'var(--ink)',
+              }}
+            />
+            <div
+              className={`signup-email-domain-control${isEmailDomainMenuOpen ? ' is-open' : ''}`}
+              ref={emailDomainControlRef}
+              style={{
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                flex: 1,
+                minWidth: 0,
+                padding: '0 12px 0 14px',
+              }}
+            >
+              {isCustomEmailDomain ? (
+                <div style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0 }}>
+                  <span style={{ flexShrink: 0, color: 'var(--ink)', fontSize: 15, fontFamily: 'var(--body)' }}>@</span>
+                  <input
+                    ref={customEmailDomainInputRef}
+                    className="signup-email-domain-input"
+                    type="text"
+                    inputMode="email"
+                    aria-label="이메일 도메인 직접 입력"
+                    value={customEmailDomain}
+                    onChange={e => setCustomEmailDomain(e.target.value)}
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      border: 'none',
+                      outline: 'none',
+                      padding: '13px 0',
+                      fontSize: 15,
+                      fontFamily: 'var(--body)',
+                      background: 'transparent',
+                      color: 'var(--ink)',
+                    }}
+                  />
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="signup-email-domain-value"
+                  aria-label={`이메일 도메인 ${emailDomain}`}
+                  onClick={() => setIsEmailDomainMenuOpen(true)}
+                  style={{
+                    flex: 1,
+                    textAlign: 'left',
+                    minWidth: 0,
+                    border: 'none',
+                    background: 'none',
+                    padding: '13px 0',
+                    fontSize: 15,
+                    fontFamily: 'var(--body)',
+                    color: 'var(--ink)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {`@${emailDomain}`}
+                </button>
+              )}
+              <button
+                type="button"
+                className="signup-email-domain-toggle"
+                aria-label="이메일 도메인 목록 열기"
+                aria-haspopup="listbox"
+                aria-expanded={isEmailDomainMenuOpen}
+                onClick={() => setIsEmailDomainMenuOpen(current => !current)}
+                style={{
+                  flexShrink: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: 'none',
+                  background: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--orange)',
+                  padding: 4,
+                }}
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{
+                    transform: isEmailDomainMenuOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                    transition: 'transform 0.15s ease',
+                  }}
+                >
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              </button>
+              {isEmailDomainMenuOpen && (
+                <div
+                  className="signup-email-domain-menu"
+                  role="listbox"
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 6px)',
+                    left: -14,
+                    right: -12,
+                    zIndex: 20,
+                    background: '#fff',
+                    border: '1px solid var(--line)',
+                    borderRadius: 12,
+                    boxShadow: '0 16px 38px -18px rgba(55,38,25,.34)',
+                    padding: 6,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 2,
+                    maxHeight: 260,
+                    overflowY: 'auto',
+                  }}
+                >
+                  {EMAIL_DOMAIN_OPTIONS.map(option => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      className={`signup-email-domain-option${emailDomain === option.value ? ' selected' : ''}`}
+                      role="option"
+                      aria-selected={emailDomain === option.value}
+                      onClick={() => handleEmailDomainSelect(option.value)}
+                      style={{
+                        textAlign: 'left',
+                        border: 'none',
+                        borderRadius: 8,
+                        padding: '10px 12px',
+                        fontSize: 14,
+                        fontFamily: 'var(--body)',
+                        cursor: 'pointer',
+                        background: emailDomain === option.value ? 'var(--peach)' : 'transparent',
+                        color: emailDomain === option.value ? 'var(--orange-2)' : 'var(--ink-soft)',
+                        fontWeight: emailDomain === option.value ? 700 : 500,
+                      }}
+                    >
+                      {option.value === 'custom' ? option.label : `@${option.label}`}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
           <input
             className="pg-input"
             type="tel"
@@ -177,18 +404,10 @@ function EditInfoModal({ onClose }) {
         </div>
       ) : (
         <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-  <div style={{
-    width: 48, height: 48, borderRadius: '50%',
-    background: 'var(--ok)', display: 'flex',
-    alignItems: 'center', justifyContent: 'center',
-  }}>
-    <svg viewBox="0 0 34 34" fill="none" width={22} height={22}>
-      <path d="M7 17.5 13.5 24 27 10" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-    </div>
-    <p style={{ margin: 0, fontWeight: 700, fontSize: 16 }}>정보가 수정되었습니다.</p>
-    <button className="pg-btn primary" style={{ width: '100%', padding: 13 }} onClick={onClose}>확인</button>
-  </div>
+          <SuccessCheckIcon />
+          <p style={{ margin: 0, fontWeight: 700, fontSize: 16 }}>정보가 수정되었습니다.</p>
+          <button className="pg-btn primary" style={{ width: '100%', padding: 13 }} onClick={onClose}>확인</button>
+        </div>
       )}
     </Modal>
   );
