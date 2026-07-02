@@ -82,11 +82,19 @@ function ChangePwModal({ onClose }) {
           </div>
         </div>
       ) : (
-        <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{ fontSize: 40 }}>✅</div>
-          <p style={{ margin: 0, fontWeight: 700, fontSize: 16 }}>비밀번호가 변경되었습니다.</p>
-          <button className="pg-btn primary" style={{ width: '100%', padding: 13 }} onClick={onClose}>확인</button>
-        </div>
+        <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+  <div style={{
+    width: 48, height: 48, borderRadius: '50%',
+    background: 'var(--ok)', display: 'flex',
+    alignItems: 'center', justifyContent: 'center',
+  }}>
+    <svg viewBox="0 0 34 34" fill="none" width={22} height={22}>
+      <path d="M7 17.5 13.5 24 27 10" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+    </div>
+    <p style={{ margin: 0, fontWeight: 700, fontSize: 16 }}>비밀번호가 변경되었습니다.</p>
+    <button className="pg-btn primary" style={{ width: '100%', padding: 13 }} onClick={onClose}>확인</button>
+  </div>
       )}
     </Modal>
   );
@@ -148,11 +156,19 @@ function EditInfoModal({ onClose }) {
           </div>
         </div>
       ) : (
-        <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{ fontSize: 40 }}>✅</div>
-          <p style={{ margin: 0, fontWeight: 700, fontSize: 16 }}>정보가 수정되었습니다.</p>
-          <button className="pg-btn primary" style={{ width: '100%', padding: 13 }} onClick={onClose}>확인</button>
-        </div>
+        <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+  <div style={{
+    width: 48, height: 48, borderRadius: '50%',
+    background: 'var(--ok)', display: 'flex',
+    alignItems: 'center', justifyContent: 'center',
+  }}>
+    <svg viewBox="0 0 34 34" fill="none" width={22} height={22}>
+      <path d="M7 17.5 13.5 24 27 10" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+    </div>
+    <p style={{ margin: 0, fontWeight: 700, fontSize: 16 }}>정보가 수정되었습니다.</p>
+    <button className="pg-btn primary" style={{ width: '100%', padding: 13 }} onClick={onClose}>확인</button>
+  </div>
       )}
     </Modal>
   );
