@@ -112,13 +112,12 @@ export default function SignupPage({ openPage }) {
 
       <h1 className="pg-h1" style={{ marginBottom: 20 }}>회원가입</h1>
       <p
-        className="eyebrow"
         style={{
           marginTop: 0,
           marginBottom: 28,
-          display: 'flex',
-          justifyContent: 'center',
-          width: '100%',
+          textAlign: 'center',
+          fontSize: 15,
+          color: 'var(--ink-soft)',
         }}
       >
         계정을 만들고 API Key를 발급받으세요.
