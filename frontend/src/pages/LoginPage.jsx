@@ -247,7 +247,7 @@ export default function LoginPage({ openPage, closePage, onLogin }) {
   };
 
   const handleSocialLogin = async (provider) => {
-    const providerNames = { kakao: '카카오', naver: '네이버' };
+    const providerNames = { kakao: '카카오', naver: '네이버', google: '구글' };
     const providerName = providerNames[provider];
     if (!providerName) {
       setError('해당 간편 로그인은 아직 준비 중입니다.');
@@ -470,11 +470,13 @@ export default function LoginPage({ openPage, closePage, onLogin }) {
           <button
             type="button"
             onClick={() => handleSocialLogin('google')}
+            disabled={loading}
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               width: '100%', padding: 13, borderRadius: 12,
               border: '1.5px solid var(--line)', background: '#fff', color: 'var(--ink)',
-              fontSize: 14.5, fontWeight: 700, cursor: 'pointer',
+              fontSize: 14.5, fontWeight: 700,
+              cursor: loading ? 'wait' : 'pointer', opacity: loading ? 0.7 : 1,
             }}
           >
             <svg width="17" height="17" viewBox="0 0 24 24">
