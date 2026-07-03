@@ -63,18 +63,66 @@ function ChangePwModal({ onClose }) {
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [confirm, setConfirm] = useState('');
-  const [attempted, setAttempted] = useState(false);   // ← 추가
+  const [attempted, setAttempted] = useState(false);
+  const [currentError, setCurrentError] = useState('');
+  const [formatError, setFormatError] = useState('');
+  const [matchError, setMatchError] = useState('');
+  const [checkingCurrent, setCheckingCurrent] = useState(false);
 
-  const isValid = current.trim() && next.trim() && confirm.trim();
+  const allFilled = current.trim() && next.trim() && confirm.trim();
+  const isFormatValid = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,16}$/.test(next);
 
   const errorStyle = { border: '1.5px solid #c0392b' };
 
-  const handleChange = () => {
-    if (!isValid) {
+  const checkCurrentPassword = async () => {
+    if (!current.trim()) return;
+    setCheckingCurrent(true);
+    try {
+      await api.post('/auth/verify-password', { password: current });
+      setCurrentError('');
+    } catch (err) {
+      setCurrentError(err.response?.data?.detail || '비밀번호가 일치하지 않습니다.');
+    } finally {
+      setCheckingCurrent(false);
+    }
+  };
+
+  const handleChange = async () => {
+    setFormatError('');
+    setMatchError('');
+
+    if (!allFilled) {
       setAttempted(true);
       return;
     }
-    setDone(true);
+    if (currentError) return;   // 이미 틀린 걸로 확인됐으면 여기서 중단
+
+    // 현재 비밀번호를 아직 검증 안 했으면 여기서 한 번 더 확인
+    try {
+      await api.post('/auth/verify-password', { password: current });
+    } catch (err) {
+      setCurrentError(err.response?.data?.detail || '비밀번호가 일치하지 않습니다.');
+      return;
+    }
+
+    if (!isFormatValid) {
+      setFormatError('영문 대소문자·숫자·특수문자를 포함해 8~16자로 입력해주세요.');
+      return;
+    }
+    if (next !== confirm) {
+      setMatchError('비밀번호가 일치하지 않습니다.');
+      return;
+    }
+
+    try {
+      await api.post('/auth/change-password', {
+        current_password: current,
+        new_password: next,
+      });
+      setDone(true);
+    } catch (err) {
+      setCurrentError(err.response?.data?.detail || '비밀번호 변경에 실패했습니다.');
+    }
   };
 
   return (
@@ -83,28 +131,38 @@ function ChangePwModal({ onClose }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <PasswordInput
             value={current}
-            onChange={e => setCurrent(e.target.value)}
+            onChange={e => { setCurrent(e.target.value); setCurrentError(''); }}
+            onBlur={checkCurrentPassword}
             placeholder="현재 비밀번호"
-            style={attempted && !current.trim() ? errorStyle : {}}
+            style={(attempted && !current.trim()) || currentError ? errorStyle : {}}
           />
+          {currentError && (
+            <p style={{ margin: '-6px 0 0', fontSize: 12, color: '#c0392b' }}>{currentError}</p>
+          )}
           <PasswordInput
             value={next}
-            onChange={e => setNext(e.target.value)}
+            onChange={e => { setNext(e.target.value); setFormatError(''); }}
             placeholder="새 비밀번호"
-            style={attempted && !next.trim() ? errorStyle : {}}
+            style={(attempted && !next.trim()) || formatError ? errorStyle : {}}
           />
+          {formatError && (
+            <p style={{ margin: '-6px 0 0', fontSize: 12, color: '#c0392b' }}>{formatError}</p>
+          )}
           <PasswordInput
             value={confirm}
-            onChange={e => setConfirm(e.target.value)}
+            onChange={e => { setConfirm(e.target.value); setMatchError(''); }}
             placeholder="새 비밀번호 확인"
-            style={attempted && !confirm.trim() ? errorStyle : {}}
+            style={(attempted && !confirm.trim()) || matchError ? errorStyle : {}}
           />
+          {matchError && (
+            <p style={{ margin: '-6px 0 0', fontSize: 12, color: '#c0392b' }}>{matchError}</p>
+          )}
           <p style={{ margin: 0, fontSize: 12, color: 'var(--muted)' }}>영문·숫자·특수문자 포함 8자 이상</p>
           <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
             <button className="pg-btn" style={{ flex: 1, padding: 13 }} onClick={onClose}>취소</button>
             <button
               className="pg-btn primary"
-              style={{ flex: 1, padding: 13, opacity: isValid ? 1 : 0.5, cursor: isValid ? 'pointer' : 'not-allowed' }}
+              style={{ flex: 1, padding: 13, opacity: allFilled ? 1 : 0.5, cursor: allFilled ? 'pointer' : 'not-allowed' }}
               onClick={handleChange}
             >변경하기</button>
           </div>
@@ -148,7 +206,8 @@ function EditInfoModal({ onClose, user }) {
     <Modal title="정보 수정" onClose={onClose}>
       {!done ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <ClearableInput
+          <input
+            className="pg-input"
             value={name}
             onChange={e => setName(e.target.value)}
             placeholder="이름"
