@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useState } from 'react';
+import React, { useEffect, useId, useRef, useState } from 'react';
 import vlurLogo from '../assets/vlur-logo-transparent-hq-2x.png';
 
 const DESKTOP_SECTION_LINKS = [
@@ -39,6 +39,7 @@ export default function Nav({ openPage, isLoggedIn, onLogout, onHome, embedded =
   const [mobileOpen, setMobileOpen] = useState(false);
   const [dark, applyTheme] = useTheme();
   const mobileMenuId = useId();
+  const mobileMenuRef = useRef(null);
 
   useEffect(() => {
     if (!mobileOpen) return undefined;
@@ -48,11 +49,20 @@ export default function Nav({ openPage, isLoggedIn, onLogout, onHome, embedded =
     const handleResize = () => {
       if (window.innerWidth > 940) setMobileOpen(false);
     };
+    const handleOutsideClick = (event) => {
+      if (mobileMenuRef.current?.contains(event.target)) return;
+      if (event.target.closest('.menu-toggle')) return;
+      setMobileOpen(false);
+    };
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('resize', handleResize);
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('touchstart', handleOutsideClick);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('resize', handleResize);
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('touchstart', handleOutsideClick);
     };
   }, [mobileOpen]);
 
@@ -122,7 +132,7 @@ export default function Nav({ openPage, isLoggedIn, onLogout, onHome, embedded =
               title={dark ? '라이트 모드로 전환' : '다크 모드로 전환'}
               onClick={() => applyTheme(!dark)}
             >
-              {dark ? <SunIcon /> : <MoonIcon />}
+              {dark ? <MoonIcon /> : <SunIcon />}
             </button>
             {isLoggedIn ? (
               <>
@@ -152,7 +162,7 @@ export default function Nav({ openPage, isLoggedIn, onLogout, onHome, embedded =
         </nav>
       </div>
 
-      <div className={`mobile-menu${mobileOpen ? ' open' : ''}`} id={mobileMenuId}>
+        <div className={`mobile-menu${mobileOpen ? ' open' : ''}`} id={mobileMenuId} ref={mobileMenuRef}>
         <a href="#faq" onClick={handleNoticeClick}>공지사항</a>
         {isLoggedIn ? (
           <>
@@ -169,7 +179,7 @@ export default function Nav({ openPage, isLoggedIn, onLogout, onHome, embedded =
         {/* 모바일 테마 전환 */}
         <div style={{ height: 1, background: 'var(--line)', margin: '6px 0' }} />
         <button type="button" className="mobile-theme-row" onClick={() => applyTheme(!dark)}>
-          {dark ? <SunIcon /> : <MoonIcon />}
+          {dark ? <MoonIcon /> : <SunIcon />}
           {dark ? '라이트 모드' : '다크 모드'}
         </button>
       </div>
