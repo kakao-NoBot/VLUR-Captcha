@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import EmailInput from '../components/EmailInput';
+import SelectInput from '../components/SelectInput';
 import api from '../api/axios';
 
 const VOLUMES = ['월 50만 건 이하', '월 50~200만 건', '월 200~500만 건', '월 500만 건 이상', '미정'];
@@ -52,10 +53,17 @@ export default function EnterprisePage({ closePage }) {
 
   const errorStyle = { border: '1.5px solid #c0392b' };
 
+  const isEmailFormatValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim());
+
   const handleSubmit = async () => {
     if (!form.company || !form.name || !form.email) {
       setAttempted(true);
       setAlertMsg('회사명, 담당자명, 이메일은 필수입니다.');
+      return;
+    }
+    if (!isEmailFormatValid) {
+      setAttempted(true);
+      setAlertMsg('올바른 이메일 형식으로 입력해주세요.');
       return;
     }
     setSubmitting(true);
@@ -120,7 +128,7 @@ export default function EnterprisePage({ closePage }) {
           </div>
           <EmailInput
             onChange={val => setForm(f => ({ ...f, email: val }))}
-            error={attempted && !form.email}
+            error={attempted && !isEmailFormatValid}
           />
         </div>
       </div>
@@ -128,10 +136,12 @@ export default function EnterprisePage({ closePage }) {
       <div className="pg-card" style={{ marginBottom: 16 }}>
         <div className="pg-label">도입 정보</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <select className="pg-input" value={form.volume} onChange={set('volume')} style={{ cursor: 'pointer' }}>
-            <option value="">예상 월 호출량 선택</option>
-            {VOLUMES.map(v => <option key={v} value={v}>{v}</option>)}
-          </select>
+          <SelectInput
+            options={VOLUMES}
+            value={form.volume}
+            onChange={val => setForm(f => ({ ...f, volume: val }))}
+            placeholder="예상 월 호출량 선택"
+          />
           <textarea
             className="pg-input"
             placeholder="도입 목적 및 문의 내용을 자유롭게 작성해 주세요."

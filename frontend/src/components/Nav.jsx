@@ -168,16 +168,7 @@ export default function Nav({ openPage, isLoggedIn, onLogout, onHome, embedded =
 
         {/* 모바일 테마 전환 */}
         <div style={{ height: 1, background: 'var(--line)', margin: '6px 0' }} />
-        <button
-          type="button"
-          onClick={() => applyTheme(!dark)}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 10,
-            width: '100%', padding: '12px 16px', border: 'none',
-            background: 'none', color: 'var(--ink)', fontSize: 15,
-            fontWeight: 500, cursor: 'pointer', textAlign: 'left',
-          }}
-        >
+        <button type="button" className="mobile-theme-row" onClick={() => applyTheme(!dark)}>
           {dark ? <SunIcon /> : <MoonIcon />}
           {dark ? '라이트 모드' : '다크 모드'}
         </button>

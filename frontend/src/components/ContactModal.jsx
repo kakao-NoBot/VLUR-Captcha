@@ -76,10 +76,9 @@ export default function ContactModal({ open, onClose }) {
     if (validationError?.field !== field) return null;
 
     return (
-      <div className="contact-field-alert" id={`contact-${field}-error`} role="alert">
-        <span className="contact-field-alert-icon" aria-hidden="true">!</span>
-        <span>{validationError.message}</span>
-      </div>
+      <p id={`contact-${field}-error`} role="alert" style={{ margin: '6px 0 0', fontSize: 12.5, color: '#c0392b' }}>
+        {validationError.message}
+      </p>
     );
   };
 
@@ -126,7 +125,6 @@ export default function ContactModal({ open, onClose }) {
                   onChange={(val) => { setEmail(val); if (validationError?.field === 'email') setValidationError(null); }}
                   error={validationError?.field === 'email'}
                 />
-                {renderValidationAlert('email')}
               </label>
 
               <label className={validationError?.field === 'message' ? 'has-error' : ''}>

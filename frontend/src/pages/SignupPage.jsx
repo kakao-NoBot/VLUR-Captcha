@@ -56,9 +56,11 @@ export default function SignupPage({ openPage, onLogin }) {
   const showPhoneError = (attempted || attemptedFields.phone) && !phone.trim();
   const showAgreedError = (attempted || attemptedFields.agreed) && !agreed;
 
+  const hasInvalidIdChar = /[^a-zA-Z0-9]/.test(loginId);
+
   const handleCheckId = async () => {
     const id = loginId.trim();
-    if (!id) return;
+    if (!id || hasInvalidIdChar) return;
     setIdCheck('checking');
     try {
       const { data } = await api.get('/auth/check-id', { params: { user_id: id } });
@@ -144,8 +146,7 @@ export default function SignupPage({ openPage, onLogin }) {
             placeholder="아이디"
             value={loginId}
             onChange={e => {
-              const filtered = e.target.value.replace(/[^a-zA-Z0-9]/g, '');
-              setLoginId(filtered);
+              setLoginId(e.target.value);
               setIdCheck(null);
             }}
             onKeyDown={e => {
@@ -162,12 +163,14 @@ export default function SignupPage({ openPage, onLogin }) {
               }
             }}
             style={{
-              ...(showIdError ? errorStyle : {}),
+              ...(showIdError || hasInvalidIdChar ? errorStyle : {}),
               ...(idCheck === 'taken' ? errorStyle : {}),
               ...(idCheck === 'checking' ? { opacity: 0.6 } : {}),
             }}
           />
-          <p style={{ margin: 0, fontSize: 12, color: 'var(--muted)' }}>영문 · 숫자만 사용 가능합니다.</p>
+          {hasInvalidIdChar && (
+            <p style={{ margin: 0, fontSize: 12.5, color: '#c0392b' }}>영문 · 숫자만 사용 가능합니다.</p>
+          )}
           {isIdAvailable && (
             <p style={{ margin: 0, fontSize: 12.5, color: 'var(--orange)', fontWeight: 600 }}>
               <strong>{checkedId}</strong>는 사용 가능한 아이디입니다.
@@ -233,9 +236,6 @@ export default function SignupPage({ openPage, onLogin }) {
               }
             }}
           />
-          {showEmailError && (
-            <p style={{ margin: '6px 0 0', fontSize: 12.5, color: '#c0392b' }}>올바른 이메일을 입력해주세요.</p>
-          )}
         </div>
         <ClearableInput
           type="tel"
