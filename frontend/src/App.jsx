@@ -49,14 +49,19 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(() => {
     try { return JSON.parse(localStorage.getItem('user') || 'null'); } catch { return null; }
   });
+  const [signupKey, setSignupKey] = useState(0);
 
   const openPage = (id) => {
-  if (id === 'mypage') {
-    setMypageTab('info');
-    setMypageKey(k => k + 1);
-  }
-  setPage(id);
-};
+    if (id === 'mypage') {
+      setMypageTab('info');
+      setMypageKey(k => k + 1);
+    }
+    if (id === 'signup') {
+      setSignupKey(k => k + 1);
+    }
+    setPage(id);
+  };
+
   const closePage = () => {
     setPage(null);
   };
@@ -165,7 +170,7 @@ export default function App() {
       {/* Signup */}
       <div className={`page-overlay${page === 'signup' ? ' active' : ''}`}>
         <Nav embedded openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} onHome={closePage} user={currentUser} />
-        <SignupPage openPage={openPage} onLogin={handleLogin} />
+        <SignupPage key={signupKey} openPage={openPage} onLogin={handleLogin} />
       </div>
 
       {/* Mypage */}
