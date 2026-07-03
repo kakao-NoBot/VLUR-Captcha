@@ -5,6 +5,7 @@ import GuideStepModal from '../components/GuideStepModal';
 import PasswordInput from '../components/PasswordInput';
 import EmailInput from '../components/EmailInput';
 import ClearableInput from '../components/ClearableInput';
+import api from '../api/axios';
 
 const realKey = 'sk-aicap_prod_7f3a91b2c4d5e6f789012345xxxx';
 
@@ -1094,6 +1095,106 @@ function DeactivateTab({ closePage }) {
   );
 }
 
+/* ── 관리자 전용: 문의 내역 조회 탭 ── */
+const INQUIRY_STATUS_LABEL = {
+  new: '신규',
+  in_progress: '처리중',
+  done: '완료',
+  spam: '스팸',
+};
+
+function InquiryCard({ q, formatDate }) {
+  const isEnterprise = q.inquiry_type === 'enterprise';
+  return (
+    <div className="pg-card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+        <span style={{ fontWeight: 700, fontSize: 14 }}>
+          {isEnterprise && q.company ? `${q.company} · ${q.contact_name || ''}` : q.email}
+        </span>
+        <span style={{ fontSize: 12, color: 'var(--muted)' }}>{formatDate(q.created_at)}</span>
+      </div>
+      {isEnterprise && (
+        <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>
+          {q.email}
+          {q.plan_interest ? ` · 예상 호출량: ${q.plan_interest}` : ''}
+        </div>
+      )}
+      {q.message && (
+        <p style={{ margin: 0, fontSize: 14, color: 'var(--ink-soft)', whiteSpace: 'pre-wrap' }}>{q.message}</p>
+      )}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        {q.phone && <span style={{ fontSize: 12, color: 'var(--muted)' }}>☎ {q.phone}</span>}
+        <span style={{
+          fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 10,
+          background: 'var(--peach)', color: 'var(--orange-2)',
+        }}>
+          {INQUIRY_STATUS_LABEL[q.inquiry_status] || q.inquiry_status}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function InquirySection({ title, items, formatDate }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>
+        {title} <span style={{ color: 'var(--muted)', fontWeight: 500 }}>({items.length})</span>
+      </h3>
+      {items.length === 0 ? (
+        <p style={{ color: 'var(--muted)', fontSize: 13.5, margin: 0 }}>접수된 문의가 없습니다.</p>
+      ) : (
+        items.map((q) => <InquiryCard key={q.inquiry_id} q={q} formatDate={formatDate} />)
+      )}
+    </div>
+  );
+}
+
+function InquiriesTab() {
+  const [inquiries, setInquiries] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let ignore = false;
+    (async () => {
+      try {
+        const { data } = await api.get('/admin/inquiries');
+        if (!ignore) setInquiries(data.inquiries || []);
+      } catch (err) {
+        if (!ignore) setError(err.response?.data?.detail || '문의 목록을 불러오지 못했습니다.');
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    })();
+    return () => { ignore = true; };
+  }, []);
+
+  const formatDate = (value) => {
+    if (!value) return '';
+    return String(value).replace('T', ' ').slice(0, 16);
+  };
+
+  const generalInquiries = inquiries.filter((q) => q.inquiry_type !== 'enterprise');
+  const enterpriseInquiries = inquiries.filter((q) => q.inquiry_type === 'enterprise');
+
+  return (
+    <>
+      <h2 className="pg-h2" style={{ marginBottom: 20 }}>문의 내역</h2>
+      {loading ? (
+        <p style={{ color: 'var(--muted)', fontSize: 14 }}>불러오는 중...</p>
+      ) : error ? (
+        <p style={{ color: '#c0392b', fontSize: 14 }}>{error}</p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
+          <InquirySection title="일반 문의 내역" items={generalInquiries} formatDate={formatDate} />
+          <InquirySection title="사용(도입) 문의 내역" items={enterpriseInquiries} formatDate={formatDate} />
+        </div>
+      )}
+    </>
+  );
+}
+
 const TABS = [
   { id: 'info',       label: '내 정보' },
   { id: 'apikey',     label: 'API Key 관리' },
@@ -1102,8 +1203,12 @@ const TABS = [
   { id: 'deactivate', label: '계정 탈퇴', danger: true },
 ];
 
+const ADMIN_TAB = { id: 'inquiries', label: '문의 내역' };
+
 export default function MypagePage({ openPage, closePage, initialTab = 'info', user = null }) {
   const [activeTab, setActiveTab] = useState(initialTab);
+  const isAdmin = user?.role === 'admin';
+  const tabs = isAdmin ? [...TABS, ADMIN_TAB] : TABS;
 
   useEffect(() => {
     setActiveTab(initialTab);
@@ -1112,7 +1217,7 @@ export default function MypagePage({ openPage, closePage, initialTab = 'info', u
   return (
     <div className="mp-wrap">
       <div className="mp-sidebar">
-        {TABS.map(t => (
+        {tabs.map(t => (
           <button key={t.id}
             className={`mp-nav-item${activeTab === t.id ? ' active' : ''}`}
             onClick={() => setActiveTab(t.id)}
@@ -1127,6 +1232,7 @@ export default function MypagePage({ openPage, closePage, initialTab = 'info', u
         {activeTab === 'usage'      && <UsageTab />}
         {activeTab === 'billing'    && <BillingTab closePage={closePage} />}
         {activeTab === 'deactivate' && <DeactivateTab closePage={closePage} />}
+        {activeTab === 'inquiries' && isAdmin && <InquiriesTab />}
       </div>
     </div>
   );

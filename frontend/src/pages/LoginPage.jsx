@@ -351,14 +351,14 @@ export default function LoginPage({ openPage, closePage, onLogin }) {
                   width: 18,
                   height: 18,
                   borderRadius: 6,
-                  border: `1.5px solid ${autoLogin ? 'var(--orange)' : '#d8d0c4'}`,
-                  background: autoLogin ? 'var(--orange)' : '#fff',
+                  border: `1.5px solid ${autoLogin ? 'var(--orange-2)' : 'var(--line)'}`,
+                  background: autoLogin ? 'var(--orange-2)' : '#fff',
                   color: '#fff',
                   fontSize: 12,
                   fontWeight: 800,
                   lineHeight: 1,
                   transition: '.18s',
-                  boxShadow: autoLogin ? '0 4px 12px -8px rgba(240,105,30,.8)' : 'none',
+                  boxShadow: autoLogin ? '0 4px 12px -8px rgba(221,84,19,.8)' : 'none',
                 }}
               >
                 {autoLogin ? '✓' : ''}

@@ -53,14 +53,19 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(() => {
     try { return JSON.parse(localStorage.getItem('user') || 'null'); } catch { return null; }
   });
+  const [signupKey, setSignupKey] = useState(0);
 
   const openPage = (id) => {
-  if (id === 'mypage') {
-    setMypageTab('info');
-    setMypageKey(k => k + 1);
-  }
-  setPage(id);
-};
+    if (id === 'mypage') {
+      setMypageTab('info');
+      setMypageKey(k => k + 1);
+    }
+    if (id === 'signup') {
+      setSignupKey(k => k + 1);
+    }
+    setPage(id);
+  };
+
   const closePage = () => {
     setPage(null);
   };
@@ -174,8 +179,8 @@ export default function App() {
       </PageOverlay>
 
       {/* Signup */}
-      <PageOverlay id="signup" activePage={page} onBack={closePage} openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} user={currentUser}>
-        <SignupPage openPage={openPage} onLogin={handleLogin} />
+      <PageOverlay id="signup" activePage={page} onBack={closePage} openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout}>
+        <SignupPage key={signupKey} openPage={openPage} onLogin={handleLogin} />
       </PageOverlay>
 
       {/* Mypage */}
@@ -192,7 +197,7 @@ export default function App() {
 
       {/* Board */}
       <PageOverlay id="board" activePage={page} onBack={closePage} openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} user={currentUser}>
-        <BoardPage />
+        <BoardPage user={currentUser} />
       </PageOverlay>
 
       {/* Enterprise Inquiry */}

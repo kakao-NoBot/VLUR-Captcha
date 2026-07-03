@@ -16,3 +16,14 @@ def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="유효하지 않거나 만료된 토큰입니다.",
         )
+
+
+def get_current_admin(
+    current_user: dict = Depends(get_current_user),
+) -> dict:
+    if current_user.get("role") != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="관리자 권한이 필요합니다.",
+        )
+    return current_user

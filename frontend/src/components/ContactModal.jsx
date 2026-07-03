@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import EmailInput from './EmailInput';
+import api from '../api/axios';
 
 const CONTACT_EMAIL = 'vlur@vlur.site';
 
@@ -8,6 +9,7 @@ export default function ContactModal({ open, onClose }) {
   const [message, setMessage] = useState('');
   const [sent, setSent] = useState(false);
   const [validationError, setValidationError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
   const messageInputRef = useRef(null);
 
   useEffect(() => {
@@ -38,7 +40,7 @@ export default function ContactModal({ open, onClose }) {
 
   if (!open) return null;
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
     const trimmedEmail = email.trim();
@@ -56,7 +58,18 @@ export default function ContactModal({ open, onClose }) {
     }
 
     setValidationError(null);
-    setSent(true);
+    setSubmitting(true);
+    try {
+      await api.post('/contact', { email: trimmedEmail, message: trimmedMessage, inquiry_type: 'general' });
+      setSent(true);
+    } catch (err) {
+      setValidationError({
+        field: 'message',
+        message: err.response?.data?.detail || '문의 전송 중 오류가 발생했습니다.',
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const renderValidationAlert = (field) => {
@@ -139,7 +152,9 @@ export default function ContactModal({ open, onClose }) {
 
             <div className="terms-modal-footer">
               <button type="button" className="btn btn-outline" onClick={onClose}>취소</button>
-              <button type="submit" className="btn btn-primary">전송</button>
+              <button type="submit" className="btn btn-primary" disabled={submitting}>
+                {submitting ? '전송 중...' : '전송'}
+              </button>
             </div>
           </form>
         )}

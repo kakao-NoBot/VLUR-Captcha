@@ -26,7 +26,12 @@ export default function SignupPage({ openPage, onLogin }) {
   const [finalEmail, setFinalEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [agreed, setAgreed] = useState(false);
+
+  // attempted: 최종 "회원가입" 버튼을 눌렀을 때 전체 필드 에러 표시용
   const [attempted, setAttempted] = useState(false);
+  // attemptedFields: Tab으로 개별 필드를 벗어났을 때 해당 필드만 에러 표시용
+  const [attemptedFields, setAttemptedFields] = useState({});
+
   const [apiError, setApiError] = useState('');
   const [loading, setLoading] = useState(false);
   const [isPrivacyHelpOpen, setIsPrivacyHelpOpen] = useState(false);
@@ -37,6 +42,19 @@ export default function SignupPage({ openPage, onLogin }) {
   const isIdAvailable = idCheck === 'available' && checkedId === loginId.trim();
   const isPasswordValid = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_\-+=\[\]{};':"\\|,.<>/?`~]).{8,16}$/.test(password);
   const isPasswordMatch = password === passwordConfirm;
+
+  const markAttempted = (field) => {
+    setAttemptedFields((f) => ({ ...f, [field]: true }));
+  };
+
+  // 필드별 에러 표시 여부 (최종 제출 시도 또는 해당 필드 Tab 이탈 시도 시 true)
+  const showNameError = (attempted || attemptedFields.name) && !name.trim();
+  const showIdError = (attempted || attemptedFields.id) && (!loginId.trim() || !isIdFormatValid || !isIdAvailable);
+  const showPasswordError = (attempted || attemptedFields.password) && !isPasswordValid;
+  const showPasswordConfirmError = (attempted || attemptedFields.passwordConfirm) && !isPasswordMatch;
+  const showEmailError = (attempted || attemptedFields.email) && !isEmailValid;
+  const showPhoneError = (attempted || attemptedFields.phone) && !phone.trim();
+  const showAgreedError = (attempted || attemptedFields.agreed) && !agreed;
 
   const handleCheckId = async () => {
     const id = loginId.trim();
@@ -113,7 +131,13 @@ export default function SignupPage({ openPage, onLogin }) {
           placeholder="이름"
           value={name}
           onChange={e => setName(e.target.value)}
-          style={attempted && !name.trim() ? errorStyle : {}}
+          onKeyDown={e => {
+            if (e.key === 'Tab' && !e.shiftKey && !name.trim()) {
+              e.preventDefault();
+              markAttempted('name');
+            }
+          }}
+          style={showNameError ? errorStyle : {}}
         />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <ClearableInput
@@ -124,9 +148,21 @@ export default function SignupPage({ openPage, onLogin }) {
               setLoginId(filtered);
               setIdCheck(null);
             }}
-            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleCheckId(); } }}
+            onKeyDown={e => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleCheckId();
+              }
+              if (e.key === 'Tab' && !e.shiftKey && !isIdAvailable) {
+                e.preventDefault();
+                markAttempted('id');
+                if (loginId.trim() && idCheck !== 'checking') {
+                  handleCheckId();
+                }
+              }
+            }}
             style={{
-              ...(attempted && (!loginId.trim() || !isIdFormatValid) ? errorStyle : {}),
+              ...(showIdError ? errorStyle : {}),
               ...(idCheck === 'taken' ? errorStyle : {}),
               ...(idCheck === 'checking' ? { opacity: 0.6 } : {}),
             }}
@@ -145,10 +181,10 @@ export default function SignupPage({ openPage, onLogin }) {
           {idCheck === 'checking' && (
             <p style={{ margin: 0, fontSize: 12.5, color: 'var(--muted)' }}>확인 중...</p>
           )}
-          {attempted && !loginId.trim() && (
+          {(attempted || attemptedFields.id) && !loginId.trim() && (
             <p style={{ margin: 0, fontSize: 12.5, color: '#c0392b' }}>아이디를 입력해주세요.</p>
           )}
-          {attempted && loginId.trim() && !isIdAvailable && idCheck !== 'taken' && idCheck !== 'checking' && (
+          {(attempted || attemptedFields.id) && loginId.trim() && !isIdAvailable && idCheck !== 'taken' && idCheck !== 'checking' && (
             <p style={{ margin: 0, fontSize: 12.5, color: '#c0392b' }}>아이디 중복 확인이 필요합니다.</p>
           )}
         </div>
@@ -157,9 +193,15 @@ export default function SignupPage({ openPage, onLogin }) {
             placeholder="비밀번호"
             value={password}
             onChange={e => setPassword(e.target.value)}
-            style={attempted && !isPasswordValid ? errorStyle : {}}
+            onKeyDown={e => {
+              if (e.key === 'Tab' && !e.shiftKey && !isPasswordValid) {
+                e.preventDefault();
+                markAttempted('password');
+              }
+            }}
+            style={showPasswordError ? errorStyle : {}}
           />
-          <p style={{ margin: 0, fontSize: 12, color: attempted && !isPasswordValid ? '#c0392b' : 'var(--muted)' }}>
+          <p style={{ margin: 0, fontSize: 12, color: showPasswordError ? '#c0392b' : 'var(--muted)' }}>
             8~16자 · 영문 대소문자 · 숫자 · 특수문자 포함
           </p>
         </div>
@@ -168,15 +210,30 @@ export default function SignupPage({ openPage, onLogin }) {
             placeholder="비밀번호 확인"
             value={passwordConfirm}
             onChange={e => setPasswordConfirm(e.target.value)}
-            style={attempted && !isPasswordMatch ? errorStyle : {}}
+            onKeyDown={e => {
+              if (e.key === 'Tab' && !e.shiftKey && !isPasswordMatch) {
+                e.preventDefault();
+                markAttempted('passwordConfirm');
+              }
+            }}
+            style={showPasswordConfirmError ? errorStyle : {}}
           />
-          {attempted && passwordConfirm && !isPasswordMatch && (
+          {showPasswordConfirmError && passwordConfirm && (
             <p style={{ margin: 0, fontSize: 12.5, color: '#c0392b' }}>비밀번호가 일치하지 않습니다.</p>
           )}
         </div>
         <div>
-          <EmailInput onChange={setFinalEmail} error={attempted && !isEmailValid} />
-          {attempted && !isEmailValid && (
+          <EmailInput
+            onChange={setFinalEmail}
+            error={showEmailError}
+            onKeyDown={e => {
+              if (e.key === 'Tab' && !e.shiftKey && !isEmailValid) {
+                e.preventDefault();
+                markAttempted('email');
+              }
+            }}
+          />
+          {showEmailError && (
             <p style={{ margin: '6px 0 0', fontSize: 12.5, color: '#c0392b' }}>올바른 이메일을 입력해주세요.</p>
           )}
         </div>
@@ -184,8 +241,14 @@ export default function SignupPage({ openPage, onLogin }) {
           type="tel"
           placeholder="휴대폰 번호"
           value={phone}
-          onChange={e => setPhone(e.target.value)}
-          style={attempted && !phone.trim() ? errorStyle : {}}
+          onChange={e => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
+          onKeyDown={e => {
+            if (e.key === 'Tab' && !e.shiftKey && !phone.trim()) {
+              e.preventDefault();
+              markAttempted('phone');
+            }
+          }}
+          style={showPhoneError ? errorStyle : {}}
         />
         <div className="signup-agreement-row" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <label className="signup-agreement-label" style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: 'var(--ink-soft)', cursor: 'pointer' }}>
@@ -209,10 +272,10 @@ export default function SignupPage({ openPage, onLogin }) {
                   position: 'absolute',
                   inset: 0,
                   borderRadius: 6,
-                  border: attempted && !agreed
+                  border: showAgreedError
                     ? '1.5px solid #c0392b'
-                    : `1.5px solid ${agreed ? 'var(--orange)' : '#d8d0c4'}`,
-                  background: agreed ? 'var(--orange)' : '#fff',
+                    : `1.5px solid ${agreed ? 'var(--orange-2)' : 'var(--line)'}`,
+                  background: agreed ? 'var(--orange-2)' : '#fff',
                   transition: 'background 0.15s ease, border-color 0.15s ease',
                   display: 'flex',
                   alignItems: 'center',
