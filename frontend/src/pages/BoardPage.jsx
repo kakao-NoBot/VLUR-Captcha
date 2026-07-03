@@ -63,11 +63,16 @@ function BoardDetail({ post, previousPost, nextPost, onBack, onSelectPost, onEdi
         <h1>{post.title}</h1>
         <div className="board-detail-meta">
           <div>
-            <span>등록일 <time dateTime={post.date}>{post.date.replaceAll('-', '.')}</time></span>
+            <span className="board-detail-author"><b>VLUR CAPTCHA 운영팀</b></span>
             <i aria-hidden="true" />
-            <span>조회 {120 + post.id * 17}</span>
-            <i aria-hidden="true" />
-            <span>작성자 <b>VLUR CAPTCHA 운영팀</b></span>
+            <span className="board-detail-views">조회 : {120 + post.id * 17}</span>
+            <span className="board-detail-date">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 7v5l3 2" />
+              </svg>
+              <time dateTime={post.date}>{post.date.replaceAll('-', '.')}</time>
+            </span>
           </div>
         </div>
         <div className="board-detail-actions">
@@ -334,7 +339,7 @@ export default function BoardPage() {
       {/* 공지사항 */}
       {tab === 'notice' && (
         <>
-          <table className="pg-table" style={{ marginBottom: 8 }}>
+          <table className="pg-table board-table" style={{ marginBottom: 8 }}>
             <thead>
               <tr><th style={{ width: 60 }}>번호</th><th>제목</th><th style={{ width: 130 }}>작성일</th></tr>
             </thead>
@@ -396,7 +401,7 @@ export default function BoardPage() {
 
       {/* CAPTCHA 연구 */}
       {tab === 'research' && (
-        <table className="pg-table">
+        <table className="pg-table board-table">
           <thead><tr><th style={{ width: 60 }}>번호</th><th>제목</th><th style={{ width: 130 }}>작성일</th></tr></thead>
           <tbody>
             {RESEARCH.map(r => (
