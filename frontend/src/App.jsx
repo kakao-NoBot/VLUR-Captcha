@@ -23,6 +23,7 @@ import GuidePage from './pages/GuidePage';
 import BoardPage from './pages/BoardPage';
 import PlanPayPage from './pages/PlanPayPage';
 import EnterprisePage from './pages/EnterprisePage';
+import KakaoCallbackPage from './pages/KakaoCallbackPage';
 
 // Page overlay wrapper
 function PageOverlay({ id, activePage, onBack, openPage, isLoggedIn, onLogout, user, children }) {
@@ -139,6 +140,10 @@ export default function App() {
     els.forEach((el) => observer.observe(el));
     return () => { observer.disconnect(); timers.forEach(clearTimeout); };
   }, []);
+
+  if (window.location.pathname === '/auth/kakao/callback') {
+    return <KakaoCallbackPage onLogin={handleLogin} />;
+  }
 
   return (
     <>
