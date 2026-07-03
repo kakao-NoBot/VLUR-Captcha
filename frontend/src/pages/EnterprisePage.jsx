@@ -154,11 +154,11 @@ export default function EnterprisePage({ closePage }) {
           />
           <textarea
             className="pg-input"
-            placeholder="도입 목적 및 문의 내용을 자유롭게 작성해 주세요."
+            placeholder="도입 목적 및 문의 내용을 자유롭게 작성해 주세요. *"
             value={form.message}
             onChange={set('message')}
             rows={5}
-            style={{ resize: 'vertical', lineHeight: 1.6 }}
+            style={{ resize: 'vertical', lineHeight: 1.6, ...(attempted && !form.message.trim() ? errorStyle : {}) }}
           />
         </div>
       </div>

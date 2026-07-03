@@ -2,6 +2,11 @@ services:
   db:
     image: mysql:8.0
     container_name: captcha-db
+    # 초기화 SQL(init)까지 utf8mb4로 처리되도록 강제 — 한글 시드 깨짐 방지
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --skip-character-set-client-handshake
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
       MYSQL_DATABASE: ${DB_NAME}
