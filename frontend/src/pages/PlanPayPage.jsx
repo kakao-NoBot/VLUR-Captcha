@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import api from '../api/axios';
+import EmailInput from '../components/EmailInput';
 
 /* ── 스텝 인디케이터 원형 배지 ── */
 function StepCircle({ state, index }) {
@@ -72,7 +73,6 @@ export default function PlanPayPage({ planName = 'Pro', closePage, openPage, ope
   const [method, setMethod] = useState('kakao');
   const [buyerName, setBuyerName] = useState(user?.user_name || '');
   const [buyerEmail, setBuyerEmail] = useState(user?.email || '');
-  const [emailBlurred, setEmailBlurred] = useState(false);
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(buyerEmail.trim());
   const [steps, setSteps] = useState(null); // null | [{label, state}]
   const [success, setSuccess] = useState(false);
@@ -177,20 +177,7 @@ export default function PlanPayPage({ planName = 'Pro', closePage, openPage, ope
             <div className="pg-label">청구 정보</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <input className="pg-input" placeholder="이름" value={buyerName} onChange={e => setBuyerName(e.target.value)}/>
-              <div>
-                <input
-                  className="pg-input"
-                  type="email"
-                  placeholder="이메일"
-                  value={buyerEmail}
-                  onChange={e => setBuyerEmail(e.target.value)}
-                  onBlur={() => setEmailBlurred(true)}
-                  style={{ width: '100%', ...(emailBlurred && !isEmailValid ? { border: '1.5px solid #c0392b' } : {}) }}
-                />
-                {emailBlurred && !isEmailValid && (
-                  <div style={{ color: '#c0392b', fontSize: 12.5, marginTop: 6 }}>올바른 이메일 주소를 입력해 주세요.</div>
-                )}
-              </div>
+              <EmailInput initialEmail={user?.email || ''} onChange={setBuyerEmail} />
             </div>
             {paymentError && (
               <div style={{ color: '#c0392b', fontSize: 13, marginTop: 12, textAlign: 'center' }}>{paymentError}</div>

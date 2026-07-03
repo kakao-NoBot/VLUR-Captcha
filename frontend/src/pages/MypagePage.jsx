@@ -1300,11 +1300,10 @@ export default function MypagePage({ openPage, closePage, initialTab = 'info', u
       <div className="mp-sidebar">
         {tabs.map(t => (
           <button key={t.id}
-            className={`mp-nav-item${activeTab === t.id ? ' active' : ''}`}
-            onClick={() => setActiveTab(t.id)}
-            style={t.danger ? { color: '#c0392b' } : {}}>
-            {t.label}
-          </button>
+          className={`mp-nav-item${activeTab === t.id ? ' active' : ''}${t.danger ? ' danger' : ''}`}
+          onClick={() => setActiveTab(t.id)}>
+          {t.label}
+        </button>
         ))}
       </div>
       <div className="mp-content">
