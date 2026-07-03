@@ -66,6 +66,16 @@ export default function EnterprisePage({ closePage }) {
       setAlertMsg('올바른 이메일 형식으로 입력해주세요.');
       return;
     }
+    if (!form.volume) {
+    setAttempted(true);
+    setAlertMsg('예상 월 호출량을 선택해주세요.');
+    return;
+  }
+  if (!form.message.trim()) {
+    setAttempted(true);
+    setAlertMsg('도입 목적 및 문의 내용을 입력해주세요.');
+    return;
+  }
     setSubmitting(true);
     try {
       await api.post('/contact', {
