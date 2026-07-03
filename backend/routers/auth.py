@@ -31,6 +31,11 @@ class KakaoCallbackRequest(BaseModel):
     code: str
 
 
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
 @router.post("/login")
 def login(body: LoginRequest):
     conn = get_conn()
@@ -246,3 +251,64 @@ def signup(body: SignupRequest):
 @router.get("/me")
 def me(current_user: dict = Depends(get_current_user)):
     return current_user
+
+
+class VerifyPasswordRequest(BaseModel):
+    password: str
+
+
+@router.post("/verify-password")
+def verify_password_endpoint(
+    body: VerifyPasswordRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    conn = get_conn()
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT password_hash FROM users WHERE user_id = %s",
+                (current_user["user_id"],),
+            )
+            user = cur.fetchone()
+
+    if not user or not user["password_hash"] or not verify_password(body.password, user["password_hash"]):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="현재 비밀번호가 일치하지 않습니다.",
+        )
+    return {"valid": True}
+
+
+@router.post("/change-password")
+def change_password(
+    body: ChangePasswordRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    conn = get_conn()
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT password_hash FROM users WHERE user_id = %s",
+                (current_user["user_id"],),
+            )
+            user = cur.fetchone()
+
+            if not user or not user["password_hash"]:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="소셜 로그인 계정은 비밀번호를 변경할 수 없습니다.",
+                )
+            if not verify_password(body.current_password, user["password_hash"]):
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="현재 비밀번호가 일치하지 않습니다.",
+                )
+
+            new_hash = hash_password(body.new_password)
+            cur.execute(
+                "UPDATE users SET password_hash = %s WHERE user_id = %s",
+                (new_hash, current_user["user_id"]),
+            )
+        conn.commit()
+
+    return {"message": "비밀번호가 변경되었습니다."}
