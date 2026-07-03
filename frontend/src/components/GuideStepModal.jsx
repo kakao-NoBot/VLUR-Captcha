@@ -33,7 +33,7 @@ export const GUIDE_STEPS = [
 {`vlur_live_sk_AbC1dEfGhIjKlMnOpQ23rStUvWxYz`}
           </pre>
         </div>
-        <div style={{ background: '#fff4ee', border: '1px solid #fcd9b8', borderRadius: 10, padding: '14px 16px' }}>
+        <div style={{ background: 'var(--peach)', border: '1px solid var(--line)', borderRadius: 10, padding: '14px 16px' }}>
           <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--orange)', marginBottom: 8 }}>⚠ 보안 주의사항</div>
           <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.8 }}>
             <li>API Key는 서버 환경변수(.env)에만 저장하세요.</li>
@@ -88,7 +88,7 @@ Authorization: Bearer $VLUR_API_KEY`}
             </div>
           ))}
         </div>
-        <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '14px 16px' }}>
+        <div style={{ background: 'rgba(244,166,42,.12)', border: '1px solid rgba(244,166,42,.45)', borderRadius: 10, padding: '14px 16px' }}>
           <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--gold)', marginBottom: 6 }}>💡 권장 구현</div>
           <p style={{ margin: 0, fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.7 }}>
             CAPTCHA 문제는 사용자 행동이 필요한 시점 직전에 요청하세요.<br/>
@@ -139,7 +139,7 @@ Content-Type: application/json
 { "seat_id": "B-12-08", "amount": 134000 }`}
           </pre>
         </div>
-        <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, padding: '14px 16px' }}>
+        <div style={{ background: 'rgba(46,158,107,.12)', border: '1px solid rgba(46,158,107,.4)', borderRadius: 10, padding: '14px 16px' }}>
           <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--ok)', marginBottom: 6 }}>Token 규칙</div>
           <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.8 }}>
             <li>1회 사용 후 즉시 만료됩니다.</li>
@@ -161,7 +161,7 @@ export default function GuideStepModal({ stepIndex, onClose, onMove }) {
       style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(36,27,21,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div style={{ background: '#fff', borderRadius: 'var(--r)', width: '100%', maxWidth: 580, maxHeight: '82vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,.18)' }}>
+      <div style={{ background: 'var(--card)', borderRadius: 'var(--r)', width: '100%', maxWidth: 580, maxHeight: '82vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,.4)' }}>
 
         {/* Header */}
         <div style={{ padding: '22px 24px 16px', borderBottom: '1px solid var(--line)', flexShrink: 0 }}>

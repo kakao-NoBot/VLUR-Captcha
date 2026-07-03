@@ -51,7 +51,7 @@ function StepCircle({ state, index }) {
     return (
       <div style={{
         ...base,
-        background: '#fff',
+        background: 'var(--card)',
         color: 'var(--orange)',
         border: '2px solid var(--orange)',
         boxShadow: '0 0 0 4px rgba(240,105,30,.12)',
@@ -103,7 +103,7 @@ export default function ApplyPage({ openPage, initialPlan = 'Pro' }) {
               style={{
                 cursor: 'pointer',
                 textAlign: 'center',
-                background: isSelected ? 'var(--peach)' : '#fff',
+                background: isSelected ? 'var(--peach)' : 'var(--card)',
                 border: `2px solid ${isSelected ? 'var(--orange)' : 'var(--line)'}`,
                 borderRadius: 'var(--r)',
                 padding: '20px 12px',

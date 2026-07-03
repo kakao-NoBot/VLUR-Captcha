@@ -38,7 +38,7 @@ function StepCircle({ state, index }) {
     return (
       <div style={{
         ...base,
-        background: '#fff',
+        background: 'var(--card)',
         color: 'var(--orange)',
         border: '2px solid var(--orange)',
         boxShadow: '0 0 0 4px rgba(240,105,30,.12)',

@@ -103,7 +103,7 @@ function BotBubble({ text }) {
         </svg>
       </div>
       <div style={{
-        background: '#fff', border: '1px solid var(--line)', borderRadius: '4px 14px 14px 14px',
+        background: 'var(--card)', border: '1px solid var(--line)', borderRadius: '4px 14px 14px 14px',
         padding: '10px 14px', fontSize: 13.5, color: 'var(--ink)', lineHeight: 1.6,
         maxWidth: '82%', whiteSpace: 'pre-line',
         boxShadow: '0 1px 4px rgba(36,27,21,.07)',
@@ -244,7 +244,7 @@ export default function ChatbotWidget() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
                 {follows.map(f => (
                   <button key={f} onClick={() => handleSelect(f)} style={{
-                    background: '#fff', border: '1.5px solid var(--line)',
+                    background: 'var(--card)', border: '1.5px solid var(--line)',
                     borderRadius: 10, padding: '8px 12px', fontSize: 12.5,
                     color: 'var(--ink-soft)', textAlign: 'left', cursor: 'pointer',
                     transition: '.15s', fontFamily: 'var(--body)', fontWeight: 500,

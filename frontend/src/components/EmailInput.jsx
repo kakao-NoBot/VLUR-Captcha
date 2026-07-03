@@ -87,7 +87,7 @@ export default function EmailInput({ onChange, error, initialEmail = '', ...inpu
           role="listbox"
           style={{
             position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, zIndex: 20,
-            background: '#fff', border: '1px solid var(--line)', borderRadius: 12,
+            background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12,
             boxShadow: '0 16px 38px -18px rgba(55,38,25,.34)',
             padding: 6, display: 'flex', flexDirection: 'column', gap: 2,
           }}

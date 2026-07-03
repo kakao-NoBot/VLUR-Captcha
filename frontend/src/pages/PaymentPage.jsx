@@ -40,7 +40,7 @@ function StepCircle({ state, index }) {
     return (
       <div style={{
         ...base,
-        background: '#fff',
+        background: 'var(--card)',
         color: 'var(--orange)',
         border: '2px solid var(--orange)',
         boxShadow: '0 0 0 4px rgba(240,105,30,.12)',
@@ -130,7 +130,7 @@ export default function PaymentPage({ closePage }) {
         <div className="pg-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 14 }}>
             <span className="pg-h3">보안 검증</span>
-            <span style={{ fontSize: 11, background: '#e8f8f0', color: 'var(--ok)', padding: '4px 10px', borderRadius: 999, fontWeight: 600 }}>통과</span>
+            <span style={{ fontSize: 11, background: 'rgba(46,158,107,.15)', color: 'var(--ok)', padding: '4px 10px', borderRadius: 999, fontWeight: 600 }}>통과</span>
           </div>
           <div style={{ background: 'var(--ink)', borderRadius: 10, padding: 14, fontFamily: 'monospace', fontSize: 12, color: '#C8E87A', lineHeight: 1.8, marginBottom: 12 }}>
             captcha_token: cap_otk_7f3a...<br/>

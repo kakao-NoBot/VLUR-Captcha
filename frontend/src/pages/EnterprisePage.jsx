@@ -14,7 +14,7 @@ function AlertModal({ message, onClose }) {
       alignItems: 'center', justifyContent: 'center', padding: 24,
     }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div style={{
-        background: '#fff', borderRadius: 'var(--r)', padding: '28px 26px',
+        background: 'var(--card)', borderRadius: 'var(--r)', padding: '28px 26px',
         width: '100%', maxWidth: 360, boxShadow: 'var(--shadow-md)',
         textAlign: 'center',
       }}>

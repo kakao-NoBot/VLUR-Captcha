@@ -16,7 +16,7 @@ function Modal({ title, onClose, children }) {
       alignItems: 'center', justifyContent: 'center', padding: 24,
     }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div style={{
-        background: '#fff', borderRadius: 'var(--r)', padding: '32px 28px',
+        background: 'var(--card)', borderRadius: 'var(--r)', padding: '32px 28px',
         width: '100%', maxWidth: 420, boxShadow: 'var(--shadow-md)',
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
@@ -352,7 +352,7 @@ export default function LoginPage({ openPage, closePage, onLogin }) {
                   height: 18,
                   borderRadius: 6,
                   border: `1.5px solid ${autoLogin ? 'var(--orange-2)' : 'var(--line)'}`,
-                  background: autoLogin ? 'var(--orange-2)' : '#fff',
+                  background: autoLogin ? 'var(--orange-2)' : 'var(--card)',
                   color: '#fff',
                   fontSize: 12,
                   fontWeight: 800,
@@ -474,7 +474,7 @@ export default function LoginPage({ openPage, closePage, onLogin }) {
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               width: '100%', padding: 13, borderRadius: 12,
-              border: '1.5px solid var(--line)', background: '#fff', color: 'var(--ink)',
+              border: '1.5px solid var(--line)', background: 'var(--card)', color: 'var(--ink)',
               fontSize: 14.5, fontWeight: 700,
               cursor: loading ? 'wait' : 'pointer', opacity: loading ? 0.7 : 1,
             }}

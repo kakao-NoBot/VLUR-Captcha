@@ -27,7 +27,7 @@ function Modal({ title, onClose, children }) {
       background: 'rgba(36,27,21,.45)', display: 'flex',
       alignItems: 'center', justifyContent: 'center', padding: 24,
     }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div style={{ background: '#fff', borderRadius: 'var(--r)', padding: '32px 28px', width: '100%', maxWidth: 440, boxShadow: 'var(--shadow-md)' }}>
+      <div style={{ background: 'var(--card)', borderRadius: 'var(--r)', padding: '32px 28px', width: '100%', maxWidth: 440, boxShadow: 'var(--shadow-md)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <h2 style={{ margin: 0, fontFamily: 'var(--disp)', fontSize: 20, fontWeight: 700 }}>{title}</h2>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: 'var(--muted)', lineHeight: 1 }}>✕</button>
@@ -325,7 +325,7 @@ function ReissueConfirmModal({ onConfirm, onClose }) {
       alignItems: 'center', justifyContent: 'center', padding: 24,
     }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div style={{
-        background: '#fff', borderRadius: 'var(--r)', padding: '28px 24px',
+        background: 'var(--card)', borderRadius: 'var(--r)', padding: '28px 24px',
         width: '100%', maxWidth: 320, boxShadow: 'var(--shadow-md)',
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
         textAlign: 'center',
@@ -362,7 +362,7 @@ function ReissueDoneModal({ onClose }) {
       alignItems: 'center', justifyContent: 'center', padding: 24,
     }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div style={{
-        background: '#fff', borderRadius: 'var(--r)', padding: '28px 24px',
+        background: 'var(--card)', borderRadius: 'var(--r)', padding: '28px 24px',
         width: '100%', maxWidth: 320, boxShadow: 'var(--shadow-md)',
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
         textAlign: 'center',
@@ -804,9 +804,9 @@ const PAYMENT_HISTORY = [
 ];
 
 const STATUS_STYLE = {
-  '완료':   { background: '#e8f7f0', color: '#1e7a4e' },
-  '환불':   { background: '#fdecea', color: '#c0392b' },
-  '실패':   { background: '#fdecea', color: '#c0392b' },
+  '완료':   { background: 'rgba(46,158,107,.15)', color: 'var(--ok)' },
+  '환불':   { background: 'rgba(216,73,47,.15)', color: 'var(--bad)' },
+  '실패':   { background: 'rgba(216,73,47,.15)', color: 'var(--bad)' },
   '대기':   { background: 'var(--peach)', color: 'var(--orange-2)' },
 };
 
@@ -818,7 +818,7 @@ function CancelSubModal({ onConfirm, onClose }) {
       alignItems: 'center', justifyContent: 'center', padding: 24,
     }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div style={{
-        background: '#fff', borderRadius: 'var(--r)', padding: '28px 24px',
+        background: 'var(--card)', borderRadius: 'var(--r)', padding: '28px 24px',
         width: '100%', maxWidth: 340, boxShadow: 'var(--shadow-md)',
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
         textAlign: 'center',
@@ -876,7 +876,7 @@ function BillingTab({ closePage }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--disp)', color: 'var(--ink)' }}>Pro 플랜</span>
               {cancelled && (
-                <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: '#fdecea', color: '#c0392b' }}>
+                <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: 'rgba(216,73,47,.15)', color: 'var(--bad)' }}>
                   해지 예정
                 </span>
               )}
@@ -965,7 +965,7 @@ function ConfirmDeactivateModal({ onConfirm, onClose }) {
       alignItems: 'center', justifyContent: 'center', padding: 24,
     }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div style={{
-        background: '#fff', borderRadius: 'var(--r)', padding: '28px 24px',
+        background: 'var(--card)', borderRadius: 'var(--r)', padding: '28px 24px',
         width: '100%', maxWidth: 320, boxShadow: 'var(--shadow-md)',
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
         textAlign: 'center',
@@ -1002,7 +1002,7 @@ function AgreeWarnModal({ onClose }) {
       alignItems: 'center', justifyContent: 'center', padding: 24,
     }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div style={{
-        background: '#fff', borderRadius: 'var(--r)', padding: '28px 24px',
+        background: 'var(--card)', borderRadius: 'var(--r)', padding: '28px 24px',
         width: '100%', maxWidth: 320, boxShadow: 'var(--shadow-md)',
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
         textAlign: 'center',
@@ -1033,7 +1033,7 @@ function PasswordWarnModal({ onClose }) {
       alignItems: 'center', justifyContent: 'center', padding: 24,
     }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div style={{
-        background: '#fff', borderRadius: 'var(--r)', padding: '28px 24px',
+        background: 'var(--card)', borderRadius: 'var(--r)', padding: '28px 24px',
         width: '100%', maxWidth: 320, boxShadow: 'var(--shadow-md)',
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
         textAlign: 'center',
@@ -1064,7 +1064,7 @@ function DeactivateDoneModal({ onClose }) {
       alignItems: 'center', justifyContent: 'center', padding: 24,
     }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div style={{
-        background: '#fff', borderRadius: 'var(--r)', padding: '28px 24px',
+        background: 'var(--card)', borderRadius: 'var(--r)', padding: '28px 24px',
         width: '100%', maxWidth: 320, boxShadow: 'var(--shadow-md)',
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
         textAlign: 'center',

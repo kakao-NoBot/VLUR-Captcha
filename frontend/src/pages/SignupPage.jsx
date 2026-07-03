@@ -275,7 +275,7 @@ export default function SignupPage({ openPage, onLogin }) {
                   border: showAgreedError
                     ? '1.5px solid #c0392b'
                     : `1.5px solid ${agreed ? 'var(--orange-2)' : 'var(--line)'}`,
-                  background: agreed ? 'var(--orange-2)' : '#fff',
+                  background: agreed ? 'var(--orange-2)' : 'var(--card)',
                   transition: 'background 0.15s ease, border-color 0.15s ease',
                   display: 'flex',
                   alignItems: 'center',
@@ -363,7 +363,7 @@ export default function SignupPage({ openPage, onLogin }) {
             aria-modal="true"
             aria-labelledby="signup-privacy-title"
             style={{
-              background: '#fff', borderRadius: 'var(--r)', padding: '28px 26px',
+              background: 'var(--card)', borderRadius: 'var(--r)', padding: '28px 26px',
               width: '100%', maxWidth: 420, boxShadow: 'var(--shadow-md)',
             }}
           >

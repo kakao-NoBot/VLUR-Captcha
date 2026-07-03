@@ -9,20 +9,45 @@ const DESKTOP_SECTION_LINKS = [
   { label: '가이드', target: 'guide' },
 ];
 
+function useTheme() {
+  const [dark, setDark] = useState(() => document.documentElement.getAttribute('data-theme') === 'dark');
+  const apply = (isDark) => {
+    setDark(isDark);
+    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+  };
+  return [dark, apply];
+}
+
+const SunIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="5"/>
+    <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+    <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+  </svg>
+);
+
+const MoonIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+  </svg>
+);
+
 export default function Nav({ openPage, isLoggedIn, onLogout, onHome, embedded = false, user = null }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [dark, applyTheme] = useTheme();
   const mobileMenuId = useId();
 
   useEffect(() => {
     if (!mobileOpen) return undefined;
-
     const handleKeyDown = (event) => {
       if (event.key === 'Escape') setMobileOpen(false);
     };
     const handleResize = () => {
       if (window.innerWidth > 940) setMobileOpen(false);
     };
-
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('resize', handleResize);
     return () => {
@@ -31,7 +56,9 @@ export default function Nav({ openPage, isLoggedIn, onLogout, onHome, embedded =
     };
   }, [mobileOpen]);
 
-  const closeMobileMenu = () => setMobileOpen(false);
+  const closeMobileMenu = () => {
+    setMobileOpen(false);
+  };
 
   const handleHomeClick = (event) => {
     closeMobileMenu();
@@ -88,6 +115,15 @@ export default function Nav({ openPage, isLoggedIn, onLogout, onHome, embedded =
             <a href="#faq" onClick={handleNoticeClick}>공지사항</a>
           </div>
           <div className="nav-auth">
+            <button
+              type="button"
+              className="theme-toggle"
+              aria-label={dark ? '라이트 모드로 전환' : '다크 모드로 전환'}
+              title={dark ? '라이트 모드로 전환' : '다크 모드로 전환'}
+              onClick={() => applyTheme(!dark)}
+            >
+              {dark ? <SunIcon /> : <MoonIcon />}
+            </button>
             {isLoggedIn ? (
               <>
               <a className="btn btn-ghost" href="#" onClick={e => { e.preventDefault(); openPage('mypage'); }} style={{ textDecoration: 'underline', color: 'var(--ink-soft)' }}>{user?.user_name || ''}님</a>
@@ -100,6 +136,7 @@ export default function Nav({ openPage, isLoggedIn, onLogout, onHome, embedded =
               </>
             )}
           </div>
+
           <button
             className={`menu-toggle${mobileOpen ? ' open' : ''}`}
             type="button"
@@ -114,10 +151,8 @@ export default function Nav({ openPage, isLoggedIn, onLogout, onHome, embedded =
           </button>
         </nav>
       </div>
-      <div
-        className={`mobile-menu${mobileOpen ? ' open' : ''}`}
-        id={mobileMenuId}
-      >
+
+      <div className={`mobile-menu${mobileOpen ? ' open' : ''}`} id={mobileMenuId}>
         <a href="#faq" onClick={handleNoticeClick}>공지사항</a>
         {isLoggedIn ? (
           <>
@@ -130,6 +165,22 @@ export default function Nav({ openPage, isLoggedIn, onLogout, onHome, embedded =
             <a href="#signup" onClick={(event) => handleMobilePageClick(event, 'signup')}>회원가입</a>
           </>
         )}
+
+        {/* 모바일 테마 전환 */}
+        <div style={{ height: 1, background: 'var(--line)', margin: '6px 0' }} />
+        <button
+          type="button"
+          onClick={() => applyTheme(!dark)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            width: '100%', padding: '12px 16px', border: 'none',
+            background: 'none', color: 'var(--ink)', fontSize: 15,
+            fontWeight: 500, cursor: 'pointer', textAlign: 'left',
+          }}
+        >
+          {dark ? <SunIcon /> : <MoonIcon />}
+          {dark ? '라이트 모드' : '다크 모드'}
+        </button>
       </div>
     </header>
   );

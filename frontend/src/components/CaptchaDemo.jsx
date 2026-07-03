@@ -301,7 +301,7 @@ export default function CaptchaDemo() {
                 fontFamily: 'var(--disp)', fontSize: 11, fontWeight: 700,
                 letterSpacing: '.1em', padding: '3px 10px', borderRadius: 8,
                 border: type === t ? 'none' : '1.5px solid var(--line)',
-                background: type === t ? 'linear-gradient(90deg, var(--gold), var(--orange))' : '#fff',
+                background: type === t ? 'linear-gradient(90deg, var(--gold), var(--orange))' : 'var(--paper)',
                 color: type === t ? '#fff' : 'var(--muted)',
                 cursor: 'pointer', transition: '.15s',
               }}

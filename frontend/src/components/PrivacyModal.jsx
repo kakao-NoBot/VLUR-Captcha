@@ -117,9 +117,9 @@ export default function PrivacyModal({ onClose }) {
         aria-labelledby="privacy-modal-title"
         onClick={e => e.stopPropagation()}
         style={{
-          background: '#fff', borderRadius: 20, width: '100%', maxWidth: 640,
+          background: 'var(--card)', borderRadius: 20, width: '100%', maxWidth: 640,
           maxHeight: '85vh', display: 'flex', flexDirection: 'column',
-          boxShadow: '0 24px 60px -12px rgba(0,0,0,.25)',
+          boxShadow: '0 24px 60px -12px rgba(0,0,0,.35)',
         }}
       >
         {/* Header */}
