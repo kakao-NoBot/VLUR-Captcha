@@ -186,20 +186,36 @@ function ChangePwModal({ onClose }) {
   );
 }
 
-function EditInfoModal({ onClose, user }) {
+function EditInfoModal({ onClose, user, onUpdated }) {
   const [done, setDone] = useState(false);
   const [name, setName] = useState(user?.user_name || '');
   const [finalEmail, setFinalEmail] = useState(user?.email || '');
   const [phone, setPhone] = useState(user?.phone || '');
   const [attempted, setAttempted] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [apiError, setApiError] = useState('');
 
   const errorStyle = { border: '1.5px solid #c0392b' };
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(finalEmail);
   const isValid = name.trim() && isEmailValid && phone.trim();
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!isValid) { setAttempted(true); return; }
-    setDone(true);
+    setSaving(true);
+    setApiError('');
+    try {
+      const { data } = await api.put('/auth/me', {
+        user_name: name.trim(),
+        email: finalEmail.trim(),
+        phone: phone.trim(),
+      });
+      if (onUpdated) onUpdated(data.user);
+      setDone(true);
+    } catch (err) {
+      setApiError(err.response?.data?.detail || '정보 수정 중 오류가 발생했습니다.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -227,13 +243,17 @@ function EditInfoModal({ onClose, user }) {
             placeholder="휴대폰 번호"
             style={attempted && !phone.trim() ? errorStyle : {}}
           />
+          {apiError && (
+            <p style={{ margin: 0, fontSize: 13, color: '#c0392b' }}>{apiError}</p>
+          )}
           <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
             <button className="pg-btn" style={{ flex: 1, padding: 13 }} onClick={onClose}>취소</button>
             <button
               className="pg-btn primary"
-              style={{ flex: 1, padding: 13, opacity: isValid ? 1 : 0.5, cursor: isValid ? 'pointer' : 'not-allowed' }}
+              style={{ flex: 1, padding: 13, opacity: isValid && !saving ? 1 : 0.5, cursor: isValid && !saving ? 'pointer' : 'not-allowed' }}
               onClick={handleSave}
-            >저장</button>
+              disabled={saving}
+            >{saving ? '저장 중...' : '저장'}</button>
           </div>
         </div>
       ) : (
@@ -248,7 +268,7 @@ function EditInfoModal({ onClose, user }) {
 }
 
 /* ── SC-07 내 정보 탭 ── */
-function InfoTab({ user }) {
+function InfoTab({ user, onUserUpdate }) {
   const [modal, setModal] = useState(null); // null | 'pw' | 'edit'
 
   const readOnlyInputStyle = {
@@ -257,6 +277,7 @@ function InfoTab({ user }) {
     caretColor: 'transparent',
   };
   const preventFocus = (e) => e.target.blur();
+  const joinDate = user?.created_at ? String(user.created_at).slice(0, 10) : '-';
 
   return (
     <>
@@ -298,10 +319,11 @@ function InfoTab({ user }) {
           <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 6 }}>가입일</div>
           <input
             className="pg-input"
-            defaultValue="2026-01-01"
+            value={joinDate}
             readOnly
             style={readOnlyInputStyle}
             onFocus={preventFocus}
+            onChange={() => {}}
           />
         </div>
         <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
@@ -311,7 +333,7 @@ function InfoTab({ user }) {
       </div>
 
       {modal === 'pw'   && <ChangePwModal onClose={() => setModal(null)} />}
-      {modal === 'edit' && <EditInfoModal onClose={() => setModal(null)} user={user} />}
+      {modal === 'edit' && <EditInfoModal onClose={() => setModal(null)} user={user} onUpdated={onUserUpdate} />}
     </>
   );
 }
@@ -1264,7 +1286,7 @@ const TABS = [
 
 const ADMIN_TAB = { id: 'inquiries', label: '문의 내역' };
 
-export default function MypagePage({ openPage, closePage, initialTab = 'info', user = null }) {
+export default function MypagePage({ openPage, closePage, initialTab = 'info', user = null, onUserUpdate }) {
   const [activeTab, setActiveTab] = useState(initialTab);
   const isAdmin = user?.role === 'admin';
   const tabs = isAdmin ? [...TABS, ADMIN_TAB] : TABS;
@@ -1286,7 +1308,7 @@ export default function MypagePage({ openPage, closePage, initialTab = 'info', u
         ))}
       </div>
       <div className="mp-content">
-        {activeTab === 'info'       && <InfoTab user={user} />}
+        {activeTab === 'info'       && <InfoTab user={user} onUserUpdate={onUserUpdate} />}
         {activeTab === 'apikey'     && <ApiKeyTab openPage={openPage} />}
         {activeTab === 'usage'      && <UsageTab />}
         {activeTab === 'billing'    && <BillingTab closePage={closePage} />}

@@ -98,6 +98,10 @@ export default function App() {
     setCurrentUser(null);
     closePage();
   };
+  const handleUserUpdate = (user) => {
+    setCurrentUser(user);
+    localStorage.setItem('user', JSON.stringify(user));
+  };
 
   const openPlanPayment = (plan) => {
     if (!isLoggedIn) {
@@ -214,7 +218,7 @@ export default function App() {
       {/* Mypage */}
       <PageOverlay id="mypage" activePage={page} onBack={closePage} openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} user={currentUser}>
         <div className="po-body">
-          <MypagePage key={mypageKey} openPage={openPage} closePage={closePage} initialTab={mypageTab} user={currentUser} />
+          <MypagePage key={mypageKey} openPage={openPage} closePage={closePage} initialTab={mypageTab} user={currentUser} onUserUpdate={handleUserUpdate} />
         </div>
       </PageOverlay>
 
