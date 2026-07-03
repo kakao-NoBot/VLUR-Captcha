@@ -330,12 +330,12 @@ h1 .hl::after {
   gap: 16px; padding: 36px 24px; text-align: center;
 }
 .demo-check-circle {
-  width: 68px; height: 68px; border-radius: 50%; background: var(--ok);
+  width: 68px; height: 68px; border-radius: 50%; background: linear-gradient(135deg, #78dea4, #22a855);
   display: flex; align-items: center; justify-content: center;
   animation: demo-pop .38s cubic-bezier(.175,.885,.32,1.275) both;
 }
 .demo-fail-circle {
-  width: 68px; height: 68px; border-radius: 50%; background: var(--bad);
+  width: 68px; height: 68px; border-radius: 50%; background: linear-gradient(135deg, #f57a65, #c02a12);
   display: flex; align-items: center; justify-content: center;
   animation: demo-pop .38s cubic-bezier(.175,.885,.32,1.275) both;
 }
@@ -696,6 +696,11 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
 }
 .pg-input:focus { border-color: var(--orange); box-shadow: 0 0 0 3px rgba(240,105,30,.12); }
 .pg-input::placeholder { color: var(--muted); }
+.pg-input.autofilled { animation: autofill-flash .6s ease forwards; }
+@keyframes autofill-flash {
+  0%   { background: var(--peach); border-color: var(--orange); box-shadow: 0 0 0 3px rgba(240,105,30,.18); }
+  100% { background: #fff; border-color: var(--line); box-shadow: none; }
+}
 .pg-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   font-family: var(--body); font-weight: 600; font-size: 15px;

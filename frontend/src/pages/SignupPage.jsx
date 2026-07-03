@@ -2,6 +2,9 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import api from '../api/axios';
+import PasswordInput from '../components/PasswordInput';
+import EmailInput from '../components/EmailInput';
+import ClearableInput from '../components/ClearableInput';
 
 const EMAIL_DOMAIN_OPTIONS = [
   { value: 'gmail.com', label: 'gmail.com' },
@@ -16,43 +19,41 @@ const EMAIL_DOMAIN_OPTIONS = [
 export default function SignupPage({ openPage, onLogin }) {
   const [name, setName] = useState('');
   const [loginId, setLoginId] = useState('');
+  const [idCheck, setIdCheck] = useState(null); // null | 'checking' | 'available' | 'taken'
+  const [checkedId, setCheckedId] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
-  const [emailLocalPart, setEmailLocalPart] = useState('');
-  const [emailDomain, setEmailDomain] = useState('gmail.com');
-  const [customEmailDomain, setCustomEmailDomain] = useState('');
+  const [finalEmail, setFinalEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [agreed, setAgreed] = useState(false);
   const [attempted, setAttempted] = useState(false);
   const [apiError, setApiError] = useState('');
   const [loading, setLoading] = useState(false);
   const [isPrivacyHelpOpen, setIsPrivacyHelpOpen] = useState(false);
-  const [isEmailDomainMenuOpen, setIsEmailDomainMenuOpen] = useState(false);
-  const emailDomainControlRef = useRef(null);
-  const customEmailDomainInputRef = useRef(null);
 
   const errorStyle = { border: '1.5px solid #c0392b' };
-  const isCustomEmailDomain = emailDomain === 'custom';
-  const selectedEmailDomain = emailDomain === 'custom' ? customEmailDomain.trim() : emailDomain;
-  const finalEmail =
-    emailLocalPart.trim() && selectedEmailDomain
-      ? `${emailLocalPart.trim()}@${selectedEmailDomain}`
-      : '';
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(finalEmail);
+  const isIdFormatValid = /^[a-zA-Z0-9]+$/.test(loginId.trim());
+  const isIdAvailable = idCheck === 'available' && checkedId === loginId.trim();
+  const isPasswordValid = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_\-+=\[\]{};':"\\|,.<>/?`~]).{8,16}$/.test(password);
+  const isPasswordMatch = password === passwordConfirm;
 
-  const getEmailErrorMessage = () => {
-    if (!attempted) return '';
-    if (!emailLocalPart.trim()) return '이메일 아이디를 입력해주세요.';
-    if (!selectedEmailDomain) return '이메일 도메인을 선택하거나 입력해주세요.';
-    if (!isEmailValid) return '올바른 이메일 형식이 아닙니다.';
-    return '';
+  const handleCheckId = async () => {
+    const id = loginId.trim();
+    if (!id) return;
+    setIdCheck('checking');
+    try {
+      const { data } = await api.get('/auth/check-id', { params: { user_id: id } });
+      setCheckedId(id);
+      setIdCheck(data.available ? 'available' : 'taken');
+    } catch {
+      setIdCheck(null);
+    }
   };
 
-  const emailErrorMessage = getEmailErrorMessage();
-
   const isValid =
-    name.trim() && loginId.trim() && password.trim() &&
-    passwordConfirm.trim() && isEmailValid && phone.trim() && agreed;
+    name.trim() && loginId.trim() && isIdFormatValid && isIdAvailable &&
+    isPasswordValid && isPasswordMatch && isEmailValid && phone.trim() && agreed;
 
   useEffect(() => {
     if (!isPrivacyHelpOpen) return undefined;
@@ -64,41 +65,6 @@ export default function SignupPage({ openPage, onLogin }) {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isPrivacyHelpOpen]);
-
-  useEffect(() => {
-    if (!isEmailDomainMenuOpen) return undefined;
-
-    const handlePointerDown = (event) => {
-      if (
-        emailDomainControlRef.current &&
-        !emailDomainControlRef.current.contains(event.target)
-      ) {
-        setIsEmailDomainMenuOpen(false);
-      }
-    };
-
-    const handleKeyDown = (event) => {
-      if (event.key === 'Escape') setIsEmailDomainMenuOpen(false);
-    };
-
-    document.addEventListener('mousedown', handlePointerDown);
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('mousedown', handlePointerDown);
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isEmailDomainMenuOpen]);
-
-  useEffect(() => {
-    if (isCustomEmailDomain) {
-      customEmailDomainInputRef.current?.focus();
-    }
-  }, [isCustomEmailDomain]);
-
-  const handleEmailDomainSelect = (domainValue) => {
-    setEmailDomain(domainValue);
-    setIsEmailDomainMenuOpen(false);
-  };
 
   const handleSignup = async () => {
     if (!isValid) { setAttempted(true); return; }
@@ -143,223 +109,78 @@ export default function SignupPage({ openPage, onLogin }) {
         계정을 만들고 API Key를 발급받으세요.
       </p>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <input
-          className="pg-input"
+        <ClearableInput
           placeholder="이름"
           value={name}
           onChange={e => setName(e.target.value)}
           style={attempted && !name.trim() ? errorStyle : {}}
         />
-        <input
-          className="pg-input"
-          placeholder="아이디"
-          value={loginId}
-          onChange={e => setLoginId(e.target.value)}
-          style={attempted && !loginId.trim() ? errorStyle : {}}
-        />
-        <input
-          className="pg-input"
-          type="password"
-          placeholder="비밀번호"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-          style={attempted && !password.trim() ? errorStyle : {}}
-        />
-        <input
-          className="pg-input"
-          type="password"
-          placeholder="비밀번호 확인"
-          value={passwordConfirm}
-          onChange={e => setPasswordConfirm(e.target.value)}
-          style={attempted && !passwordConfirm.trim() ? errorStyle : {}}
-        />
-        <div>
-          <div
-            className={`signup-email-combo${emailErrorMessage ? ' is-error' : ''}`}
-            style={{
-              display: 'flex',
-              alignItems: 'stretch',
-              border: '1.5px solid var(--line)',
-              borderRadius: 12,
-              background: '#fff',
-              overflow: 'visible',
-              ...(emailErrorMessage ? errorStyle : {}),
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <ClearableInput
+            placeholder="아이디"
+            value={loginId}
+            onChange={e => {
+              const filtered = e.target.value.replace(/[^a-zA-Z0-9]/g, '');
+              setLoginId(filtered);
+              setIdCheck(null);
             }}
-          >
-            <input
-              type="text"
-              inputMode="email"
-              placeholder="이메일 아이디"
-              aria-label="이메일 아이디"
-              value={emailLocalPart}
-              onChange={e => setEmailLocalPart(e.target.value)}
-              style={{
-                flex: 1,
-                minWidth: 0,
-                border: 'none',
-                outline: 'none',
-                padding: '13px 16px',
-                fontSize: 15,
-                fontFamily: 'var(--body)',
-                background: 'transparent',
-                color: 'var(--ink)',
-              }}
-            />
-            <div
-              className={`signup-email-domain-control${isEmailDomainMenuOpen ? ' is-open' : ''}`}
-              ref={emailDomainControlRef}
-              style={{
-                position: 'relative',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                flex: 1,
-                minWidth: 0,
-                padding: '0 12px 0 14px',
-              }}
-            >
-              {isCustomEmailDomain ? (
-                <div style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0 }}>
-                  <span style={{ flexShrink: 0, color: 'var(--ink)', fontSize: 15, fontFamily: 'var(--body)' }}>@</span>
-                  <input
-                    ref={customEmailDomainInputRef}
-                    className="signup-email-domain-input"
-                    type="text"
-                    inputMode="email"
-                    placeholder="도메인 입력 예: example.com"
-                    aria-label="이메일 도메인 직접 입력"
-                    value={customEmailDomain}
-                    onChange={e => setCustomEmailDomain(e.target.value)}
-                    style={{
-                      flex: 1,
-                      minWidth: 0,
-                      border: 'none',
-                      outline: 'none',
-                      padding: '13px 0',
-                      fontSize: 15,
-                      fontFamily: 'var(--body)',
-                      background: 'transparent',
-                      color: 'var(--ink)',
-                    }}
-                  />
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  className="signup-email-domain-value"
-                  aria-label={`이메일 도메인 ${emailDomain}`}
-                  onClick={() => setIsEmailDomainMenuOpen(true)}
-                  style={{
-                    flex: 1,
-                    textAlign: 'left',
-                    minWidth: 0,
-                    border: 'none',
-                    background: 'none',
-                    padding: '13px 0',
-                    fontSize: 15,
-                    fontFamily: 'var(--body)',
-                    color: 'var(--ink)',
-                    cursor: 'pointer',
-                  }}
-                >
-                  {`@${emailDomain}`}
-                </button>
-              )}
-              <button
-                type="button"
-                className="signup-email-domain-toggle"
-                aria-label="이메일 도메인 목록 열기"
-                aria-haspopup="listbox"
-                aria-expanded={isEmailDomainMenuOpen}
-                onClick={() => setIsEmailDomainMenuOpen(current => !current)}
-                style={{
-                  flexShrink: 0,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  border: 'none',
-                  background: 'none',
-                  cursor: 'pointer',
-                  color: 'var(--orange)',
-                  padding: 4,
-                }}
-              >
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  style={{
-                    transform: isEmailDomainMenuOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                    transition: 'transform 0.15s ease',
-                  }}
-                >
-                  <path d="M6 9l6 6 6-6" />
-                </svg>
-              </button>
-              {isEmailDomainMenuOpen && (
-                <div
-                  className="signup-email-domain-menu"
-                  role="listbox"
-                  style={{
-                    position: 'absolute',
-                    top: 'calc(100% + 6px)',
-                    left: -14,
-                    right: -12,
-                    zIndex: 20,
-                    background: '#fff',
-                    border: '1px solid var(--line)',
-                    borderRadius: 12,
-                    boxShadow: '0 16px 38px -18px rgba(55,38,25,.34)',
-                    padding: 6,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 2,
-                    maxHeight: 260,
-                    overflowY: 'auto',
-                  }}
-                >
-                  {EMAIL_DOMAIN_OPTIONS.map(option => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      className={`signup-email-domain-option${emailDomain === option.value ? ' selected' : ''}`}
-                      role="option"
-                      aria-selected={emailDomain === option.value}
-                      onClick={() => handleEmailDomainSelect(option.value)}
-                      style={{
-                        textAlign: 'left',
-                        border: 'none',
-                        borderRadius: 8,
-                        padding: '10px 12px',
-                        fontSize: 14,
-                        fontFamily: 'var(--body)',
-                        cursor: 'pointer',
-                        background: emailDomain === option.value ? 'var(--peach)' : 'transparent',
-                        color: emailDomain === option.value ? 'var(--orange-2)' : 'var(--ink-soft)',
-                        fontWeight: emailDomain === option.value ? 700 : 500,
-                      }}
-                    >
-                      {option.value === 'custom' ? option.label : `@${option.label}`}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-          {emailErrorMessage && (
-            <p className="signup-field-error" style={{ margin: '6px 0 0', fontSize: 12.5, color: '#c0392b' }}>
-              {emailErrorMessage}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleCheckId(); } }}
+            style={{
+              ...(attempted && (!loginId.trim() || !isIdFormatValid) ? errorStyle : {}),
+              ...(idCheck === 'taken' ? errorStyle : {}),
+              ...(idCheck === 'checking' ? { opacity: 0.6 } : {}),
+            }}
+          />
+          <p style={{ margin: 0, fontSize: 12, color: 'var(--muted)' }}>영문 · 숫자만 사용 가능합니다.</p>
+          {isIdAvailable && (
+            <p style={{ margin: 0, fontSize: 12.5, color: 'var(--orange)', fontWeight: 600 }}>
+              <strong>{checkedId}</strong>는 사용 가능한 아이디입니다.
             </p>
           )}
-          <input type="hidden" name="email" value={finalEmail} readOnly />
+          {idCheck === 'taken' && (
+            <p style={{ margin: 0, fontSize: 12.5, color: '#c0392b' }}>
+              <strong>{checkedId}</strong>는 이미 사용 중인 아이디입니다.
+            </p>
+          )}
+          {idCheck === 'checking' && (
+            <p style={{ margin: 0, fontSize: 12.5, color: 'var(--muted)' }}>확인 중...</p>
+          )}
+          {attempted && !loginId.trim() && (
+            <p style={{ margin: 0, fontSize: 12.5, color: '#c0392b' }}>아이디를 입력해주세요.</p>
+          )}
+          {attempted && loginId.trim() && !isIdAvailable && idCheck !== 'taken' && idCheck !== 'checking' && (
+            <p style={{ margin: 0, fontSize: 12.5, color: '#c0392b' }}>아이디 중복 확인이 필요합니다.</p>
+          )}
         </div>
-        <input
-          className="pg-input"
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <PasswordInput
+            placeholder="비밀번호"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            style={attempted && !isPasswordValid ? errorStyle : {}}
+          />
+          <p style={{ margin: 0, fontSize: 12, color: attempted && !isPasswordValid ? '#c0392b' : 'var(--muted)' }}>
+            8~16자 · 영문 대소문자 · 숫자 · 특수문자 포함
+          </p>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <PasswordInput
+            placeholder="비밀번호 확인"
+            value={passwordConfirm}
+            onChange={e => setPasswordConfirm(e.target.value)}
+            style={attempted && !isPasswordMatch ? errorStyle : {}}
+          />
+          {attempted && passwordConfirm && !isPasswordMatch && (
+            <p style={{ margin: 0, fontSize: 12.5, color: '#c0392b' }}>비밀번호가 일치하지 않습니다.</p>
+          )}
+        </div>
+        <div>
+          <EmailInput onChange={setFinalEmail} error={attempted && !isEmailValid} />
+          {attempted && !isEmailValid && (
+            <p style={{ margin: '6px 0 0', fontSize: 12.5, color: '#c0392b' }}>올바른 이메일을 입력해주세요.</p>
+          )}
+        </div>
+        <ClearableInput
           type="tel"
           placeholder="휴대폰 번호"
           value={phone}

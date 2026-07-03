@@ -300,9 +300,8 @@ export default function CaptchaDemo() {
               style={{
                 fontFamily: 'var(--disp)', fontSize: 11, fontWeight: 700,
                 letterSpacing: '.1em', padding: '3px 10px', borderRadius: 8,
-                border: '1.5px solid',
-                borderColor: type === t ? 'var(--orange)' : 'var(--line)',
-                background: type === t ? 'var(--orange)' : '#fff',
+                border: type === t ? 'none' : '1.5px solid var(--line)',
+                background: type === t ? 'linear-gradient(90deg, var(--gold), var(--orange))' : '#fff',
                 color: type === t ? '#fff' : 'var(--muted)',
                 cursor: 'pointer', transition: '.15s',
               }}

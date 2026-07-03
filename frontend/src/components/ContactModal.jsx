@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import EmailInput from './EmailInput';
 
 const CONTACT_EMAIL = 'vlur@vlur.site';
 
@@ -7,7 +8,6 @@ export default function ContactModal({ open, onClose }) {
   const [message, setMessage] = useState('');
   const [sent, setSent] = useState(false);
   const [validationError, setValidationError] = useState(null);
-  const emailInputRef = useRef(null);
   const messageInputRef = useRef(null);
 
   useEffect(() => {
@@ -20,7 +20,6 @@ export default function ContactModal({ open, onClose }) {
 
     document.body.style.overflow = 'hidden';
     document.addEventListener('keydown', handleKeyDown);
-    window.setTimeout(() => emailInputRef.current?.focus(), 0);
 
     return () => {
       document.body.style.overflow = previousOverflow;
@@ -45,24 +44,8 @@ export default function ContactModal({ open, onClose }) {
     const trimmedEmail = email.trim();
     const trimmedMessage = message.trim();
 
-    if (!trimmedEmail) {
-      setValidationError({ field: 'email', message: '회신받을 이메일 주소를 입력해 주세요.' });
-      emailInputRef.current?.focus();
-      return;
-    }
-
-    if (!trimmedEmail.includes('@')) {
-      setValidationError({
-        field: 'email',
-        message: `이메일 주소에 '@'를 포함해 주세요. '${trimmedEmail}'에 '@'가 없습니다.`,
-      });
-      emailInputRef.current?.focus();
-      return;
-    }
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-      setValidationError({ field: 'email', message: '올바른 이메일 주소 형식으로 입력해 주세요.' });
-      emailInputRef.current?.focus();
+    if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setValidationError({ field: 'email', message: '올바른 이메일 주소를 입력해 주세요.' });
       return;
     }
 
@@ -126,17 +109,9 @@ export default function ContactModal({ open, onClose }) {
 
               <label className={validationError?.field === 'email' ? 'has-error' : ''}>
                 <span>회신 이메일</span>
-                <input
-                  ref={emailInputRef}
-                  type="email"
-                  value={email}
-                  placeholder="name@example.com"
-                  aria-invalid={validationError?.field === 'email'}
-                  aria-describedby={validationError?.field === 'email' ? 'contact-email-error' : undefined}
-                  onChange={(event) => {
-                    setEmail(event.target.value);
-                    if (validationError?.field === 'email') setValidationError(null);
-                  }}
+                <EmailInput
+                  onChange={(val) => { setEmail(val); if (validationError?.field === 'email') setValidationError(null); }}
+                  error={validationError?.field === 'email'}
                 />
                 {renderValidationAlert('email')}
               </label>

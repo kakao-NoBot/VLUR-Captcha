@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 
 const SECTIONS = [
   {
@@ -72,17 +72,49 @@ const SECTIONS = [
   },
 ];
 
+function renderBody(text) {
+  return text.split('\n').map((line, i) => {
+    if (!line.trim()) return <div key={i} style={{ height: 6 }} />;
+    if (line.startsWith('•')) {
+      return (
+        <div key={i} style={{ display: 'flex', gap: 8, margin: '0 0 4px', paddingLeft: 4 }}>
+          <span style={{ flexShrink: 0, color: 'var(--orange)', lineHeight: 1.75 }}>•</span>
+          <span style={{ fontSize: 13.5, color: 'var(--ink-soft)', lineHeight: 1.75 }}>{line.slice(1).trim()}</span>
+        </div>
+      );
+    }
+    return <p key={i} style={{ fontSize: 13.5, color: 'var(--ink-soft)', lineHeight: 1.8, margin: '0 0 6px' }}>{line}</p>;
+  });
+}
+
 export default function PrivacyModal({ onClose }) {
+  const closeRef = useRef(null);
+
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = e => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    closeRef.current?.focus();
+    return () => {
+      document.body.style.overflow = prev;
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [onClose]);
+
   return (
     <div
       onClick={onClose}
       style={{
         position: 'fixed', inset: 0, zIndex: 9000,
         background: 'rgba(0,0,0,.45)', display: 'flex',
-        alignItems: 'center', justifyContent: 'center', padding: '20px',
+        alignItems: 'center', justifyContent: 'center', padding: 20,
       }}
     >
-      <div
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="privacy-modal-title"
         onClick={e => e.stopPropagation()}
         style={{
           background: '#fff', borderRadius: 20, width: '100%', maxWidth: 640,
@@ -93,14 +125,17 @@ export default function PrivacyModal({ onClose }) {
         {/* Header */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '22px 28px 18px', borderBottom: '1px solid #f0f0f0', flexShrink: 0,
+          padding: '22px 28px 18px', borderBottom: '1px solid var(--line-soft)', flexShrink: 0,
         }}>
           <div>
             <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.14em', color: 'var(--muted)', textTransform: 'uppercase', margin: '0 0 4px' }}>VLUR CAPTCHA</p>
-            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, fontFamily: 'var(--disp)', letterSpacing: '-.01em' }}>개인정보처리방침</h2>
+            <h2 id="privacy-modal-title" style={{ margin: 0, fontSize: 18, fontWeight: 800, fontFamily: 'var(--disp)', letterSpacing: '-.01em' }}>개인정보처리방침</h2>
           </div>
           <button
+            ref={closeRef}
+            type="button"
             onClick={onClose}
+            aria-label="개인정보처리방침 닫기"
             style={{
               background: 'none', border: 'none', cursor: 'pointer',
               width: 32, height: 32, borderRadius: 8,
@@ -112,32 +147,39 @@ export default function PrivacyModal({ onClose }) {
 
         {/* Body */}
         <div style={{ overflowY: 'auto', padding: '24px 28px', flex: 1 }}>
+          {/* 머리말 */}
+          <div style={{
+            background: 'var(--peach)', border: '1px solid var(--peach-deep)',
+            borderRadius: 12, padding: '14px 18px', marginBottom: 24,
+          }}>
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.7 }}>
+              VLUR은 이용자의 개인정보를 소중히 여기며, 「개인정보 보호법」 등 관련 법령을 준수합니다.<br />
+              본 방침은 <strong>2025년 1월 1일</strong>부터 시행됩니다.
+            </p>
+          </div>
+
+          {/* 섹션 목록 */}
           {SECTIONS.map((s, i) => (
             <div key={i} style={{ marginBottom: i < SECTIONS.length - 1 ? 28 : 0 }}>
-              <h3 style={{
+              <p style={{
                 fontSize: 14, fontWeight: 700, color: 'var(--ink)',
                 margin: '0 0 10px', letterSpacing: '-.01em',
-              }}>{s.title}</h3>
-              <p style={{
-                fontSize: 13.5, color: 'var(--ink-soft)', lineHeight: 1.8,
-                margin: 0, whiteSpace: 'pre-line',
-              }}>{s.body}</p>
+                paddingBottom: 8, borderBottom: '1px solid var(--line-soft)',
+              }}>{s.title}</p>
+              <div>{renderBody(s.body)}</div>
             </div>
           ))}
         </div>
 
         {/* Footer */}
         <div style={{
-          padding: '16px 28px', borderTop: '1px solid #f0f0f0',
+          padding: '16px 28px', borderTop: '1px solid var(--line-soft)',
           display: 'flex', justifyContent: 'flex-end', flexShrink: 0,
         }}>
-          <button
-            onClick={onClose}
-            className="btn btn-primary"
-            style={{ fontSize: 14, padding: '9px 22px' }}
-          >확인</button>
+          <button type="button" className="btn btn-primary" onClick={onClose}
+            style={{ fontSize: 14, padding: '9px 22px' }}>확인</button>
         </div>
-      </div>
+      </section>
     </div>
   );
 }
