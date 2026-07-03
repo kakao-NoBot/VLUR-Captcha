@@ -69,7 +69,7 @@ const PLANS = {
 
 export default function PlanPayPage({ planName = 'Pro', closePage, openPage, openMypageOnApiKey, user }) {
   const plan = PLANS[planName] || PLANS.Pro;
-  const [method, setMethod] = useState('toss');
+  const [method, setMethod] = useState('kakao');
   const [buyerName, setBuyerName] = useState(user?.user_name || '');
   const [buyerEmail, setBuyerEmail] = useState(user?.email || '');
   const [emailBlurred, setEmailBlurred] = useState(false);
@@ -84,7 +84,7 @@ export default function PlanPayPage({ planName = 'Pro', closePage, openPage, ope
     '준비 요청 — POST /api/payments/kakao/ready',
     '카카오페이 인증 페이지 이동 (next_redirect_pc_url)',
     'pg_token 수신 — 서버 Approve API 호출 중…',
-    '결제 승인 완료 · API Key 발급됨',
+    '결제 승인 완료 · Pro 요금제 활성화',
   ];
   const tossSteps = [
     '주문 생성 — POST /api/payments/toss/ready',
@@ -99,16 +99,21 @@ export default function PlanPayPage({ planName = 'Pro', closePage, openPage, ope
       openPage('login');
       return;
     }
-    if (method !== 'toss') {
-      setPaymentError('현재 브랜치에서는 토스페이먼츠 결제만 사용할 수 있습니다.');
-      return;
-    }
-
     const initial = stepLabels.map((label, i) => ({ label, state: i === 0 ? 'active' : 'pending' }));
     setSteps(initial);
     setPaymentError('');
-
     try {
+      if (method === 'kakao') {
+        const { data } = await api.post('/payments/kakao/ready', { plan_name: planName });
+        setSteps(stepLabels.map((label, index) => ({
+          label,
+          state: index === 0 ? 'done' : index === 1 ? 'active' : 'pending',
+        })));
+        localStorage.setItem('kakaopay_order_id', data.order_id);
+        window.location.assign(data.redirect_url);
+        return;
+      }
+
       if (typeof window.TossPayments !== 'function') {
         throw new Error('토스페이먼츠 SDK를 불러오지 못했습니다.');
       }
@@ -138,7 +143,7 @@ export default function PlanPayPage({ planName = 'Pro', closePage, openPage, ope
       setPaymentError(
         err.response?.data?.detail
           || err.message
-          || '토스페이먼츠 결제를 시작하지 못했습니다.'
+          || `${method === 'kakao' ? '카카오페이' : '토스페이먼츠'} 결제를 시작하지 못했습니다.`
       );
     }
   };
@@ -227,7 +232,7 @@ export default function PlanPayPage({ planName = 'Pro', closePage, openPage, ope
                 { id: 'kakao', label: '카카오페이', sub: '카카오페이 머니 / 카드 단건 결제 · Server-to-Server API', logoClass: 'kakao', logoText: 'kakao pay' },
                 { id: 'toss',  label: '토스페이먼츠', sub: '카드 · 간편결제 · 계좌이체 통합 위젯 v2 · SDK', logoClass: 'toss', logoText: 'toss pay' },
               ].map(m => (
-                <div key={m.id} className={`pp-method${method === m.id ? ' sel' : ''}`} onClick={() => setMethod(m.id)}>
+                <div key={m.id} className={`pp-method${method === m.id ? ' sel' : ''}`} onClick={() => { setMethod(m.id); setPaymentError(''); }}>
                   <div className={`pp-logo ${m.logoClass}`}>{m.logoText}</div>
                   <div className="pp-meta"><b>{m.label}</b><span>{m.sub}</span></div>
                   <div className="pp-radio"/>

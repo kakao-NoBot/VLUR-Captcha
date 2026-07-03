@@ -66,6 +66,16 @@ export default function EnterprisePage({ closePage }) {
       setAlertMsg('올바른 이메일 형식으로 입력해주세요.');
       return;
     }
+    if (!form.volume) {
+    setAttempted(true);
+    setAlertMsg('예상 월 호출량을 선택해주세요.');
+    return;
+  }
+  if (!form.message.trim()) {
+    setAttempted(true);
+    setAlertMsg('도입 목적 및 문의 내용을 입력해주세요.');
+    return;
+  }
     setSubmitting(true);
     try {
       await api.post('/contact', {
@@ -144,11 +154,11 @@ export default function EnterprisePage({ closePage }) {
           />
           <textarea
             className="pg-input"
-            placeholder="도입 목적 및 문의 내용을 자유롭게 작성해 주세요."
+            placeholder="도입 목적 및 문의 내용을 자유롭게 작성해 주세요. *"
             value={form.message}
             onChange={set('message')}
             rows={5}
-            style={{ resize: 'vertical', lineHeight: 1.6 }}
+            style={{ resize: 'vertical', lineHeight: 1.6, ...(attempted && !form.message.trim() ? errorStyle : {}) }}
           />
         </div>
       </div>

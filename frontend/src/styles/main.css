@@ -704,6 +704,8 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
 .page-overlay {
   display: none; position: fixed; inset: 0; z-index: 200;
   background: var(--paper); overflow-y: auto;
+  /* 탭 전환 시 스크롤바 생김/사라짐으로 콘텐츠 폭이 널뛰는 것 방지 */
+  scrollbar-gutter: stable both-edges;
   min-height: 100vh; overscroll-behavior: none;
   -webkit-overflow-scrolling: touch;
 }
@@ -1396,7 +1398,7 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
   }
   .board-detail-content {
     min-height: 280px; margin-top: 6px; padding: 32px 20px 48px;
-    background: #fff; border: 1px solid var(--line); font-size: 15px; line-height: 1.9;
+    background: var(--card); border: 1px solid var(--line); font-size: 15px; line-height: 1.9;
     overflow-wrap: anywhere; word-break: keep-all;
   }
   .board-detail-neighbors button { padding: 0; }
@@ -1410,7 +1412,7 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
   }
   .board-table td { display: block; padding: 0; border: 0; line-height: 1.55; }
   .board-table td.num { display: none; }
-  .board-table td:nth-child(2) { color: var(--ink); font-size: 14px; }
+  .board-table td:nth-child(2) { color: var(--ink-soft); font-size: 14px; }
   .board-table td:nth-child(3) {
     position: absolute; top: 19px; right: 0; color: var(--muted) !important; font-size: 11px;
   }

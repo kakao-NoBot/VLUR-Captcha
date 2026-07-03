@@ -144,7 +144,7 @@ def login(body: LoginRequest):
     with conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT user_id, user_name, password_hash, email, phone, role, user_status "
+                "SELECT user_id, user_name, password_hash, email, phone, role, user_status, created_at "
                 "FROM users WHERE user_id = %s",
                 (body.user_id,),
             )
@@ -179,6 +179,7 @@ def login(body: LoginRequest):
             "email": user["email"],
             "phone": user["phone"],
             "role": user["role"],
+            "created_at": user["created_at"],
         },
     }
 
@@ -361,6 +362,13 @@ def signup(body: SignupRequest):
                     status_code=status.HTTP_409_CONFLICT,
                     detail="이미 사용 중인 이메일입니다.",
                 )
+            if body.phone:
+                cur.execute("SELECT 1 FROM users WHERE phone = %s", (body.phone,))
+                if cur.fetchone():
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail="이미 사용 중인 전화번호입니다.",
+                    )
             cur.execute("SELECT plan_id FROM plans WHERE plan_name = 'Free' LIMIT 1")
             plan = cur.fetchone()
             pw_hash = hash_password(body.password)
@@ -370,6 +378,8 @@ def signup(body: SignupRequest):
                 (body.user_id, body.user_name, pw_hash, body.email, body.phone,
                  plan["plan_id"] if plan else None),
             )
+            cur.execute("SELECT created_at FROM users WHERE user_id = %s", (body.user_id,))
+            created = cur.fetchone()
         conn.commit()
 
     token = create_access_token({
@@ -386,6 +396,7 @@ def signup(body: SignupRequest):
             "email": body.email,
             "phone": body.phone,
             "role": "user",
+            "created_at": created["created_at"] if created else None,
         },
     }
 
@@ -393,6 +404,42 @@ def signup(body: SignupRequest):
 @router.get("/me")
 def me(current_user: dict = Depends(get_current_user)):
     return current_user
+
+
+class UpdateProfileRequest(BaseModel):
+    user_name: str
+    email: str
+    phone: str | None = None
+
+
+@router.put("/me")
+def update_me(body: UpdateProfileRequest, current_user: dict = Depends(get_current_user)):
+    """내 정보 수정 (이름·이메일·전화번호)"""
+    user_id = current_user["sub"]
+    conn = get_conn()
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT 1 FROM users WHERE email = %s AND user_id <> %s",
+                (body.email, user_id),
+            )
+            if cur.fetchone():
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="이미 사용 중인 이메일입니다.",
+                )
+            cur.execute(
+                "UPDATE users SET user_name = %s, email = %s, phone = %s WHERE user_id = %s",
+                (body.user_name, body.email, body.phone, user_id),
+            )
+            cur.execute(
+                "SELECT user_id, user_name, email, phone, role, created_at "
+                "FROM users WHERE user_id = %s",
+                (user_id,),
+            )
+            updated = cur.fetchone()
+        conn.commit()
+    return {"user": updated}
 
 
 class VerifyPasswordRequest(BaseModel):
@@ -409,7 +456,7 @@ def verify_password_endpoint(
         with conn.cursor() as cur:
             cur.execute(
                 "SELECT password_hash FROM users WHERE user_id = %s",
-                (current_user["user_id"],),
+                (current_user["sub"],),
             )
             user = cur.fetchone()
 
@@ -431,7 +478,7 @@ def change_password(
         with conn.cursor() as cur:
             cur.execute(
                 "SELECT password_hash FROM users WHERE user_id = %s",
-                (current_user["user_id"],),
+                (current_user["sub"],),
             )
             user = cur.fetchone()
 
@@ -449,7 +496,7 @@ def change_password(
             new_hash = hash_password(body.new_password)
             cur.execute(
                 "UPDATE users SET password_hash = %s WHERE user_id = %s",
-                (new_hash, current_user["user_id"]),
+                (new_hash, current_user["sub"]),
             )
         conn.commit()
 

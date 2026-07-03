@@ -26,6 +26,7 @@ import EnterprisePage from './pages/EnterprisePage';
 import KakaoCallbackPage from './pages/KakaoCallbackPage';
 import NaverCallbackPage from './pages/NaverCallbackPage';
 import GoogleCallbackPage from './pages/GoogleCallbackPage';
+import KakaoPayCallbackPage from './pages/KakaoPayCallbackPage';
 import TossPayCallbackPage from './pages/TossPayCallbackPage';
 
 // Page overlay wrapper
@@ -58,6 +59,7 @@ export default function App() {
     try { return JSON.parse(localStorage.getItem('user') || 'null'); } catch { return null; }
   });
   const [signupKey, setSignupKey] = useState(0);
+  const [boardKey, setBoardKey] = useState(0);
   // 비로그인 상태로 결제 진입 시 로그인 후 이어갈 요금제
   const [pendingPlan, setPendingPlan] = useState(null);
 
@@ -68,6 +70,9 @@ export default function App() {
     }
     if (id === 'signup') {
       setSignupKey(k => k + 1);
+    }
+    if (id === 'board') {
+      setBoardKey(k => k + 1);
     }
     setPage(id);
   };
@@ -93,6 +98,10 @@ export default function App() {
     setIsLoggedIn(false);
     setCurrentUser(null);
     closePage();
+  };
+  const handleUserUpdate = (user) => {
+    setCurrentUser(user);
+    localStorage.setItem('user', JSON.stringify(user));
   };
 
   const openPlanPayment = (plan) => {
@@ -174,6 +183,9 @@ export default function App() {
   if (currentPath === '/auth/google/callback') {
     return <GoogleCallbackPage onLogin={handleLogin} />;
   }
+  if (currentPath.startsWith('/payments/kakao/')) {
+    return <KakaoPayCallbackPage />;
+  }
   if (currentPath.startsWith('/payments/toss/')) {
     return <TossPayCallbackPage />;
   }
@@ -210,7 +222,7 @@ export default function App() {
       {/* Mypage */}
       <PageOverlay id="mypage" activePage={page} onBack={closePage} openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} user={currentUser}>
         <div className="po-body">
-          <MypagePage key={mypageKey} openPage={openPage} closePage={closePage} initialTab={mypageTab} user={currentUser} />
+          <MypagePage key={mypageKey} openPage={openPage} closePage={closePage} initialTab={mypageTab} user={currentUser} onUserUpdate={handleUserUpdate} />
         </div>
       </PageOverlay>
 
@@ -221,7 +233,7 @@ export default function App() {
 
       {/* Board */}
       <PageOverlay id="board" activePage={page} onBack={closePage} openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} user={currentUser}>
-        <BoardPage user={currentUser} />
+        <BoardPage key={boardKey} user={currentUser} />
       </PageOverlay>
 
       {/* Enterprise Inquiry */}
