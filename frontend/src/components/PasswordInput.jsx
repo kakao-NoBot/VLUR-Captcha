@@ -1,3 +1,5 @@
+// PasswordInput.jsx
+
 import React, { useState } from 'react';
 
 const EyeOpen = () => (
@@ -33,6 +35,7 @@ export default function PasswordInput({ className = 'pg-input', style, value, on
       />
       <button
         type="button"
+        tabIndex={-1}
         onClick={() => setShow(v => !v)}
         aria-label={show ? '비밀번호 숨기기' : '비밀번호 보기'}
         style={{
@@ -42,11 +45,12 @@ export default function PasswordInput({ className = 'pg-input', style, value, on
           transition: 'right .15s',
         }}
       >
-        {show ? <EyeOff /> : <EyeOpen />}
+        {show ? <EyeOpen /> : <EyeOff />}
       </button>
       {value && (
         <button
           type="button"
+          tabIndex={-1}
           onClick={handleClear}
           aria-label="입력 내용 지우기"
           style={{

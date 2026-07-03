@@ -1,3 +1,5 @@
+// ClearableInput.jsx
+
 import React from 'react';
 
 export default function ClearableInput({ value, onChange, className = 'pg-input', style, containerStyle, ...props }) {
@@ -13,6 +15,7 @@ export default function ClearableInput({ value, onChange, className = 'pg-input'
       {value && (
         <button
           type="button"
+          tabIndex={-1}
           onClick={() => onChange({ target: { value: '' } })}
           aria-label="입력 내용 지우기"
           style={{
