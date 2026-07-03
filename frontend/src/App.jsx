@@ -25,6 +25,7 @@ import PlanPayPage from './pages/PlanPayPage';
 import EnterprisePage from './pages/EnterprisePage';
 import KakaoCallbackPage from './pages/KakaoCallbackPage';
 import NaverCallbackPage from './pages/NaverCallbackPage';
+import GoogleCallbackPage from './pages/GoogleCallbackPage';
 
 // Page overlay wrapper
 function PageOverlay({ id, activePage, onBack, openPage, isLoggedIn, onLogout, user, children }) {
@@ -152,6 +153,9 @@ export default function App() {
   }
   if (window.location.pathname === '/auth/naver/callback') {
     return <NaverCallbackPage onLogin={handleLogin} />;
+  }
+  if (window.location.pathname === '/auth/google/callback') {
+    return <GoogleCallbackPage onLogin={handleLogin} />;
   }
 
   return (
