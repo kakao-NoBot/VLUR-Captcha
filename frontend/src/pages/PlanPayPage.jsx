@@ -1,6 +1,7 @@
 // PlanPayPage.jsx
 
 import React, { useState } from 'react';
+import api from '../api/axios';
 
 /* ── 스텝 인디케이터 원형 배지 ── */
 function StepCircle({ state, index }) {
@@ -62,26 +63,28 @@ function StepCircle({ state, index }) {
 
 const PLANS = {
   Basic: { name: 'Basic 요금제', price: '0', raw: 0, vat: 0, total: '0', features: '✓ 월 100,000 호출\n✓ API Key 1개\n✓ CAPTCHA 유형 1·2 지원', isFree: true, comparePrice: '89,000' },
-  Pro: { name: 'Pro 요금제', price: '89,000', raw: 89000, vat: 8900, total: '97,900', features: '✓ 월 500,000 호출\n✓ API Key 최대 5개\n✓ 대시보드 분석 (30일)' },
+  Pro: { name: 'Pro 요금제', price: '89,000', raw: 89000, vat: 0, total: '89,000', features: '✓ 월 500,000 호출\n✓ API Key 최대 5개\n✓ 대시보드 분석 (30일)' },
   Enterprise: { name: 'Enterprise 요금제', price: '문의', raw: 0, vat: 0, total: '문의', features: '✓ 무제한 호출\n✓ SLA 99.9%\n✓ 전담 매니저' },
 };
 
-export default function PlanPayPage({ planName = 'Pro', closePage, openPage, openMypageOnApiKey }) {
+export default function PlanPayPage({ planName = 'Pro', closePage, openPage, openMypageOnApiKey, user }) {
   const plan = PLANS[planName] || PLANS.Pro;
   const [method, setMethod] = useState('kakao');
-  const [buyerEmail, setBuyerEmail] = useState('user@example.com');
+  const [buyerName, setBuyerName] = useState(user?.user_name || '');
+  const [buyerEmail, setBuyerEmail] = useState(user?.email || '');
   const [emailBlurred, setEmailBlurred] = useState(false);
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(buyerEmail.trim());
   const [steps, setSteps] = useState(null); // null | [{label, state}]
   const [success, setSuccess] = useState(false);
   const [issuedKey, setIssuedKey] = useState('');
   const [copyLabel, setCopyLabel] = useState('복사');
+  const [paymentError, setPaymentError] = useState('');
 
   const kakaoSteps = [
     '준비 요청 — POST /api/payments/kakao/ready',
     '카카오페이 인증 페이지 이동 (next_redirect_pc_url)',
     'pg_token 수신 — 서버 Approve API 호출 중…',
-    '결제 승인 완료 · API Key 발급됨',
+    '결제 승인 완료 · Pro 요금제 활성화',
   ];
   const tossSteps = [
     'TossPayments SDK 초기화 — widgets.setAmount()',
@@ -91,28 +94,31 @@ export default function PlanPayPage({ planName = 'Pro', closePage, openPage, ope
   ];
   const stepLabels = method === 'kakao' ? kakaoSteps : tossSteps;
 
-  const startPayment = () => {
+  const startPayment = async () => {
+    if (!localStorage.getItem('access_token')) {
+      openPage('login');
+      return;
+    }
+    if (method !== 'kakao') {
+      setPaymentError('토스페이먼츠는 아직 준비 중입니다.');
+      return;
+    }
+
     const initial = stepLabels.map((label, i) => ({ label, state: i === 0 ? 'active' : 'pending' }));
     setSteps(initial);
-    let i = 0;
-    const tick = () => {
-      i++;
-      if (i < stepLabels.length) {
-        setSteps(stepLabels.map((label, idx) => ({
-          label,
-          state: idx < i ? 'done' : idx === i ? 'active' : 'pending'
-        })));
-        setTimeout(tick, 1400);
-      } else {
-        setSteps(stepLabels.map((label) => ({ label, state: 'done' })));
-        setTimeout(() => {
-          const key = 'sk-aicap_prod_' + Math.random().toString(36).slice(2, 18) + 'xxxx';
-          setIssuedKey(key);
-          setSuccess(true);
-        }, 600);
-      }
-    };
-    setTimeout(tick, 1400);
+    setPaymentError('');
+    try {
+      const { data } = await api.post('/payments/kakao/ready', { plan_name: planName });
+      setSteps(stepLabels.map((label, index) => ({
+        label,
+        state: index === 0 ? 'done' : index === 1 ? 'active' : 'pending',
+      })));
+      localStorage.setItem('kakaopay_order_id', data.order_id);
+      window.location.assign(data.redirect_url);
+    } catch (err) {
+      setSteps(null);
+      setPaymentError(err.response?.data?.detail || '카카오페이 결제를 시작하지 못했습니다.');
+    }
   };
 
   const copyKey = () => {
@@ -148,7 +154,7 @@ export default function PlanPayPage({ planName = 'Pro', closePage, openPage, ope
         { label: '요금제 선택', state: 'done' },
         { label: '결제 수단 선택', state: 'active' },
         { label: '결제 인증', state: 'pending' },
-        { label: 'API Key 발급', state: 'pending' },
+        { label: '요금제 활성화', state: 'pending' },
       ].map((s, i, arr) => (
         <React.Fragment key={i}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -170,7 +176,7 @@ export default function PlanPayPage({ planName = 'Pro', closePage, openPage, ope
           <div className="pg-card" style={{ marginBottom: 16 }}>
             <div className="pg-label">청구 정보</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <input className="pg-input" placeholder="이름" defaultValue="홍길동"/>
+              <input className="pg-input" placeholder="이름" value={buyerName} onChange={e => setBuyerName(e.target.value)}/>
               <div>
                 <input
                   className="pg-input"
@@ -186,6 +192,9 @@ export default function PlanPayPage({ planName = 'Pro', closePage, openPage, ope
                 )}
               </div>
             </div>
+            {paymentError && (
+              <div style={{ color: '#c0392b', fontSize: 13, marginTop: 12, textAlign: 'center' }}>{paymentError}</div>
+            )}
           </div>
 
           {/* Payment method — 유료 플랜만 */}

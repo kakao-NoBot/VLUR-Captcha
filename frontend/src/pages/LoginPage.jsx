@@ -102,8 +102,10 @@ function FindPwModal({ onClose }) {
     setStep(2);
   };
 
+  const isCodeValid = /^\d{6}$/.test(code.trim());
+
   const handleVerify = () => {
-    if (!code.trim()) { setAttempted2(true); return; }
+    if (!isCodeValid) { setAttempted2(true); return; }
     setStep(3);
   };
 
@@ -139,16 +141,21 @@ function FindPwModal({ onClose }) {
             <ClearableInput
               placeholder="인증코드 6자리"
               value={code}
-              onChange={e => setCode(e.target.value)}
+              inputMode="numeric"
+              maxLength={6}
+              onChange={e => setCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
               containerStyle={{ flex: 1 }}
-              style={attempted2 && !code.trim() ? errorStyle : {}}
+              style={attempted2 && !isCodeValid ? errorStyle : {}}
             />
             <button type="button" className="pg-btn" style={{ whiteSpace: 'nowrap', padding: '0 14px', fontSize: 13 }} onClick={() => setStep(2)}>재발송</button>
           </div>
+          {attempted2 && !isCodeValid && (
+            <p style={{ margin: 0, fontSize: 12.5, color: '#c0392b' }}>인증코드 6자리 숫자를 입력해주세요.</p>
+          )}
           <button
             type="button"
             className="pg-btn primary"
-            style={{ width: '100%', padding: 13, opacity: code.trim() ? 1 : 0.5, cursor: code.trim() ? 'pointer' : 'not-allowed' }}
+            style={{ width: '100%', padding: 13, opacity: isCodeValid ? 1 : 0.5, cursor: isCodeValid ? 'pointer' : 'not-allowed' }}
             onClick={handleVerify}
           >인증 확인</button>
         </div>

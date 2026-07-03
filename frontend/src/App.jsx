@@ -26,6 +26,7 @@ import EnterprisePage from './pages/EnterprisePage';
 import KakaoCallbackPage from './pages/KakaoCallbackPage';
 import NaverCallbackPage from './pages/NaverCallbackPage';
 import GoogleCallbackPage from './pages/GoogleCallbackPage';
+import KakaoPayCallbackPage from './pages/KakaoPayCallbackPage';
 
 // Page overlay wrapper
 function PageOverlay({ id, activePage, onBack, openPage, isLoggedIn, onLogout, user, children }) {
@@ -177,6 +178,9 @@ export default function App() {
   if (currentPath === '/auth/google/callback') {
     return <GoogleCallbackPage onLogin={handleLogin} />;
   }
+  if (currentPath.startsWith('/payments/kakao/')) {
+    return <KakaoPayCallbackPage />;
+  }
 
   return (
     <>
@@ -231,7 +235,7 @@ export default function App() {
 
       {/* Plan Payment */}
       <PageOverlay id="plan-pay" activePage={page} onBack={closePage} openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} user={currentUser}>
-        <PlanPayPage planName={planPayArgs.plan} closePage={closePage} openPage={openPage} openMypageOnApiKey={openMypageOnApiKey} />
+        <PlanPayPage planName={planPayArgs.plan} closePage={closePage} openPage={openPage} openMypageOnApiKey={openMypageOnApiKey} user={currentUser} />
       </PageOverlay>
     </>
   );

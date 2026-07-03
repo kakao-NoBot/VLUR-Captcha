@@ -52,7 +52,7 @@ export default function Pricing({ openPage, openPlanPayment }) {
         </div>
         <div className="pricing-grid">
           {plans.map((plan, i) => (
-            <div className={`price-card${plan.featured ? ' featured' : ''}`} key={plan.tier} data-reveal style={{ transitionDelay: `${i * 150}ms` }}>
+            <div className={`price-card${plan.featured ? ' featured' : ''}`} key={plan.tier} data-reveal>
               {plan.badge && <div className="price-badge">{plan.badge}</div>}
               <div className="price-tier">{plan.tier}</div>
               <div className="price-amount" style={plan.tier === 'Enterprise' ? { fontSize: 28, paddingTop: 4 } : {}}>

@@ -409,7 +409,7 @@ def verify_password_endpoint(
         with conn.cursor() as cur:
             cur.execute(
                 "SELECT password_hash FROM users WHERE user_id = %s",
-                (current_user["user_id"],),
+                (current_user["sub"],),
             )
             user = cur.fetchone()
 
@@ -431,7 +431,7 @@ def change_password(
         with conn.cursor() as cur:
             cur.execute(
                 "SELECT password_hash FROM users WHERE user_id = %s",
-                (current_user["user_id"],),
+                (current_user["sub"],),
             )
             user = cur.fetchone()
 
@@ -449,7 +449,7 @@ def change_password(
             new_hash = hash_password(body.new_password)
             cur.execute(
                 "UPDATE users SET password_hash = %s WHERE user_id = %s",
-                (new_hash, current_user["user_id"]),
+                (new_hash, current_user["sub"]),
             )
         conn.commit()
 
