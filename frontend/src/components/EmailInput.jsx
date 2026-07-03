@@ -1,5 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 
+// ~~@~~.~~ 형식 (도메인 TLD 제한 없음)
+export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 const DOMAIN_OPTIONS = [
   { value: 'gmail.com',    label: 'gmail.com' },
   { value: 'naver.com',   label: 'naver.com' },
@@ -12,6 +15,7 @@ const DOMAIN_OPTIONS = [
 
 export default function EmailInput({ onChange, error, initialEmail = '', ...inputProps }) {
   const [value, setValue] = useState(initialEmail);
+  const [blurred, setBlurred] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeDomain, setActiveDomain] = useState('custom');
   const wrapRef = useRef(null);
@@ -46,8 +50,12 @@ export default function EmailInput({ onChange, error, initialEmail = '', ...inpu
     }
   };
 
+  const showFormatWarn =
+    blurred && !menuOpen && value.trim() !== '' && !EMAIL_RE.test(value.trim());
+
   return (
-    <div ref={wrapRef} style={{ position: 'relative' }}>
+    <div ref={wrapRef}>
+      <div style={{ position: 'relative' }}>
       <input
         className="pg-input"
         type="text"
@@ -57,10 +65,11 @@ export default function EmailInput({ onChange, error, initialEmail = '', ...inpu
         {...inputProps}
         value={value}
         onChange={e => setValue(e.target.value)}
+        onBlur={e => { setBlurred(true); inputProps.onBlur?.(e); }}
         style={{
           width: '100%',
           paddingRight: 42,
-          ...(error ? { border: '1.5px solid #c0392b' } : {}),
+          ...(error || showFormatWarn ? { border: '1.5px solid #c0392b' } : {}),
         }}
       />
       <button
@@ -87,7 +96,7 @@ export default function EmailInput({ onChange, error, initialEmail = '', ...inpu
           role="listbox"
           style={{
             position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, zIndex: 20,
-            background: '#fff', border: '1px solid var(--line)', borderRadius: 12,
+            background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12,
             boxShadow: '0 16px 38px -18px rgba(55,38,25,.34)',
             padding: 6, display: 'flex', flexDirection: 'column', gap: 2,
           }}
@@ -128,6 +137,10 @@ export default function EmailInput({ onChange, error, initialEmail = '', ...inpu
             );
           })}
         </div>
+      )}
+      </div>
+      {(error || showFormatWarn) && (
+        <p style={{ margin: '6px 0 0', fontSize: 12.5, color: '#c0392b' }}>올바른 이메일 주소를 입력해 주세요.</p>
       )}
     </div>
   );

@@ -38,7 +38,7 @@ function StepCircle({ state, index }) {
     return (
       <div style={{
         ...base,
-        background: '#fff',
+        background: 'var(--card)',
         color: 'var(--orange)',
         border: '2px solid var(--orange)',
         boxShadow: '0 0 0 4px rgba(240,105,30,.12)',
@@ -69,6 +69,9 @@ const PLANS = {
 export default function PlanPayPage({ planName = 'Pro', closePage, openPage, openMypageOnApiKey }) {
   const plan = PLANS[planName] || PLANS.Pro;
   const [method, setMethod] = useState('kakao');
+  const [buyerEmail, setBuyerEmail] = useState('user@example.com');
+  const [emailBlurred, setEmailBlurred] = useState(false);
+  const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(buyerEmail.trim());
   const [steps, setSteps] = useState(null); // null | [{label, state}]
   const [success, setSuccess] = useState(false);
   const [issuedKey, setIssuedKey] = useState('');
@@ -168,7 +171,20 @@ export default function PlanPayPage({ planName = 'Pro', closePage, openPage, ope
             <div className="pg-label">청구 정보</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <input className="pg-input" placeholder="이름" defaultValue="홍길동"/>
-              <input className="pg-input" type="email" placeholder="이메일" defaultValue="user@example.com"/>
+              <div>
+                <input
+                  className="pg-input"
+                  type="email"
+                  placeholder="이메일"
+                  value={buyerEmail}
+                  onChange={e => setBuyerEmail(e.target.value)}
+                  onBlur={() => setEmailBlurred(true)}
+                  style={{ width: '100%', ...(emailBlurred && !isEmailValid ? { border: '1.5px solid #c0392b' } : {}) }}
+                />
+                {emailBlurred && !isEmailValid && (
+                  <div style={{ color: '#c0392b', fontSize: 12.5, marginTop: 6 }}>올바른 이메일 주소를 입력해 주세요.</div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -219,11 +235,21 @@ export default function PlanPayPage({ planName = 'Pro', closePage, openPage, ope
             <div style={{ marginTop: 14, display: 'flex', gap: 10 }}>
               <button className="pg-btn" onClick={closePage}>이전</button>
               {plan.isFree ? (
-                <button className="pg-btn primary" style={{ flex: 1, padding: 14, fontSize: 15 }} onClick={() => setSuccess(true)}>
+                <button
+                  className="pg-btn primary"
+                  style={{ flex: 1, padding: 14, fontSize: 15, opacity: isEmailValid ? 1 : 0.5, cursor: isEmailValid ? 'pointer' : 'not-allowed' }}
+                  onClick={() => setSuccess(true)}
+                  disabled={!isEmailValid}
+                >
                   무료로 시작하기
                 </button>
               ) : (
-                <button className="pg-btn primary" style={{ flex: 1, padding: 14, fontSize: 15 }} onClick={startPayment} disabled={!!steps}>
+                <button
+                  className="pg-btn primary"
+                  style={{ flex: 1, padding: 14, fontSize: 15, opacity: isEmailValid ? 1 : 0.5, cursor: isEmailValid ? 'pointer' : 'not-allowed' }}
+                  onClick={startPayment}
+                  disabled={!!steps || !isEmailValid}
+                >
                   {method === 'kakao' ? `카카오페이로 결제하기` : `토스페이먼츠로 결제하기`}
                 </button>
               )}

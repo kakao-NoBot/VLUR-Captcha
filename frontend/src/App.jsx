@@ -57,6 +57,8 @@ export default function App() {
     try { return JSON.parse(localStorage.getItem('user') || 'null'); } catch { return null; }
   });
   const [signupKey, setSignupKey] = useState(0);
+  // 비로그인 상태로 결제 진입 시 로그인 후 이어갈 요금제
+  const [pendingPlan, setPendingPlan] = useState(null);
 
   const openPage = (id) => {
     if (id === 'mypage') {
@@ -70,11 +72,18 @@ export default function App() {
   };
 
   const closePage = () => {
+    setPendingPlan(null);
     setPage(null);
   };
   const handleLogin = (user) => {
     setIsLoggedIn(true);
     setCurrentUser(user);
+    if (pendingPlan) {
+      setPlanPayArgs({ plan: pendingPlan });
+      setPendingPlan(null);
+      setPage('plan-pay');
+      return;
+    }
     closePage();
   };
   const handleLogout = () => {
@@ -86,6 +95,11 @@ export default function App() {
   };
 
   const openPlanPayment = (plan) => {
+    if (!isLoggedIn) {
+      setPendingPlan(plan);
+      setPage('login');
+      return;
+    }
     setPlanPayArgs({ plan });
     setPage('plan-pay');
   };

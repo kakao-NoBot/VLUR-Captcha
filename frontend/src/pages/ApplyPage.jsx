@@ -51,7 +51,7 @@ function StepCircle({ state, index }) {
     return (
       <div style={{
         ...base,
-        background: '#fff',
+        background: 'var(--card)',
         color: 'var(--orange)',
         border: '2px solid var(--orange)',
         boxShadow: '0 0 0 4px rgba(240,105,30,.12)',
@@ -79,7 +79,9 @@ export default function ApplyPage({ openPage, initialPlan = 'Pro' }) {
   const [email, setEmail] = useState('');
   const [touched, setTouched] = useState(false);
 
-  const isValid = company.trim().length > 0 && email.trim().length > 0;
+  const [emailBlurred, setEmailBlurred] = useState(false);
+  const isEmailFormatValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  const isValid = company.trim().length > 0 && isEmailFormatValid;
 
   const handleSubmit = () => {
     setTouched(true);
@@ -103,7 +105,7 @@ export default function ApplyPage({ openPage, initialPlan = 'Pro' }) {
               style={{
                 cursor: 'pointer',
                 textAlign: 'center',
-                background: isSelected ? 'var(--peach)' : '#fff',
+                background: isSelected ? 'var(--peach)' : 'var(--card)',
                 border: `2px solid ${isSelected ? 'var(--orange)' : 'var(--line)'}`,
                 borderRadius: 'var(--r)',
                 padding: '20px 12px',
@@ -152,13 +154,16 @@ export default function ApplyPage({ openPage, initialPlan = 'Pro' }) {
             placeholder="연락 이메일"
             value={email}
             onChange={e => setEmail(e.target.value)}
+            onBlur={() => setEmailBlurred(true)}
             style={{
               width: '100%',
-              borderColor: touched && !email.trim() ? '#e0533d' : undefined,
+              borderColor: (touched || (emailBlurred && email.trim())) && !isEmailFormatValid ? '#e0533d' : undefined,
             }}
           />
-          {touched && !email.trim() && (
-            <div style={{ color: '#e0533d', fontSize: 12, marginTop: 4 }}>연락 이메일을 입력해주세요.</div>
+          {(touched || (emailBlurred && email.trim())) && !isEmailFormatValid && (
+            <div style={{ color: '#e0533d', fontSize: 12, marginTop: 4 }}>
+              {email.trim() ? '올바른 이메일 주소를 입력해 주세요.' : '연락 이메일을 입력해주세요.'}
+            </div>
           )}
         </div>
 
