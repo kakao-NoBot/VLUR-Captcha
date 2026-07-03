@@ -241,7 +241,7 @@ export default function SignupPage({ openPage, onLogin }) {
           type="tel"
           placeholder="휴대폰 번호"
           value={phone}
-          onChange={e => setPhone(e.target.value)}
+          onChange={e => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
           onKeyDown={e => {
             if (e.key === 'Tab' && !e.shiftKey && !phone.trim()) {
               e.preventDefault();
@@ -274,8 +274,8 @@ export default function SignupPage({ openPage, onLogin }) {
                   borderRadius: 6,
                   border: showAgreedError
                     ? '1.5px solid #c0392b'
-                    : `1.5px solid ${agreed ? 'var(--orange)' : '#d8d0c4'}`,
-                  background: agreed ? 'var(--orange)' : '#fff',
+                    : `1.5px solid ${agreed ? 'var(--orange-2)' : 'var(--line)'}`,
+                  background: agreed ? 'var(--orange-2)' : '#fff',
                   transition: 'background 0.15s ease, border-color 0.15s ease',
                   display: 'flex',
                   alignItems: 'center',
