@@ -33,6 +33,7 @@ export default function SignupPage({ openPage, onLogin }) {
   const [attemptedFields, setAttemptedFields] = useState({});
 
   const [apiError, setApiError] = useState('');
+  const [phoneError, setPhoneError] = useState('');
   const [loading, setLoading] = useState(false);
   const [isPrivacyHelpOpen, setIsPrivacyHelpOpen] = useState(false);
 
@@ -90,6 +91,7 @@ export default function SignupPage({ openPage, onLogin }) {
     if (!isValid) { setAttempted(true); return; }
     setLoading(true);
     setApiError('');
+    setPhoneError('');
     try {
       const { data } = await api.post('/auth/signup', {
         user_id: loginId.trim(),
@@ -102,7 +104,12 @@ export default function SignupPage({ openPage, onLogin }) {
       localStorage.setItem('user', JSON.stringify(data.user));
       if (onLogin) onLogin(data.user);
     } catch (err) {
-      setApiError(err.response?.data?.detail || '회원가입 중 오류가 발생했습니다.');
+      const detail = err.response?.data?.detail || '회원가입 중 오류가 발생했습니다.';
+      if (detail.includes('전화번호')) {
+        setPhoneError(detail);
+      } else {
+        setApiError(detail);
+      }
     } finally {
       setLoading(false);
     }
@@ -237,19 +244,26 @@ export default function SignupPage({ openPage, onLogin }) {
             }}
           />
         </div>
-        <ClearableInput
-          type="tel"
-          placeholder="휴대폰 번호"
-          value={phone}
-          onChange={e => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
-          onKeyDown={e => {
-            if (e.key === 'Tab' && !e.shiftKey && !phone.trim()) {
-              e.preventDefault();
-              markAttempted('phone');
-            }
-          }}
-          style={showPhoneError ? errorStyle : {}}
-        />
+        <div>
+          <ClearableInput
+            type="tel"
+            placeholder="휴대폰 번호"
+            value={phone}
+            onChange={e => { setPhone(e.target.value.replace(/[^0-9]/g, '')); setPhoneError(''); }}
+            onKeyDown={e => {
+              if (e.key === 'Tab' && !e.shiftKey && !phone.trim()) {
+                e.preventDefault();
+                markAttempted('phone');
+              }
+            }}
+            style={showPhoneError || phoneError ? errorStyle : {}}
+          />
+          {phoneError && (
+            <p className="signup-field-error" style={{ margin: '6px 0 0', fontSize: 12.5, color: '#c0392b' }}>
+              {phoneError}
+            </p>
+          )}
+        </div>
         <div className="signup-agreement-row" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <label className="signup-agreement-label" style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: 'var(--ink-soft)', cursor: 'pointer' }}>
             <span style={{ position: 'relative', width: 20, height: 20, flexShrink: 0 }}>
