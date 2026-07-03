@@ -28,8 +28,12 @@ export default function SignupPage({ openPage, onLogin }) {
   const [loading, setLoading] = useState(false);
   const [isPrivacyHelpOpen, setIsPrivacyHelpOpen] = useState(false);
   const [isEmailDomainMenuOpen, setIsEmailDomainMenuOpen] = useState(false);
+  const [isCheckboxFocused, setIsCheckboxFocused] = useState(false);
   const emailDomainControlRef = useRef(null);
   const customEmailDomainInputRef = useRef(null);
+  const agreementCheckboxRef = useRef(null);
+  const [isEmailComboFocused, setIsEmailComboFocused] = useState(false);
+
 
   const errorStyle = { border: '1.5px solid #c0392b' };
   const isCustomEmailDomain = emailDomain === 'custom';
@@ -179,11 +183,16 @@ export default function SignupPage({ openPage, onLogin }) {
             style={{
               display: 'flex',
               alignItems: 'stretch',
-              border: '1.5px solid var(--line)',
+              border: emailErrorMessage
+                ? '1.5px solid #c0392b'
+                : `1.5px solid ${isEmailComboFocused ? 'var(--orange-2)' : 'var(--line)'}`,
+              boxShadow: isEmailComboFocused && !emailErrorMessage
+                ? '0 0 0 3px rgba(221,84,19,.14)'
+                : 'none',
               borderRadius: 12,
               background: '#fff',
               overflow: 'visible',
-              ...(emailErrorMessage ? errorStyle : {}),
+              transition: '.18s',
             }}
           >
             <input
@@ -193,6 +202,8 @@ export default function SignupPage({ openPage, onLogin }) {
               aria-label="이메일 아이디"
               value={emailLocalPart}
               onChange={e => setEmailLocalPart(e.target.value)}
+              onFocus={() => setIsEmailComboFocused(true)}
+              onBlur={() => setIsEmailComboFocused(false)}
               style={{
                 flex: 1,
                 minWidth: 0,
@@ -230,6 +241,8 @@ export default function SignupPage({ openPage, onLogin }) {
                     aria-label="이메일 도메인 직접 입력"
                     value={customEmailDomain}
                     onChange={e => setCustomEmailDomain(e.target.value)}
+                    onFocus={() => setIsEmailComboFocused(true)}
+                    onBlur={() => setIsEmailComboFocused(false)}
                     style={{
                       flex: 1,
                       minWidth: 0,
@@ -359,20 +372,30 @@ export default function SignupPage({ openPage, onLogin }) {
           <input type="hidden" name="email" value={finalEmail} readOnly />
         </div>
         <input
-          className="pg-input"
-          type="tel"
-          placeholder="휴대폰 번호"
-          value={phone}
-          onChange={e => setPhone(e.target.value)}
-          style={attempted && !phone.trim() ? errorStyle : {}}
-        />
+        className="pg-input"
+        type="tel"
+        placeholder="휴대폰 번호"
+        value={phone}
+        onChange={e => setPhone(e.target.value)}
+        onKeyDown={e => {
+          if (e.key === 'Tab' && !e.shiftKey) {
+            e.preventDefault();
+            agreementCheckboxRef.current?.focus();
+            agreementCheckboxRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }}
+        style={attempted && !phone.trim() ? errorStyle : {}}
+      />
         <div className="signup-agreement-row" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <label className="signup-agreement-label" style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: 'var(--ink-soft)', cursor: 'pointer' }}>
             <span style={{ position: 'relative', width: 20, height: 20, flexShrink: 0 }}>
               <input
                 type="checkbox"
+                ref={agreementCheckboxRef}
                 checked={agreed}
                 onChange={e => setAgreed(e.target.checked)}
+                onFocus={() => setIsCheckboxFocused(true)}
+                onBlur={() => setIsCheckboxFocused(false)}
                 style={{
                   position: 'absolute',
                   inset: 0,
@@ -390,9 +413,10 @@ export default function SignupPage({ openPage, onLogin }) {
                   borderRadius: 6,
                   border: attempted && !agreed
                     ? '1.5px solid #c0392b'
-                    : `1.5px solid ${agreed ? 'var(--orange)' : '#d8d0c4'}`,
+                    : `1.5px solid ${agreed ? 'var(--orange)' : 'var(--line)'}`,
                   background: agreed ? 'var(--orange)' : '#fff',
-                  transition: 'background 0.15s ease, border-color 0.15s ease',
+                  boxShadow: isCheckboxFocused ? '0 0 0 3px rgba(240,105,30,.12)' : 'none',
+                  transition: 'background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
