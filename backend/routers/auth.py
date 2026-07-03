@@ -62,6 +62,16 @@ def login(body: LoginRequest):
     }
 
 
+@router.get("/check-id")
+def check_id(user_id: str):
+    conn = get_conn()
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT 1 FROM users WHERE user_id = %s", (user_id,))
+            taken = cur.fetchone() is not None
+    return {"available": not taken}
+
+
 @router.post("/signup", status_code=201)
 def signup(body: SignupRequest):
     conn = get_conn()

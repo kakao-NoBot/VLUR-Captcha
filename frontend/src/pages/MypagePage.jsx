@@ -2,6 +2,9 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import GuideStepModal from '../components/GuideStepModal';
+import PasswordInput from '../components/PasswordInput';
+import EmailInput from '../components/EmailInput';
+import ClearableInput from '../components/ClearableInput';
 
 const realKey = 'sk-aicap_prod_7f3a91b2c4d5e6f789012345xxxx';
 
@@ -77,25 +80,19 @@ function ChangePwModal({ onClose }) {
     <Modal title="비밀번호 변경" onClose={onClose}>
       {!done ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <input
-            className="pg-input"
-            type="password"
+          <PasswordInput
             value={current}
             onChange={e => setCurrent(e.target.value)}
             placeholder="현재 비밀번호"
             style={attempted && !current.trim() ? errorStyle : {}}
           />
-          <input
-            className="pg-input"
-            type="password"
+          <PasswordInput
             value={next}
             onChange={e => setNext(e.target.value)}
             placeholder="새 비밀번호"
             style={attempted && !next.trim() ? errorStyle : {}}
           />
-          <input
-            className="pg-input"
-            type="password"
+          <PasswordInput
             value={confirm}
             onChange={e => setConfirm(e.target.value)}
             placeholder="새 비밀번호 확인"
@@ -133,68 +130,16 @@ function ChangePwModal({ onClose }) {
 function EditInfoModal({ onClose, user }) {
   const [done, setDone] = useState(false);
   const [name, setName] = useState(user?.user_name || '');
-
-  const initialEmail = user?.email || '';
-  const [initialLocal, initialDomain] = initialEmail.includes('@')
-    ? initialEmail.split('@')
-    : [initialEmail, ''];
-  const knownDomain = EMAIL_DOMAIN_OPTIONS.some(o => o.value === initialDomain);
-
-  const [emailLocalPart, setEmailLocalPart] = useState(initialLocal);
-  const [emailDomain, setEmailDomain] = useState(initialDomain && knownDomain ? initialDomain : initialDomain ? 'custom' : 'gmail.com');
-  const [customEmailDomain, setCustomEmailDomain] = useState(!knownDomain && initialDomain ? initialDomain : '');
-  const [isEmailDomainMenuOpen, setIsEmailDomainMenuOpen] = useState(false);
-  const emailDomainControlRef = useRef(null);
-  const customEmailDomainInputRef = useRef(null);
-
+  const [finalEmail, setFinalEmail] = useState(user?.email || '');
   const [phone, setPhone] = useState(user?.phone || '');
   const [attempted, setAttempted] = useState(false);
 
   const errorStyle = { border: '1.5px solid #c0392b' };
-  const isCustomEmailDomain = emailDomain === 'custom';
-  const selectedEmailDomain = isCustomEmailDomain ? customEmailDomain.trim() : emailDomain;
-  const finalEmail =
-    emailLocalPart.trim() && selectedEmailDomain
-      ? `${emailLocalPart.trim()}@${selectedEmailDomain}`
-      : '';
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(finalEmail);
-
   const isValid = name.trim() && isEmailValid && phone.trim();
 
-  useEffect(() => {
-    if (!isEmailDomainMenuOpen) return undefined;
-    const handlePointerDown = (event) => {
-      if (emailDomainControlRef.current && !emailDomainControlRef.current.contains(event.target)) {
-        setIsEmailDomainMenuOpen(false);
-      }
-    };
-    const handleKeyDown = (event) => {
-      if (event.key === 'Escape') setIsEmailDomainMenuOpen(false);
-    };
-    document.addEventListener('mousedown', handlePointerDown);
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('mousedown', handlePointerDown);
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isEmailDomainMenuOpen]);
-
-  useEffect(() => {
-    if (isCustomEmailDomain) {
-      customEmailDomainInputRef.current?.focus();
-    }
-  }, [isCustomEmailDomain]);
-
-  const handleEmailDomainSelect = (domainValue) => {
-    setEmailDomain(domainValue);
-    setIsEmailDomainMenuOpen(false);
-  };
-
   const handleSave = () => {
-    if (!isValid) {
-      setAttempted(true);
-      return;
-    }
+    if (!isValid) { setAttempted(true); return; }
     setDone(true);
   };
 
@@ -202,193 +147,20 @@ function EditInfoModal({ onClose, user }) {
     <Modal title="정보 수정" onClose={onClose}>
       {!done ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <input
-            className="pg-input"
+          <ClearableInput
             value={name}
             onChange={e => setName(e.target.value)}
             placeholder="이름"
             style={attempted && !name.trim() ? errorStyle : {}}
           />
 
-          <div
-            className={`signup-email-combo${attempted && !isEmailValid ? ' is-error' : ''}`}
-            style={{
-              display: 'flex',
-              alignItems: 'stretch',
-              border: '1.5px solid var(--line)',
-              borderRadius: 12,
-              background: '#fff',
-              overflow: 'visible',
-              ...(attempted && !isEmailValid ? errorStyle : {}),
-            }}
-          >
-            <input
-              type="text"
-              inputMode="email"
-              placeholder="이메일 아이디"
-              aria-label="이메일 아이디"
-              value={emailLocalPart}
-              onChange={e => setEmailLocalPart(e.target.value)}
-              style={{
-                flex: 1,
-                minWidth: 0,
-                border: 'none',
-                outline: 'none',
-                padding: '13px 16px',
-                fontSize: 15,
-                fontFamily: 'var(--body)',
-                background: 'transparent',
-                color: 'var(--ink)',
-              }}
-            />
-            <div
-              className={`signup-email-domain-control${isEmailDomainMenuOpen ? ' is-open' : ''}`}
-              ref={emailDomainControlRef}
-              style={{
-                position: 'relative',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                flex: 1,
-                minWidth: 0,
-                padding: '0 12px 0 14px',
-              }}
-            >
-              {isCustomEmailDomain ? (
-                <div style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0 }}>
-                  <span style={{ flexShrink: 0, color: 'var(--ink)', fontSize: 15, fontFamily: 'var(--body)' }}>@</span>
-                  <input
-                    ref={customEmailDomainInputRef}
-                    className="signup-email-domain-input"
-                    type="text"
-                    inputMode="email"
-                    aria-label="이메일 도메인 직접 입력"
-                    value={customEmailDomain}
-                    onChange={e => setCustomEmailDomain(e.target.value)}
-                    style={{
-                      flex: 1,
-                      minWidth: 0,
-                      border: 'none',
-                      outline: 'none',
-                      padding: '13px 0',
-                      fontSize: 15,
-                      fontFamily: 'var(--body)',
-                      background: 'transparent',
-                      color: 'var(--ink)',
-                    }}
-                  />
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  className="signup-email-domain-value"
-                  aria-label={`이메일 도메인 ${emailDomain}`}
-                  onClick={() => setIsEmailDomainMenuOpen(true)}
-                  style={{
-                    flex: 1,
-                    textAlign: 'left',
-                    minWidth: 0,
-                    border: 'none',
-                    background: 'none',
-                    padding: '13px 0',
-                    fontSize: 15,
-                    fontFamily: 'var(--body)',
-                    color: 'var(--ink)',
-                    cursor: 'pointer',
-                  }}
-                >
-                  {`@${emailDomain}`}
-                </button>
-              )}
-              <button
-                type="button"
-                className="signup-email-domain-toggle"
-                aria-label="이메일 도메인 목록 열기"
-                aria-haspopup="listbox"
-                aria-expanded={isEmailDomainMenuOpen}
-                onClick={() => setIsEmailDomainMenuOpen(current => !current)}
-                style={{
-                  flexShrink: 0,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  border: 'none',
-                  background: 'none',
-                  cursor: 'pointer',
-                  color: 'var(--orange)',
-                  padding: 4,
-                }}
-              >
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  style={{
-                    transform: isEmailDomainMenuOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                    transition: 'transform 0.15s ease',
-                  }}
-                >
-                  <path d="M6 9l6 6 6-6" />
-                </svg>
-              </button>
-              {isEmailDomainMenuOpen && (
-                <div
-                  className="signup-email-domain-menu"
-                  role="listbox"
-                  style={{
-                    position: 'absolute',
-                    top: 'calc(100% + 6px)',
-                    left: -14,
-                    right: -12,
-                    zIndex: 20,
-                    background: '#fff',
-                    border: '1px solid var(--line)',
-                    borderRadius: 12,
-                    boxShadow: '0 16px 38px -18px rgba(55,38,25,.34)',
-                    padding: 6,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 2,
-                    maxHeight: 260,
-                    overflowY: 'auto',
-                  }}
-                >
-                  {EMAIL_DOMAIN_OPTIONS.map(option => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      className={`signup-email-domain-option${emailDomain === option.value ? ' selected' : ''}`}
-                      role="option"
-                      aria-selected={emailDomain === option.value}
-                      onClick={() => handleEmailDomainSelect(option.value)}
-                      style={{
-                        textAlign: 'left',
-                        border: 'none',
-                        borderRadius: 8,
-                        padding: '10px 12px',
-                        fontSize: 14,
-                        fontFamily: 'var(--body)',
-                        cursor: 'pointer',
-                        background: emailDomain === option.value ? 'var(--peach)' : 'transparent',
-                        color: emailDomain === option.value ? 'var(--orange-2)' : 'var(--ink-soft)',
-                        fontWeight: emailDomain === option.value ? 700 : 500,
-                      }}
-                    >
-                      {option.value === 'custom' ? option.label : `@${option.label}`}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+          <EmailInput
+            onChange={setFinalEmail}
+            error={attempted && !isEmailValid}
+            initialEmail={user?.email || ''}
+          />
 
-          <input
-            className="pg-input"
+          <ClearableInput
             type="tel"
             value={phone}
             onChange={e => setPhone(e.target.value)}
@@ -961,6 +733,169 @@ function UsageTab() {
   );
 }
 
+/* ── SC-10 결제 내역 탭 ── */
+const PAYMENT_HISTORY = [
+  { id: 'PAY-2026060001', date: '2026-06-01', plan: 'Pro',     amount: 49000, method: '신한카드 ****1234', status: '완료' },
+  { id: 'PAY-2026050001', date: '2026-05-01', plan: 'Pro',     amount: 49000, method: '신한카드 ****1234', status: '완료' },
+  { id: 'PAY-2026040001', date: '2026-04-01', plan: 'Pro',     amount: 49000, method: '신한카드 ****1234', status: '완료' },
+  { id: 'PAY-2026030001', date: '2026-03-01', plan: 'Starter', amount: 19000, method: '신한카드 ****1234', status: '완료' },
+  { id: 'PAY-2026020001', date: '2026-02-01', plan: 'Starter', amount: 19000, method: '신한카드 ****1234', status: '완료' },
+  { id: 'PAY-2026010001', date: '2026-01-01', plan: 'Starter', amount: 19000, method: '신한카드 ****1234', status: '완료' },
+];
+
+const STATUS_STYLE = {
+  '완료':   { background: '#e8f7f0', color: '#1e7a4e' },
+  '환불':   { background: '#fdecea', color: '#c0392b' },
+  '실패':   { background: '#fdecea', color: '#c0392b' },
+  '대기':   { background: 'var(--peach)', color: 'var(--orange-2)' },
+};
+
+function CancelSubModal({ onConfirm, onClose }) {
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 9999,
+      background: 'rgba(36,27,21,.45)', display: 'flex',
+      alignItems: 'center', justifyContent: 'center', padding: 24,
+    }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style={{
+        background: '#fff', borderRadius: 'var(--r)', padding: '28px 24px',
+        width: '100%', maxWidth: 340, boxShadow: 'var(--shadow-md)',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
+        textAlign: 'center',
+      }}>
+        <div style={{
+          width: 48, height: 48, borderRadius: '50%',
+          background: 'var(--peach)', display: 'flex',
+          alignItems: 'center', justifyContent: 'center',
+        }}>
+          <svg viewBox="0 0 24 24" fill="none" width={22} height={22}>
+            <path d="M12 8v5M12 16.5h.01" stroke="var(--orange-2)" strokeWidth="2.2" strokeLinecap="round"/>
+            <circle cx="12" cy="12" r="9" stroke="var(--orange-2)" strokeWidth="1.8"/>
+          </svg>
+        </div>
+        <div>
+          <strong style={{ display: 'block', fontSize: 16, marginBottom: 6 }}>구독을 해지하시겠어요?</strong>
+          <span style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.6 }}>
+            해지해도 <strong>2026-07-01</strong>까지는<br/>Pro 플랜을 계속 이용할 수 있습니다.
+          </span>
+        </div>
+        <div style={{ display: 'flex', gap: 8, width: '100%', marginTop: 4 }}>
+          <button className="pg-btn" style={{ flex: 1, padding: 11 }} onClick={onClose}>취소</button>
+          <button className="pg-btn danger" style={{ flex: 1, padding: 11 }} onClick={onConfirm}>해지하기</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BillingTab({ closePage }) {
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelled, setCancelled] = useState(false);
+
+  const goToPricing = () => {
+    closePage?.();
+    setTimeout(() => {
+      document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 320);
+  };
+
+  const handleCancel = () => {
+    setCancelled(true);
+    setShowCancelModal(false);
+  };
+
+  return (
+    <>
+      <h2 className="pg-h2" style={{ marginBottom: 20 }}>결제 내역</h2>
+
+      {/* 현재 구독 요약 */}
+      <div className="pg-card" style={{ maxWidth: 560, marginBottom: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+          <div>
+            <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 4 }}>현재 구독 중</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--disp)', color: 'var(--ink)' }}>Pro 플랜</span>
+              {cancelled && (
+                <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: '#fdecea', color: '#c0392b' }}>
+                  해지 예정
+                </span>
+              )}
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--ink-soft)', marginTop: 2 }}>
+              {cancelled
+                ? <><strong>2026-07-01</strong>까지 이용 가능 · 이후 자동 해지</>
+                : <>다음 결제일: <strong>2026-07-01</strong> · 신한카드 ****1234</>
+              }
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {!cancelled && (
+              <button className="pg-btn" style={{ fontSize: 13, padding: '9px 16px' }} onClick={goToPricing}>
+                요금제 변경
+              </button>
+            )}
+            {!cancelled ? (
+              <button className="pg-btn danger" style={{ fontSize: 13, padding: '9px 16px' }} onClick={() => setShowCancelModal(true)}>
+                구독 해지
+              </button>
+            ) : (
+              <button className="pg-btn" style={{ fontSize: 13, padding: '9px 16px' }} onClick={goToPricing}>
+                재구독
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* 결제 내역 테이블 */}
+      {PAYMENT_HISTORY.length === 0 ? (
+        <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--muted)', fontSize: 14 }}>
+          결제 내역이 없습니다.
+        </div>
+      ) : (
+        <table className="pg-table" style={{ maxWidth: 720 }}>
+          <thead>
+            <tr>
+              <th>결제일</th>
+              <th>요금제</th>
+              <th>결제 금액</th>
+              <th>결제 수단</th>
+              <th>상태</th>
+            </tr>
+          </thead>
+          <tbody>
+            {PAYMENT_HISTORY.map(row => (
+              <tr key={row.id}>
+                <td>{row.date}</td>
+                <td>{row.plan}</td>
+                <td>{formatNumber(row.amount)}원</td>
+                <td style={{ color: 'var(--ink-soft)', fontSize: 13 }}>{row.method}</td>
+                <td>
+                  <span style={{
+                    display: 'inline-block',
+                    padding: '3px 10px', borderRadius: 20,
+                    fontSize: 12, fontWeight: 600,
+                    ...(STATUS_STYLE[row.status] || {}),
+                  }}>
+                    {row.status}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      {showCancelModal && (
+        <CancelSubModal
+          onConfirm={handleCancel}
+          onClose={() => setShowCancelModal(false)}
+        />
+      )}
+    </>
+  );
+}
+
 /* ── 탈퇴 확인 모달 (작은 사이즈) ── */
 function ConfirmDeactivateModal({ onConfirm, onClose }) {
   return (
@@ -1121,9 +1056,7 @@ function DeactivateTab({ closePage }) {
         작성한 게시글/문의 내역은 별도 처리 정책에 따릅니다.
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 420 }}>
-        <input
-          className="pg-input"
-          type="password"
+        <PasswordInput
           placeholder="비밀번호 확인"
           value={password}
           onChange={e => setPassword(e.target.value)}
@@ -1165,6 +1098,7 @@ const TABS = [
   { id: 'info',       label: '내 정보' },
   { id: 'apikey',     label: 'API Key 관리' },
   { id: 'usage',      label: '사용량 조회' },
+  { id: 'billing',    label: '결제 내역' },
   { id: 'deactivate', label: '계정 탈퇴', danger: true },
 ];
 
@@ -1191,6 +1125,7 @@ export default function MypagePage({ openPage, closePage, initialTab = 'info', u
         {activeTab === 'info'       && <InfoTab user={user} />}
         {activeTab === 'apikey'     && <ApiKeyTab openPage={openPage} />}
         {activeTab === 'usage'      && <UsageTab />}
+        {activeTab === 'billing'    && <BillingTab closePage={closePage} />}
         {activeTab === 'deactivate' && <DeactivateTab closePage={closePage} />}
       </div>
     </div>

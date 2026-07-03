@@ -1,7 +1,16 @@
 // LoginPage.jsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import ClearableInput from '../components/ClearableInput';
+
+const SOCIAL_LOGIN_URLS = {
+  kakao: '',
+  google: '',
+  naver: '',
+};
 import api from '../api/axios';
+import PasswordInput from '../components/PasswordInput';
+import EmailInput from '../components/EmailInput';
 
 /* ── 공통 모달 래퍼 ── */
 function Modal({ title, onClose, children }) {
@@ -28,15 +37,13 @@ function Modal({ title, onClose, children }) {
 /* ── 아이디 찾기 모달 ── */
 function FindIdModal({ onClose }) {
   const [step, setStep] = useState(1);
-  const [sent, setSent] = useState(false);
   const [email, setEmail] = useState('');
   const [attempted, setAttempted] = useState(false);
 
-  const errorStyle = { border: '1.5px solid #c0392b' };
+  const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
   const handleFind = () => {
-    if (!email.trim()) { setAttempted(true); return; }
-    setSent(true);
+    if (!isEmailValid) { setAttempted(true); return; }
     setStep(2);
   };
 
@@ -45,13 +52,7 @@ function FindIdModal({ onClose }) {
       {step === 1 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <p style={{ margin: 0, fontSize: 14, color: 'var(--ink-soft)' }}>가입 시 등록한 이메일로 아이디를 확인하세요.</p>
-          <input
-            className="pg-input"
-            placeholder="이메일 주소"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            style={attempted && !email.trim() ? errorStyle : {}}
-          />
+          <EmailInput onChange={setEmail} error={attempted && !isEmailValid} />
           <button
             type="button"
             className="pg-btn primary"
@@ -97,7 +98,8 @@ function FindPwModal({ onClose }) {
 
   const errorStyle = { border: '1.5px solid #c0392b' };
 
-  const isStep1Valid = loginId.trim() && email.trim();
+  const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const isStep1Valid = loginId.trim() && isEmailValid;
   const isStep3Valid = newPw.trim() && newPwConfirm.trim();
 
   const handleSend = () => {
@@ -120,21 +122,13 @@ function FindPwModal({ onClose }) {
       {step === 1 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <p style={{ margin: 0, fontSize: 14, color: 'var(--ink-soft)' }}>가입한 아이디와 이메일을 입력하면 인증코드를 발송합니다.</p>
-          <input
-            className="pg-input"
+          <ClearableInput
             placeholder="아이디"
             value={loginId}
             onChange={e => setLoginId(e.target.value)}
             style={attempted1 && !loginId.trim() ? errorStyle : {}}
           />
-          <input
-            className="pg-input"
-            type="email"
-            placeholder="이메일 주소"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            style={attempted1 && !email.trim() ? errorStyle : {}}
-          />
+          <EmailInput onChange={setEmail} error={attempted1 && !isEmailValid} />
           <button
             type="button"
             className="pg-btn primary"
@@ -147,12 +141,12 @@ function FindPwModal({ onClose }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <p style={{ margin: 0, fontSize: 14, color: 'var(--ink-soft)' }}>이메일로 발송된 6자리 인증코드를 입력하세요.</p>
           <div style={{ display: 'flex', gap: 8 }}>
-            <input
-              className="pg-input"
+            <ClearableInput
               placeholder="인증코드 6자리"
               value={code}
               onChange={e => setCode(e.target.value)}
-              style={{ flex: 1, ...(attempted2 && !code.trim() ? errorStyle : {}) }}
+              containerStyle={{ flex: 1 }}
+              style={attempted2 && !code.trim() ? errorStyle : {}}
             />
             <button type="button" className="pg-btn" style={{ whiteSpace: 'nowrap', padding: '0 14px', fontSize: 13 }} onClick={() => setStep(2)}>재발송</button>
           </div>
@@ -167,17 +161,13 @@ function FindPwModal({ onClose }) {
       {step === 3 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <p style={{ margin: 0, fontSize: 14, color: 'var(--ink-soft)' }}>새 비밀번호를 입력하세요.</p>
-          <input
-            className="pg-input"
-            type="password"
+          <PasswordInput
             placeholder="새 비밀번호"
             value={newPw}
             onChange={e => setNewPw(e.target.value)}
             style={attempted3 && !newPw.trim() ? errorStyle : {}}
           />
-          <input
-            className="pg-input"
-            type="password"
+          <PasswordInput
             placeholder="새 비밀번호 확인"
             value={newPwConfirm}
             onChange={e => setNewPwConfirm(e.target.value)}
@@ -211,9 +201,23 @@ export default function LoginPage({ openPage, closePage, onLogin }) {
   const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
   const [autoLogin, setAutoLogin] = useState(false);
+  const [autofilled, setAutofilled] = useState(false);
   const [attempted, setAttempted] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('auto_login');
+    if (!saved) return;
+    try {
+      const { id, pw } = JSON.parse(saved);
+      setLoginId(id);
+      setPassword(pw);
+      setAutoLogin(true);
+      setAutofilled(true);
+      setTimeout(() => setAutofilled(false), 700);
+    } catch { localStorage.removeItem('auto_login'); }
+  }, []);
 
   const isValid = loginId.trim() && password.trim();
   const errorStyle = { border: '1.5px solid #c0392b' };
@@ -229,6 +233,11 @@ export default function LoginPage({ openPage, closePage, onLogin }) {
       });
       localStorage.setItem('access_token', data.access_token);
       localStorage.setItem('user', JSON.stringify(data.user));
+      if (autoLogin) {
+        localStorage.setItem('auto_login', JSON.stringify({ id: loginId.trim(), pw: password }));
+      } else {
+        localStorage.removeItem('auto_login');
+      }
       onLogin(data.user);
     } catch (err) {
       setError(err.response?.data?.detail || '로그인 중 오류가 발생했습니다.');
@@ -267,16 +276,15 @@ export default function LoginPage({ openPage, closePage, onLogin }) {
           계정에 로그인하세요.
         </p>
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <input
-            className="pg-input"
+          <ClearableInput
+            className={`pg-input${autofilled ? ' autofilled' : ''}`}
             placeholder="아이디"
             value={loginId}
             onChange={e => setLoginId(e.target.value)}
             style={attempted && !loginId.trim() ? errorStyle : {}}
           />
-          <input
-            className="pg-input"
-            type="password"
+          <PasswordInput
+            className={`pg-input${autofilled ? ' autofilled' : ''}`}
             placeholder="비밀번호"
             value={password}
             onChange={e => setPassword(e.target.value)}
@@ -294,22 +302,25 @@ export default function LoginPage({ openPage, closePage, onLogin }) {
             }}
           >
             <label
+              htmlFor="auto-login"
               title="공용 PC에서는 사용하지 마세요."
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 8,
-                color: 'var(--ink-soft)',
+                color: autoLogin ? 'var(--orange-2)' : 'var(--ink-soft)',
                 fontSize: 13.5,
                 fontWeight: 600,
                 cursor: 'pointer',
                 userSelect: 'none',
+                transition: 'color .18s',
               }}
             >
               <input
+                id="auto-login"
                 type="checkbox"
                 checked={autoLogin}
-                onChange={e => updateAutoLogin(e.target.checked)}
+                onChange={e => setAutoLogin(e.target.checked)}
                 style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}
               />
               <span

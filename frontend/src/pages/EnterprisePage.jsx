@@ -1,6 +1,7 @@
 // pages/EnterprisePage.jsx
 
 import React, { useState } from 'react';
+import EmailInput from '../components/EmailInput';
 
 const VOLUMES = ['월 50만 건 이하', '월 50~200만 건', '월 200~500만 건', '월 500만 건 이상', '미정'];
 
@@ -99,13 +100,9 @@ export default function EnterprisePage({ closePage }) {
             />
             <input className="pg-input" placeholder="전화번호 (선택)" value={form.phone} onChange={set('phone')} />
           </div>
-          <input
-            className="pg-input"
-            type="email"
-            placeholder="연락 이메일 *"
-            value={form.email}
-            onChange={set('email')}
-            style={attempted && !form.email ? errorStyle : {}}
+          <EmailInput
+            onChange={val => setForm(f => ({ ...f, email: val }))}
+            error={attempted && !form.email}
           />
         </div>
       </div>
