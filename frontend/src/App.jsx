@@ -58,6 +58,7 @@ export default function App() {
     try { return JSON.parse(localStorage.getItem('user') || 'null'); } catch { return null; }
   });
   const [signupKey, setSignupKey] = useState(0);
+  const [boardKey, setBoardKey] = useState(0);
   // 비로그인 상태로 결제 진입 시 로그인 후 이어갈 요금제
   const [pendingPlan, setPendingPlan] = useState(null);
 
@@ -68,6 +69,9 @@ export default function App() {
     }
     if (id === 'signup') {
       setSignupKey(k => k + 1);
+    }
+    if (id === 'board') {
+      setBoardKey(k => k + 1);
     }
     setPage(id);
   };
@@ -221,7 +225,7 @@ export default function App() {
 
       {/* Board */}
       <PageOverlay id="board" activePage={page} onBack={closePage} openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} user={currentUser}>
-        <BoardPage user={currentUser} />
+        <BoardPage key={boardKey} user={currentUser} />
       </PageOverlay>
 
       {/* Enterprise Inquiry */}
