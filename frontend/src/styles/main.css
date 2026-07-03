@@ -703,8 +703,8 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
 /* PAGE OVERLAY SYSTEM */
 .page-overlay {
   display: none; position: fixed; inset: 0; z-index: 200;
-  background: var(--paper); overflow-y: auto;
-  /* 탭 전환 시 스크롤바 생김/사라짐으로 콘텐츠 폭이 널뛰는 것 방지 */
+  background: var(--paper);
+  overflow-y: scroll;
   scrollbar-gutter: stable both-edges;
   min-height: 100vh; overscroll-behavior: none;
   -webkit-overflow-scrolling: touch;
@@ -997,9 +997,14 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
 .mp-nav-item {
   display: block; width: 100%; text-align: left; padding: 13px 22px; font-size: 14.5px;
   font-weight: 500; color: var(--ink-soft); background: none; border: none; cursor: pointer; transition: .15s;
+  outline: none;
 }
+.mp-nav-item:focus-visible { outline: 2px solid var(--orange); outline-offset: -2px; }
 .mp-nav-item:hover { color: var(--ink); background: rgba(240,105,30,.08); }
 .mp-nav-item.active { color: var(--orange-2); font-weight: 700; background: var(--card); border-right: 3px solid var(--orange); }
+.mp-nav-item.danger { color: #c0392b; }
+.mp-nav-item.danger:hover { color: #a5281a; background: rgba(192,57,43,.08); }
+.mp-nav-item.danger.active { color: #c0392b; border-right-color: #c0392b; }
 .mp-content { padding: 32px 36px; }
 
 /* tabs */
@@ -1486,9 +1491,27 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
 
 @media (max-width: 760px) {
   .mp-wrap { grid-template-columns: 1fr; }
-  .mp-sidebar { display: flex; overflow-x: auto; padding: 12px; border-right: none; border-bottom: 1px solid var(--line); }
-  .mp-nav-item { white-space: nowrap; border-right: none; border-bottom: 3px solid transparent; }
+  .mp-sidebar {
+    display: flex;
+    align-items: center;
+    height: 64px;
+    overflow-x: scroll;
+    padding: 12px;
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .mp-sidebar::-webkit-scrollbar { display: none; }
+  .mp-nav-item {
+    width: auto;
+    white-space: nowrap;
+    border-right: none;
+    border-bottom: 3px solid transparent;
+  }
+  .mp-nav-item:focus-visible { outline: 2px solid var(--orange); outline-offset: -2px; }
   .mp-nav-item.active { border-bottom-color: var(--orange); border-right: none; }
+  .mp-nav-item.danger.active { border-bottom-color: #c0392b; }
   .api-panel-wrap, .flow-steps { grid-template-columns: 1fr; }
   .flow-step { border-right: none; border-bottom: 1px solid var(--line); }
 }
