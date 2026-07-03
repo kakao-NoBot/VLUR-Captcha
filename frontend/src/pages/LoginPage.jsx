@@ -247,27 +247,33 @@ export default function LoginPage({ openPage, closePage, onLogin }) {
   };
 
   const handleSocialLogin = async (provider) => {
-    if (provider !== 'kakao') {
+    const providerNames = { kakao: '카카오', naver: '네이버' };
+    const providerName = providerNames[provider];
+    if (!providerName) {
       setError('해당 간편 로그인은 아직 준비 중입니다.');
       return;
     }
 
     const randomValues = new Uint32Array(4);
     window.crypto.getRandomValues(randomValues);
-    const state = Array.from(randomValues, value => value.toString(16)).join('');
+    const state = Array.from(
+      randomValues,
+      value => value.toString(16).padStart(8, '0')
+    ).join('');
+    const stateStorageKey = `${provider}_oauth_state`;
 
     setLoading(true);
     setError('');
-    sessionStorage.setItem('kakao_oauth_state', state);
+    sessionStorage.setItem(stateStorageKey, state);
 
     try {
-      const { data } = await api.get('/auth/kakao/authorize-url', {
+      const { data } = await api.get(`/auth/${provider}/authorize-url`, {
         params: { state },
       });
       window.location.assign(data.authorize_url);
     } catch (err) {
-      sessionStorage.removeItem('kakao_oauth_state');
-      setError(err.response?.data?.detail || '카카오 로그인을 시작하지 못했습니다.');
+      sessionStorage.removeItem(stateStorageKey);
+      setError(err.response?.data?.detail || `${providerName} 로그인을 시작하지 못했습니다.`);
       setLoading(false);
     }
   };
@@ -447,11 +453,12 @@ export default function LoginPage({ openPage, closePage, onLogin }) {
           <button
             type="button"
             onClick={() => handleSocialLogin('naver')}
+            disabled={loading}
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               width: '100%', padding: 13, borderRadius: 12, border: 'none',
               background: '#03C75A', color: '#fff', fontSize: 14.5, fontWeight: 700,
-              cursor: 'pointer',
+              cursor: loading ? 'wait' : 'pointer', opacity: loading ? 0.7 : 1,
             }}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff">
