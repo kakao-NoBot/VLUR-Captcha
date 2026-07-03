@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import EmailInput from '../components/EmailInput';
+import api from '../api/axios';
 
 const VOLUMES = ['월 50만 건 이하', '월 50~200만 건', '월 200~500만 건', '월 500만 건 이상', '미정'];
 
@@ -45,18 +46,35 @@ export default function EnterprisePage({ closePage }) {
   const [form, setForm] = useState({ company: '', name: '', email: '', phone: '', volume: '', message: '' });
   const [attempted, setAttempted] = useState(false);
   const [alertMsg, setAlertMsg] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
 
   const errorStyle = { border: '1.5px solid #c0392b' };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!form.company || !form.name || !form.email) {
       setAttempted(true);
       setAlertMsg('회사명, 담당자명, 이메일은 필수입니다.');
       return;
     }
-    setSubmitted(true);
+    setSubmitting(true);
+    try {
+      await api.post('/contact', {
+        inquiry_type: 'enterprise',
+        company: form.company.trim(),
+        contact_name: form.name.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim() || null,
+        plan_interest: form.volume || null,
+        message: form.message.trim() || null,
+      });
+      setSubmitted(true);
+    } catch (err) {
+      setAlertMsg(err.response?.data?.detail || '문의 제출 중 오류가 발생했습니다.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (submitted) {
@@ -131,8 +149,8 @@ export default function EnterprisePage({ closePage }) {
 
       <div style={{ display: 'flex', gap: 10 }}>
         <button className="pg-btn" onClick={closePage}>취소</button>
-        <button className="pg-btn primary" style={{ flex: 1, padding: 14, fontSize: 15 }} onClick={handleSubmit}>
-          문의 제출하기
+        <button className="pg-btn primary" style={{ flex: 1, padding: 14, fontSize: 15, opacity: submitting ? 0.7 : 1 }} onClick={handleSubmit} disabled={submitting}>
+          {submitting ? '제출 중...' : '문의 제출하기'}
         </button>
       </div>
 

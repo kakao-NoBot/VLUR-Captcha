@@ -181,6 +181,7 @@ CREATE TABLE IF NOT EXISTS board_answers (
 -- ============================================================
 CREATE TABLE IF NOT EXISTS contact_inquiries (
     inquiry_id     BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    inquiry_type   ENUM('general','enterprise') NOT NULL DEFAULT 'general',
     company        VARCHAR(255)    NULL,
     contact_name   VARCHAR(100)    NULL,
     email          VARCHAR(255)    NOT NULL,
@@ -193,6 +194,7 @@ CREATE TABLE IF NOT EXISTS contact_inquiries (
     updated_at     DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (inquiry_id),
     KEY idx_contact_inquiries_email (email),
+    KEY idx_contact_inquiries_inquiry_type (inquiry_type),
     KEY idx_contact_inquiries_inquiry_status (inquiry_status),
     KEY idx_contact_inquiries_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
