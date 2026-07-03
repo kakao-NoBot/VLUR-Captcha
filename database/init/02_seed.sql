@@ -15,16 +15,16 @@ INSERT INTO plans (plan_name, monthly_price, api_limit, captcha_limit) VALUES
 
 -- ============================================================
 -- [2] 관리자 계정
---   password: admin1234
---   아래 hash는 개발용 더미값 — 실제 로그인 불가
+--   아이디: admin  /  비밀번호: admin1234
+--   아래 hash는 admin1234의 실제 bcrypt 해시 (개발용)
 --   운영 전 반드시 재생성:
---     python3 -c "import bcrypt; print(bcrypt.hashpw(b'admin1234', bcrypt.gensalt(12)).decode())"
+--     python3 -c "import bcrypt; print(bcrypt.hashpw(b'새비밀번호', bcrypt.gensalt(12)).decode())"
 -- ============================================================
 INSERT INTO users (user_id, user_name, password_hash, email, phone, role, plan_id, created_at)
 VALUES (
     'admin',
-    '관리자',
-    '$2b$12$SEED.DUMMY.HASH.REPLACE.BEFORE.USE.xxxxxxxxxxxxxxxxxx.',
+    'admin',
+    '$2b$12$5L9o0nJSulUKLBSklF15.OjcP6NwXTqAaE6EvEq8mSa/91/T4wecW',
     'admin@example.com',
     NULL,
     'admin',
@@ -34,12 +34,13 @@ VALUES (
 
 -- ============================================================
 -- [3] 테스트 일반 사용자 (Free 플랜)
+--   아이디: testuser  /  비밀번호: test1234
 -- ============================================================
 INSERT INTO users (user_id, user_name, password_hash, email, phone, role, plan_id, created_at, subscription_date)
 VALUES (
     'testuser',
-    '테스트 사용자',
-    '$2b$12$SEED.DUMMY.HASH.REPLACE.BEFORE.USE.xxxxxxxxxxxxxxxxxx.',
+    'tester',
+    '$2b$12$NiwcQQ6lLkw/MNGuVlUp0ejUNeTmFIV5sfdZJXtpgqIbN8h84Af/a',
     'test@example.com',
     '010-1234-5678',
     'user',

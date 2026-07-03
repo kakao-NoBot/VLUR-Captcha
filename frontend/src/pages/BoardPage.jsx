@@ -56,7 +56,7 @@ function Pagination({ total, page, pageSize, onChange }) {
   );
 }
 
-function BoardDetail({ post, previousPost, nextPost, onBack, onSelectPost, onEdit }) {
+function BoardDetail({ post, previousPost, nextPost, onBack, onSelectPost, onEdit, canEdit }) {
   return (
     <article className="board-detail">
       <header className="board-detail-header">
@@ -76,12 +76,14 @@ function BoardDetail({ post, previousPost, nextPost, onBack, onSelectPost, onEdi
           </div>
         </div>
         <div className="board-detail-actions">
-          <button type="button" className="board-detail-edit" onClick={onEdit} aria-label="게시글 수정">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 20h4.2L19 9.2a2.1 2.1 0 0 0 0-3L17.8 5a2.1 2.1 0 0 0-3 0L4 15.8V20Z" />
-              <path d="m13.7 6.1 4.2 4.2" />
-            </svg>
-          </button>
+          {canEdit && (
+            <button type="button" className="board-detail-edit" onClick={onEdit} aria-label="게시글 수정">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 20h4.2L19 9.2a2.1 2.1 0 0 0 0-3L17.8 5a2.1 2.1 0 0 0-3 0L4 15.8V20Z" />
+                <path d="m13.7 6.1 4.2 4.2" />
+              </svg>
+            </button>
+          )}
           <button type="button" className="board-detail-list" onClick={onBack}>목록</button>
         </div>
       </header>
@@ -231,7 +233,8 @@ function BoardSidebar({ tab, onChange }) {
   );
 }
 
-export default function BoardPage() {
+export default function BoardPage({ user = null }) {
+  const isAdmin = user?.role === 'admin';
   const [tab, setTab] = useState('notice');
   const [noticePage, setNoticePage] = useState(1);
   const [notices, setNotices] = useState(NOTICES);
@@ -317,6 +320,7 @@ export default function BoardPage() {
                   onBack={() => setSelectedPost(null)}
                   onSelectPost={setSelectedPost}
                   onEdit={() => { setEditingPost(selectedPost); setIsWriting(true); }}
+                  canEdit={isAdmin}
                 />
               )}
             </section>
@@ -373,13 +377,15 @@ export default function BoardPage() {
             <div className="board-list-pagination">
               <Pagination total={notices.length} page={noticePage} pageSize={PAGE_SIZE} onChange={setNoticePage} />
             </div>
-            <button
-              type="button"
-              className="pg-btn primary board-write-button"
-              onClick={() => { setEditingPost(null); setIsWriting(true); }}
-            >
-              글쓰기
-            </button>
+            {isAdmin && (
+              <button
+                type="button"
+                className="pg-btn primary board-write-button"
+                onClick={() => { setEditingPost(null); setIsWriting(true); }}
+              >
+                글쓰기
+              </button>
+            )}
           </div>
         </>
       )}

@@ -193,7 +193,7 @@ export default function App() {
 
       {/* Board */}
       <PageOverlay id="board" activePage={page} onBack={closePage} openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} user={currentUser}>
-        <BoardPage />
+        <BoardPage user={currentUser} />
       </PageOverlay>
 
       {/* Enterprise Inquiry */}
