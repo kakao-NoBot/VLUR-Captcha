@@ -1,9 +1,15 @@
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends, Query
 from pydantic import BaseModel
 from auth.hash import hash_password, verify_password
 from auth.jwt import create_access_token
 from auth.deps import get_current_user
 from db import get_conn
+from services.kakao_oauth import (
+    KakaoConfigurationError,
+    KakaoOAuthError,
+    build_authorize_url,
+    fetch_kakao_user,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -21,6 +27,10 @@ class SignupRequest(BaseModel):
     phone: str | None = None
 
 
+class KakaoCallbackRequest(BaseModel):
+    code: str
+
+
 @router.post("/login")
 def login(body: LoginRequest):
     conn = get_conn()
@@ -33,11 +43,126 @@ def login(body: LoginRequest):
             )
             user = cur.fetchone()
 
-    if not user or not verify_password(body.password, user["password_hash"]):
+    if (
+        not user
+        or not user["password_hash"]
+        or not verify_password(body.password, user["password_hash"])
+    ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="아이디 또는 비밀번호가 올바르지 않습니다.",
         )
+    if user["user_status"] != "active":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="비활성화된 계정입니다.",
+        )
+
+    token = create_access_token({
+        "sub": user["user_id"],
+        "role": user["role"],
+        "name": user["user_name"],
+    })
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user": {
+            "user_id": user["user_id"],
+            "user_name": user["user_name"],
+            "email": user["email"],
+            "phone": user["phone"],
+            "role": user["role"],
+        },
+    }
+
+
+@router.get("/kakao/authorize-url")
+def kakao_authorize_url(state: str = Query(min_length=16, max_length=256)):
+    try:
+        return {"authorize_url": build_authorize_url(state)}
+    except KakaoConfigurationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+
+
+@router.post("/kakao/callback")
+async def kakao_callback(body: KakaoCallbackRequest):
+    try:
+        kakao_user = await fetch_kakao_user(body.code)
+    except KakaoConfigurationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except KakaoOAuthError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(exc),
+        ) from exc
+
+    provider_user_id = kakao_user["provider_user_id"]
+    email = (kakao_user.get("email") or "").strip().lower()
+    user_name = (kakao_user.get("nickname") or "카카오 사용자").strip()[:100]
+
+    if not provider_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="카카오 사용자 식별 정보를 확인하지 못했습니다.",
+        )
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="카카오 이메일 제공에 동의해야 가입할 수 있습니다.",
+        )
+
+    conn = get_conn()
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT u.user_id, u.user_name, u.email, u.phone, u.role, u.user_status
+                   FROM social_accounts s
+                   JOIN users u ON u.user_id = s.user_id
+                   WHERE s.provider = 'kakao' AND s.provider_user_id = %s""",
+                (provider_user_id,),
+            )
+            user = cur.fetchone()
+
+            if not user:
+                cur.execute(
+                    """SELECT user_id, user_name, email, phone, role, user_status
+                       FROM users WHERE email = %s""",
+                    (email,),
+                )
+                user = cur.fetchone()
+
+                if not user:
+                    user_id = f"kakao_{provider_user_id}"[:50]
+                    cur.execute("SELECT plan_id FROM plans WHERE plan_name = 'Free' LIMIT 1")
+                    plan = cur.fetchone()
+                    cur.execute(
+                        """INSERT INTO users
+                           (user_id, user_name, password_hash, email, phone, plan_id, subscription_date)
+                           VALUES (%s, %s, NULL, %s, NULL, %s, NOW())""",
+                        (user_id, user_name, email, plan["plan_id"] if plan else None),
+                    )
+                    user = {
+                        "user_id": user_id,
+                        "user_name": user_name,
+                        "email": email,
+                        "phone": None,
+                        "role": "user",
+                        "user_status": "active",
+                    }
+
+                cur.execute(
+                    """INSERT INTO social_accounts (user_id, provider, provider_user_id)
+                       VALUES (%s, 'kakao', %s)""",
+                    (user["user_id"], provider_user_id),
+                )
+        conn.commit()
+
     if user["user_status"] != "active":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

@@ -3,11 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import ClearableInput from '../components/ClearableInput';
 
-const SOCIAL_LOGIN_URLS = {
-  kakao: '',
-  google: '',
-  naver: '',
-};
 import api from '../api/axios';
 import PasswordInput from '../components/PasswordInput';
 import EmailInput from '../components/EmailInput';
@@ -251,11 +246,29 @@ export default function LoginPage({ openPage, closePage, onLogin }) {
     handleLogin();
   };
 
-  const handleSocialLogin = (provider) => {
-    const url = SOCIAL_LOGIN_URLS[provider];
-    // Temporary external link behavior. Replace with backend OAuth endpoint later.
-    if (url) {
-      window.location.href = url;
+  const handleSocialLogin = async (provider) => {
+    if (provider !== 'kakao') {
+      setError('해당 간편 로그인은 아직 준비 중입니다.');
+      return;
+    }
+
+    const randomValues = new Uint32Array(4);
+    window.crypto.getRandomValues(randomValues);
+    const state = Array.from(randomValues, value => value.toString(16)).join('');
+
+    setLoading(true);
+    setError('');
+    sessionStorage.setItem('kakao_oauth_state', state);
+
+    try {
+      const { data } = await api.get('/auth/kakao/authorize-url', {
+        params: { state },
+      });
+      window.location.assign(data.authorize_url);
+    } catch (err) {
+      sessionStorage.removeItem('kakao_oauth_state');
+      setError(err.response?.data?.detail || '카카오 로그인을 시작하지 못했습니다.');
+      setLoading(false);
     }
   };
 
@@ -417,11 +430,12 @@ export default function LoginPage({ openPage, closePage, onLogin }) {
           <button
             type="button"
             onClick={() => handleSocialLogin('kakao')}
+            disabled={loading}
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               width: '100%', padding: 13, borderRadius: 12, border: 'none',
               background: '#FEE500', color: '#3A1D1D', fontSize: 14.5, fontWeight: 700,
-              cursor: 'pointer',
+              cursor: loading ? 'wait' : 'pointer', opacity: loading ? 0.7 : 1,
             }}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="#3A1D1D">
