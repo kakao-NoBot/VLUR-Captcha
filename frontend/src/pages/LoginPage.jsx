@@ -487,20 +487,6 @@ export default function LoginPage({ openPage, closePage, onLogin }) {
             </svg>
             Google로 시작하기
           </button>
-
-          <button
-            type="button"
-            onClick={() => handleSocialLogin('apple')}
-            style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              width: '100%', padding: 13, borderRadius: 12,
-              border: '1.5px solid #111', background: '#111', color: '#fff',
-              fontSize: 14.5, fontWeight: 700, cursor: 'pointer',
-            }}
-          >
-            <span aria-hidden="true" style={{ fontSize: 18, lineHeight: 1 }}></span>
-            Apple로 시작하기
-          </button>
         </div>
 
         <hr className="pg-divider" />
