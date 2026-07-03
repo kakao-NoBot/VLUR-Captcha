@@ -46,6 +46,8 @@ function PageOverlay({ id, activePage, onBack, openPage, isLoggedIn, onLogout, u
 }
 
 export default function App() {
+  const currentPath = window.location.pathname;
+  const isOAuthCallback = currentPath.startsWith('/auth/') && currentPath.endsWith('/callback');
   const [page, setPage] = useState(null);
   const [planPayArgs, setPlanPayArgs] = useState({ plan: 'Pro' });
   const [mypageTab, setMypageTab] = useState('info');
@@ -146,15 +148,15 @@ export default function App() {
     );
     els.forEach((el) => observer.observe(el));
     return () => { observer.disconnect(); timers.forEach(clearTimeout); };
-  }, []);
+  }, [isOAuthCallback]);
 
-  if (window.location.pathname === '/auth/kakao/callback') {
+  if (currentPath === '/auth/kakao/callback') {
     return <KakaoCallbackPage onLogin={handleLogin} />;
   }
-  if (window.location.pathname === '/auth/naver/callback') {
+  if (currentPath === '/auth/naver/callback') {
     return <NaverCallbackPage onLogin={handleLogin} />;
   }
-  if (window.location.pathname === '/auth/google/callback') {
+  if (currentPath === '/auth/google/callback') {
     return <GoogleCallbackPage onLogin={handleLogin} />;
   }
 
