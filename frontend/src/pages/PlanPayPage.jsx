@@ -68,16 +68,14 @@ const PLANS = {
   Enterprise: { name: 'Enterprise 요금제', price: '문의', raw: 0, vat: 0, total: '문의', features: '✓ 무제한 호출\n✓ SLA 99.9%\n✓ 전담 매니저' },
 };
 
-export default function PlanPayPage({ planName = 'Pro', closePage, openPage, openMypageOnApiKey, user }) {
+export default function PlanPayPage({ planName = 'Pro', initialSuccess = false, closePage, openPage, openMypageOnApiKey, user }) {
   const plan = PLANS[planName] || PLANS.Pro;
   const [method, setMethod] = useState('kakao');
   const [buyerName, setBuyerName] = useState(user?.user_name || '');
   const [buyerEmail, setBuyerEmail] = useState(user?.email || '');
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(buyerEmail.trim());
   const [steps, setSteps] = useState(null); // null | [{label, state}]
-  const [success, setSuccess] = useState(false);
-  const [issuedKey, setIssuedKey] = useState('');
-  const [copyLabel, setCopyLabel] = useState('복사');
+  const [success, setSuccess] = useState(initialSuccess);
   const [paymentError, setPaymentError] = useState('');
 
   const kakaoSteps = [
@@ -119,12 +117,6 @@ export default function PlanPayPage({ planName = 'Pro', closePage, openPage, ope
       setSteps(null);
       setPaymentError(err.response?.data?.detail || '카카오페이 결제를 시작하지 못했습니다.');
     }
-  };
-
-  const copyKey = () => {
-    navigator.clipboard.writeText(issuedKey).catch(() => {});
-    setCopyLabel('복사됨 ✓');
-    setTimeout(() => setCopyLabel('복사'), 1600);
   };
 
   return (
@@ -286,12 +278,7 @@ export default function PlanPayPage({ planName = 'Pro', closePage, openPage, ope
             <>
               <h2>결제가 완료되었습니다!</h2>
               <div className="pp-hl-line"/>
-              <p>{plan.name}이 활성화되었습니다. API Key가 즉시 발급되었습니다.</p>
-              <div className="pp-key-reveal">
-                <span>{issuedKey}</span>
-                <button className="pg-btn" style={{ padding: '6px 14px', fontSize: 12, flexShrink: 0 }} onClick={copyKey}>{copyLabel}</button>
-              </div>
-              <p className="pp-warn">⚠ Secret Key는 이 화면에서만 1회 표시됩니다. 반드시 저장해두세요.</p>
+              <p>{plan.name}이 활성화되었습니다. API Key는 마이페이지에서 관리할 수 있습니다.</p>
               <div className="pp-action-row">
                 <button className="pg-btn" onClick={closePage}>홈으로</button>
                 <button className="pg-btn primary" onClick={openMypageOnApiKey}>마이페이지</button>

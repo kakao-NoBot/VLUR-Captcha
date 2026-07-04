@@ -46,11 +46,25 @@ function PageOverlay({ id, activePage, onBack, openPage, isLoggedIn, onLogout, u
   );
 }
 
+function readCompletedPayment() {
+  try {
+    const stored = sessionStorage.getItem('completed_payment');
+    if (!stored) return null;
+    return JSON.parse(stored);
+  } catch {
+    return null;
+  }
+}
+
 export default function App() {
   const currentPath = window.location.pathname;
   const isOAuthCallback = currentPath.startsWith('/auth/') && currentPath.endsWith('/callback');
-  const [page, setPage] = useState(null);
-  const [planPayArgs, setPlanPayArgs] = useState({ plan: 'Pro' });
+  const [completedPayment] = useState(readCompletedPayment);
+  const [page, setPage] = useState(completedPayment ? 'plan-pay' : null);
+  const [planPayArgs, setPlanPayArgs] = useState({
+    plan: completedPayment?.plan_name || 'Pro',
+    completed: Boolean(completedPayment),
+  });
   const [mypageTab, setMypageTab] = useState('info');
   const [mypageKey, setMypageKey] = useState(0);
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('access_token'));
@@ -61,6 +75,12 @@ export default function App() {
   const [boardKey, setBoardKey] = useState(0);
   // 비로그인 상태로 결제 진입 시 로그인 후 이어갈 요금제
   const [pendingPlan, setPendingPlan] = useState(null);
+
+  useEffect(() => {
+    if (completedPayment) {
+      sessionStorage.removeItem('completed_payment');
+    }
+  }, [completedPayment]);
 
   const openPage = (id) => {
     if (id === 'mypage') {
@@ -84,7 +104,7 @@ export default function App() {
     setIsLoggedIn(true);
     setCurrentUser(user);
     if (pendingPlan) {
-      setPlanPayArgs({ plan: pendingPlan });
+      setPlanPayArgs({ plan: pendingPlan, completed: false });
       setPendingPlan(null);
       setPage('plan-pay');
       return;
@@ -109,7 +129,7 @@ export default function App() {
       setPage('login');
       return;
     }
-    setPlanPayArgs({ plan });
+    setPlanPayArgs({ plan, completed: false });
     setPage('plan-pay');
   };
 
@@ -239,7 +259,7 @@ export default function App() {
 
       {/* Plan Payment */}
       <PageOverlay id="plan-pay" activePage={page} onBack={closePage} openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} user={currentUser}>
-        <PlanPayPage planName={planPayArgs.plan} closePage={closePage} openPage={openPage} openMypageOnApiKey={openMypageOnApiKey} user={currentUser} />
+        <PlanPayPage planName={planPayArgs.plan} initialSuccess={planPayArgs.completed} closePage={closePage} openPage={openPage} openMypageOnApiKey={openMypageOnApiKey} user={currentUser} />
       </PageOverlay>
     </>
   );
