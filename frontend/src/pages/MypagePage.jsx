@@ -43,7 +43,7 @@ function Modal({ title, onClose, children }) {
 function SuccessCheckIcon() {
   // CAPTCHA 데모 검증 성공 화면과 동일한 체크 UI (그라데이션 + 팝 애니메이션)
   return (
-    <div className="demo-check-circle" style={{ margin: '0 auto' }}>
+    <div className="demo-check-circle" style={{ margin: '0 auto', background: 'linear-gradient(135deg, var(--gold), var(--orange-2))' }}>
       <svg viewBox="0 0 34 34" fill="none" width={36} height={36} aria-hidden="true">
         <path
           d="M7 17.5 13.5 24 27 10"
@@ -392,12 +392,32 @@ function ReissueDoneModal({ onClose }) {
 
 /* ── SC-08 API Key 탭 ── */
 function ApiKeyTab({ openPage, closePage, profile }) {
+  const [paymentChecked, setPaymentChecked] = useState(false);
+  const [activeSubscription, setActiveSubscription] = useState(null);
   const [visible, setVisible] = useState(false);
   const [key, setKey] = useState(realKey);
   const [copyLabel, setCopyLabel] = useState('복사');
   const [showReissueConfirm, setShowReissueConfirm] = useState(false);
   const [showReissueDone, setShowReissueDone] = useState(false);
   const [guideStep, setGuideStep] = useState(null);
+
+  useEffect(() => {
+    let ignore = false;
+
+    (async () => {
+      try {
+        const { data } = await api.get('/payments/history');
+        const latestPaidPayment = (data.payments || []).find(payment => payment.status === 'paid') || null;
+        if (!ignore) setActiveSubscription(latestPaidPayment);
+      } catch {
+        if (!ignore) setActiveSubscription(null);
+      } finally {
+        if (!ignore) setPaymentChecked(true);
+      }
+    })();
+
+    return () => { ignore = true; };
+  }, []);
 
   const copy = () => {
     navigator.clipboard.writeText(key).catch(() => {});
@@ -424,14 +444,23 @@ function ApiKeyTab({ openPage, closePage, profile }) {
     }, 320);
   };
 
-  if (!profile?.plan_name) {
+  if (!paymentChecked) {
+    return (
+      <>
+        <h2 className="pg-h2" style={{ marginBottom: 20 }}>API Key 관리</h2>
+        <p style={{ color: 'var(--muted)', fontSize: 14 }}>결제 정보를 확인하는 중입니다...</p>
+      </>
+    );
+  }
+
+  if (!activeSubscription) {
     return (
       <>
         <h2 className="pg-h2" style={{ marginBottom: 20 }}>API Key 관리</h2>
         <div className="pg-card" style={{ maxWidth: 560, textAlign: 'center', padding: '48px 24px' }}>
-          <strong style={{ display: 'block', fontSize: 16, marginBottom: 8 }}>요금제 선택 후 이용 가능합니다</strong>
+          <strong style={{ display: 'block', fontSize: 16, marginBottom: 8 }}>결제 완료 후 이용 가능합니다</strong>
           <p style={{ margin: '0 0 20px', fontSize: 13.5, color: 'var(--muted)' }}>
-            API Key 발급 및 관리는 Basic(무료) 이상의 요금제를 선택한 계정만 이용할 수 있습니다.
+            API Key는 요금제 결제가 완료된 계정에만 발급됩니다.
           </p>
           <button className="pg-btn primary" onClick={goToPricing}>요금제 선택하기</button>
         </div>
@@ -455,7 +484,7 @@ function ApiKeyTab({ openPage, closePage, profile }) {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 20, margin: '14px 0', fontSize: 13, color: 'var(--ink-soft)' }}>
-          <span>발급일: 2026-01-01</span><span>만료일: 2027-01-01</span><span>요금제: {profile.plan_name}</span>
+          <span>발급일: {activeSubscription.date}</span><span>만료일: -</span><span>요금제: {activeSubscription.plan_name}</span>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <button className="pg-btn primary" onClick={reissue}>재발급</button>
@@ -1040,14 +1069,10 @@ function ConfirmDeactivateModal({ onConfirm, onClose }) {
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
         textAlign: 'center',
       }}>
-        <div style={{
-          width: 68, height: 68, borderRadius: '50%',
-          background: 'linear-gradient(135deg, #f57a65, #c02a12)', display: 'flex',
-          alignItems: 'center', justifyContent: 'center',
-        }}>
-          <svg viewBox="0 0 24 24" fill="none" width={30} height={30}>
-            <path d="M12 8v5M12 16.5h.01" stroke="#fff" strokeWidth="2.2" strokeLinecap="round"/>
-            <path d="M10.3 3.9 2.6 17.5A1.6 1.6 0 0 0 4 20h16a1.6 1.6 0 0 0 1.4-2.5L13.7 3.9a1.6 1.6 0 0 0-2.8 0Z" stroke="#fff" strokeWidth="1.8" strokeLinejoin="round"/>
+        <div className="deactivate-status-icon danger">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M12 8v5M12 16.5h.01" />
+            <path d="M10.3 3.9 2.6 17.5A1.6 1.6 0 0 0 4 20h16a1.6 1.6 0 0 0 1.4-2.5L13.7 3.9a1.6 1.6 0 0 0-2.8 0Z" />
           </svg>
         </div>
         <div>
@@ -1139,7 +1164,11 @@ function DeactivateDoneModal({ onClose }) {
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
         textAlign: 'center',
       }}>
-        <SuccessCheckIcon />
+        <div className="deactivate-status-icon success">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="m6.5 12.5 3.5 3.5 7.5-8" />
+          </svg>
+        </div>
         <div>
           <strong style={{ display: 'block', fontSize: 16 }}>탈퇴가 완료되었습니다</strong>
         </div>

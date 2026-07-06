@@ -89,6 +89,52 @@ function BoardDetail({ post, previousPost, nextPost, onBack, onSelectPost, onEdi
   );
 }
 
+function DeletePostModal({ deleting, onConfirm, onClose }) {
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape' && !deleting) onClose();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [deleting, onClose]);
+
+  return (
+    <div
+      className="terms-modal-backdrop board-delete-backdrop"
+      role="presentation"
+      onClick={(event) => {
+        if (event.target === event.currentTarget && !deleting) onClose();
+      }}
+    >
+      <section
+        className="terms-modal board-delete-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="board-delete-title"
+        aria-describedby="board-delete-description"
+      >
+        <div className="board-delete-content">
+          <div className="board-delete-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5" />
+            </svg>
+          </div>
+          <h2 id="board-delete-title">게시글을 삭제할까요?</h2>
+          <p id="board-delete-description">
+            삭제한 게시글은 다시 복구할 수 없습니다.
+          </p>
+        </div>
+        <div className="board-delete-actions">
+          <button type="button" className="pg-btn" onClick={onClose} disabled={deleting}>취소</button>
+          <button type="button" className="pg-btn danger" onClick={onConfirm} disabled={deleting}>
+            {deleting ? '삭제 중...' : '삭제'}
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 // 글쓰기 드롭다운에서 선택 가능한 커뮤니티 구분 (탭과 1:1 대응)
 const WRITE_CATEGORIES = [
   ['notice', '공지사항'],
@@ -107,8 +153,11 @@ function BoardWrite({ boardType = 'notice', initialPost, onCancel, onSubmit, onS
   const [pinned, setPinned] = useState(initialPost ? initialPost.type === 'notice' : false);
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const categoryRef = useRef(null);
+  const titleRef = useRef(null);
+  const contentRef = useRef(null);
   const [title, setTitle] = useState(initialPost?.title ?? '');
   const [content, setContent] = useState(initialPost ? (initialPost.content ?? '테스트입니다.') : '');
+  const [validationErrors, setValidationErrors] = useState({ title: false, content: false });
 
   useEffect(() => {
     const closeCategory = (event) => {
@@ -129,7 +178,16 @@ function BoardWrite({ boardType = 'notice', initialPost, onCancel, onSubmit, onS
     event.preventDefault();
     const trimmedTitle = title.trim();
     const trimmedContent = content.trim();
-    if (!trimmedTitle || !trimmedContent) return;
+    const errors = {
+      title: !trimmedTitle,
+      content: !trimmedContent,
+    };
+    setValidationErrors(errors);
+    if (errors.title || errors.content) {
+      if (errors.title) titleRef.current?.focus();
+      else contentRef.current?.focus();
+      return;
+    }
     onSubmit({
       title: trimmedTitle,
       content: trimmedContent,
@@ -138,7 +196,7 @@ function BoardWrite({ boardType = 'notice', initialPost, onCancel, onSubmit, onS
   };
 
   return (
-    <form className="board-write" onSubmit={handleSubmit}>
+    <form className="board-write" onSubmit={handleSubmit} noValidate>
       <div className="board-write-fields">
         <div className="board-write-field board-write-category-field">
           <div className="board-write-select-wrap" ref={categoryRef}>
@@ -186,31 +244,47 @@ function BoardWrite({ boardType = 'notice', initialPost, onCancel, onSubmit, onS
           </div>
         )}
 
-        <div className="board-write-field board-write-title-field">
+        <div className={`board-write-field board-write-title-field${validationErrors.title ? ' has-error' : ''}`}>
           <input
+            ref={titleRef}
             type="text"
             value={title}
             maxLength={100}
             aria-label="게시글 제목"
             placeholder={section === 'faq' ? '질문을 입력하세요' : '제목을 입력하세요'}
-            onChange={(event) => setTitle(event.target.value)}
-            required
+            aria-invalid={validationErrors.title}
+            onChange={(event) => {
+              setTitle(event.target.value);
+              if (validationErrors.title) {
+                setValidationErrors(current => ({ ...current, title: false }));
+              }
+            }}
           />
           <small>{title.length}/100</small>
         </div>
 
-        <div className="board-write-field board-write-content-field">
+        <div className={`board-write-field board-write-content-field${validationErrors.content ? ' has-error' : ''}`}>
           <textarea
+            ref={contentRef}
             value={content}
             maxLength={3000}
             aria-label="게시글 내용"
             placeholder={section === 'faq' ? '답변을 입력하세요' : '내용을 입력하세요'}
-            onChange={(event) => setContent(event.target.value)}
-            required
+            aria-invalid={validationErrors.content}
+            onChange={(event) => {
+              setContent(event.target.value);
+              if (validationErrors.content) {
+                setValidationErrors(current => ({ ...current, content: false }));
+              }
+            }}
           />
           <small>{content.length}/3000</small>
         </div>
       </div>
+
+      {validationErrors.content && (
+        <p className="board-write-below-error" role="alert">내용을 입력하세요</p>
+      )}
 
       <div className="board-write-actions">
         <button type="button" className="pg-btn" onClick={onCancel}>취소</button>
@@ -248,6 +322,8 @@ export default function BoardPage({ user = null }) {
   const [selectedPost, setSelectedPost] = useState(null);
   const [isWriting, setIsWriting] = useState(false);
   const [editingPost, setEditingPost] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   // DB에서 게시글 전체 로드 (공지/일반/FAQ/연구)
   const loadNotices = async () => {
@@ -321,20 +397,24 @@ export default function BoardPage({ user = null }) {
   };
 
   const deletePost = async (post) => {
-    if (!window.confirm('이 게시글을 삭제하시겠습니까?')) return;
+    setDeleting(true);
     try {
       await api.delete(`/boards/${post.id}`);
       await loadNotices();
       setSelectedPost(null);
+      setDeleteTarget(null);
       setNoticePage(1);
     } catch (err) {
       alert(err.response?.data?.detail || '삭제 중 오류가 발생했습니다.');
+    } finally {
+      setDeleting(false);
     }
   };
 
   if (selectedPost || isWriting) {
     return (
-      <div className="board-page-shell">
+      <>
+        <div className="board-page-shell">
         <main className="board-page-main">
           <div className="po-body board-layout">
             <BoardSidebar tab={tab} onChange={changeTab} />
@@ -362,14 +442,22 @@ export default function BoardPage({ user = null }) {
                   onBack={() => setSelectedPost(null)}
                   onSelectPost={setSelectedPost}
                   onEdit={() => { setEditingPost(selectedPost); setIsWriting(true); }}
-                  onDelete={() => deletePost(selectedPost)}
+                  onDelete={() => setDeleteTarget(selectedPost)}
                   canEdit={isAdmin}
                 />
               )}
             </section>
           </div>
         </main>
-      </div>
+        </div>
+        {deleteTarget && (
+          <DeletePostModal
+            deleting={deleting}
+            onConfirm={() => deletePost(deleteTarget)}
+            onClose={() => setDeleteTarget(null)}
+          />
+        )}
+      </>
     );
   }
 

@@ -98,14 +98,16 @@ export default function EnterprisePage({ closePage }) {
   if (submitted) {
     return (
       <div className="po-body" style={{ maxWidth: 560, textAlign: 'center', paddingTop: 60 }}>
-        <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--orange)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
-          <svg viewBox="0 0 34 34" fill="none" width={34} height={34}>
-            <path d="M7 17.5 13.5 24 27 10" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+        <div className="deactivate-status-icon success" style={{ margin: '0 auto 24px' }}>
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="m6.5 12.5 3.5 3.5 7.5-8" />
           </svg>
         </div>
         <h2 className="pg-h1" style={{ marginBottom: 12 }}>문의가 접수되었습니다!</h2>
-        <p className="pg-sub">담당자가 영업일 기준 1~2일 내로 <strong>{form.email}</strong> 로 연락드리겠습니다.</p>
-        <button className="pg-btn primary" style={{ marginTop: 32, padding: '12px 32px' }} onClick={closePage}>홈으로 돌아가기</button>
+        <p className="pg-sub" style={{ maxWidth: 380, margin: '0 auto', wordBreak: 'keep-all' }}>
+          담당자가 영업일 기준 1~2일 내로<br /><strong>{form.email}</strong> 로 연락드리겠습니다.
+        </p>
+        <button className="pg-btn primary" style={{ marginTop: 20, padding: '12px 32px' }} onClick={closePage}>홈으로 돌아가기</button>
       </div>
     );
   }
