@@ -6,6 +6,8 @@ import PasswordInput from '../components/PasswordInput';
 import EmailInput from '../components/EmailInput';
 import ClearableInput from '../components/ClearableInput';
 import api from '../api/axios';
+import kakaopayLogo from '../assets/kakaopay.png';
+import tossLogo from '../assets/toss.png';
 
 const realKey = 'sk-aicap_prod_7f3a91b2c4d5e6f789012345xxxx';
 
@@ -268,7 +270,7 @@ function EditInfoModal({ onClose, user, onUpdated }) {
 }
 
 /* ── SC-07 내 정보 탭 ── */
-function InfoTab({ user, onUserUpdate }) {
+function InfoTab({ user, onUserUpdate, profile }) {
   const [modal, setModal] = useState(null); // null | 'pw' | 'edit'
 
   const readOnlyInputStyle = {
@@ -278,6 +280,7 @@ function InfoTab({ user, onUserUpdate }) {
   };
   const preventFocus = (e) => e.target.blur();
   const joinDate = user?.created_at ? String(user.created_at).slice(0, 10) : '-';
+  const planLabel = profile?.plan_name === 'Pro' ? 'Pro' : '-';
 
   return (
     <>
@@ -309,10 +312,11 @@ function InfoTab({ user, onUserUpdate }) {
           <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 6 }}>요금제</div>
           <input
             className="pg-input"
-            defaultValue="Pro"
+            value={planLabel}
             readOnly
             style={readOnlyInputStyle}
             onFocus={preventFocus}
+            onChange={() => {}}
           />
         </div>
         <div>
@@ -398,7 +402,7 @@ function ReissueDoneModal({ onClose }) {
 }
 
 /* ── SC-08 API Key 탭 ── */
-function ApiKeyTab({ openPage }) {
+function ApiKeyTab({ openPage, closePage, profile }) {
   const [visible, setVisible] = useState(false);
   const [key, setKey] = useState(realKey);
   const [copyLabel, setCopyLabel] = useState('복사');
@@ -424,6 +428,28 @@ function ApiKeyTab({ openPage }) {
     setShowReissueDone(true);
   };
 
+  const goToPricing = () => {
+    closePage?.();
+    setTimeout(() => {
+      document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 320);
+  };
+
+  if (!profile?.plan_name) {
+    return (
+      <>
+        <h2 className="pg-h2" style={{ marginBottom: 20 }}>API Key 관리</h2>
+        <div className="pg-card" style={{ maxWidth: 560, textAlign: 'center', padding: '48px 24px' }}>
+          <strong style={{ display: 'block', fontSize: 16, marginBottom: 8 }}>요금제 선택 후 이용 가능합니다</strong>
+          <p style={{ margin: '0 0 20px', fontSize: 13.5, color: 'var(--muted)' }}>
+            API Key 발급 및 관리는 Basic(무료) 이상의 요금제를 선택한 계정만 이용할 수 있습니다.
+          </p>
+          <button className="pg-btn primary" onClick={goToPricing}>요금제 선택하기</button>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <h2 className="pg-h2" style={{ marginBottom: 20 }}>API Key 관리</h2>
@@ -440,7 +466,7 @@ function ApiKeyTab({ openPage }) {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 20, margin: '14px 0', fontSize: 13, color: 'var(--ink-soft)' }}>
-          <span>발급일: 2026-01-01</span><span>만료일: 2027-01-01</span><span>요금제: Pro</span>
+          <span>발급일: 2026-01-01</span><span>만료일: 2027-01-01</span><span>요금제: {profile.plan_name}</span>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <button className="pg-btn primary" onClick={reissue}>재발급</button>
@@ -815,22 +841,23 @@ function UsageTab() {
   );
 }
 
-/* ── SC-10 결제 내역 탭 ── */
-const PAYMENT_HISTORY = [
-  { id: 'PAY-2026060001', date: '2026-06-01', plan: 'Pro',     amount: 49000, method: '신한카드 ****1234', status: '완료' },
-  { id: 'PAY-2026050001', date: '2026-05-01', plan: 'Pro',     amount: 49000, method: '신한카드 ****1234', status: '완료' },
-  { id: 'PAY-2026040001', date: '2026-04-01', plan: 'Pro',     amount: 49000, method: '신한카드 ****1234', status: '완료' },
-  { id: 'PAY-2026030001', date: '2026-03-01', plan: 'Starter', amount: 19000, method: '신한카드 ****1234', status: '완료' },
-  { id: 'PAY-2026020001', date: '2026-02-01', plan: 'Starter', amount: 19000, method: '신한카드 ****1234', status: '완료' },
-  { id: 'PAY-2026010001', date: '2026-01-01', plan: 'Starter', amount: 19000, method: '신한카드 ****1234', status: '완료' },
-];
-
 const STATUS_STYLE = {
   '완료':   { background: 'rgba(46,158,107,.15)', color: 'var(--ok)' },
   '환불':   { background: 'rgba(216,73,47,.15)', color: 'var(--bad)' },
   '실패':   { background: 'rgba(216,73,47,.15)', color: 'var(--bad)' },
   '대기':   { background: 'var(--peach)', color: 'var(--orange-2)' },
 };
+
+const PAY_BADGE_LOGO = {
+  kakao: kakaopayLogo,
+  toss: tossLogo,
+};
+
+function PayBadge({ provider, fallback }) {
+  const logo = PAY_BADGE_LOGO[provider];
+  if (!logo) return fallback ?? null;
+  return <img src={logo} alt={provider} className={`pay-badge-logo ${provider}`} />;
+}
 
 function CancelSubModal({ onConfirm, onClose }) {
   return (
@@ -858,7 +885,7 @@ function CancelSubModal({ onConfirm, onClose }) {
         <div>
           <strong style={{ display: 'block', fontSize: 16, marginBottom: 6 }}>구독을 해지하시겠어요?</strong>
           <span style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.6 }}>
-            해지해도 <strong>2026-07-01</strong>까지는<br/>Pro 플랜을 계속 이용할 수 있습니다.
+            해지해도 현재 결제 주기가 끝날 때까지는<br/>Pro 플랜을 계속 이용할 수 있습니다.
           </span>
         </div>
         <div style={{ display: 'flex', gap: 8, width: '100%', marginTop: 4 }}>
@@ -870,9 +897,29 @@ function CancelSubModal({ onConfirm, onClose }) {
   );
 }
 
-function BillingTab({ closePage }) {
+function BillingTab({ closePage, profile }) {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelled, setCancelled] = useState(false);
+  const [payments, setPayments] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let ignore = false;
+    (async () => {
+      try {
+        const { data } = await api.get('/payments/history');
+        if (!ignore) setPayments(data.payments || []);
+      } catch {
+        if (!ignore) setPayments([]);
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    })();
+    return () => { ignore = true; };
+  }, []);
+
+  const isPro = profile?.plan_name === 'Pro';
+  const latestPayment = payments[0] || null;
 
   const goToPricing = () => {
     closePage?.();
@@ -896,41 +943,53 @@ function BillingTab({ closePage }) {
           <div>
             <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 4 }}>현재 구독 중</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--disp)', color: 'var(--ink)' }}>Pro 플랜</span>
-              {cancelled && (
+              <span style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--disp)', color: 'var(--ink)' }}>
+                {isPro ? 'Pro 플랜' : '-'}
+              </span>
+              {isPro && cancelled && (
                 <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: 'rgba(216,73,47,.15)', color: 'var(--bad)' }}>
                   해지 예정
                 </span>
               )}
             </div>
-            <div style={{ fontSize: 13, color: 'var(--ink-soft)', marginTop: 2 }}>
-              {cancelled
-                ? <><strong>2026-07-01</strong>까지 이용 가능 · 이후 자동 해지</>
-                : <>다음 결제일: <strong>2026-07-01</strong> · 신한카드 ****1234</>
-              }
-            </div>
+            {isPro && (
+              <div style={{ fontSize: 13, color: 'var(--ink-soft)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
+                {cancelled
+                  ? '해지 신청이 접수되었습니다.'
+                  : latestPayment
+                    ? <>최근 결제일: <strong>{latestPayment.date}</strong> · <PayBadge provider={latestPayment.provider} fallback={latestPayment.method} /></>
+                    : '결제 내역을 확인하는 중입니다.'
+                }
+              </div>
+            )}
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            {!cancelled && (
+            {!(isPro && cancelled) && (
               <button className="pg-btn" style={{ fontSize: 13, padding: '9px 16px' }} onClick={goToPricing}>
                 요금제 변경
               </button>
             )}
-            {!cancelled ? (
-              <button className="pg-btn danger" style={{ fontSize: 13, padding: '9px 16px' }} onClick={() => setShowCancelModal(true)}>
-                구독 해지
-              </button>
-            ) : (
-              <button className="pg-btn" style={{ fontSize: 13, padding: '9px 16px' }} onClick={goToPricing}>
-                재구독
-              </button>
+            {isPro && (
+              !cancelled ? (
+                <button className="pg-btn danger" style={{ fontSize: 13, padding: '9px 16px' }} onClick={() => setShowCancelModal(true)}>
+                  구독 해지
+                </button>
+              ) : (
+                <button className="pg-btn" style={{ fontSize: 13, padding: '9px 16px' }} onClick={goToPricing}>
+                  재구독
+                </button>
+              )
             )}
           </div>
         </div>
       </div>
 
       {/* 결제 내역 테이블 */}
-      {PAYMENT_HISTORY.length === 0 ? (
+      {loading ? (
+        <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--muted)', fontSize: 14 }}>
+          불러오는 중...
+        </div>
+      ) : payments.length === 0 ? (
         <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--muted)', fontSize: 14 }}>
           결제 내역이 없습니다.
         </div>
@@ -946,12 +1005,12 @@ function BillingTab({ closePage }) {
             </tr>
           </thead>
           <tbody>
-            {PAYMENT_HISTORY.map(row => (
-              <tr key={row.id}>
+            {payments.map(row => (
+              <tr key={`${row.date}-${row.plan_name}-${row.amount}`}>
                 <td>{row.date}</td>
-                <td>{row.plan}</td>
+                <td>{row.plan_name}</td>
                 <td>{formatNumber(row.amount)}원</td>
-                <td style={{ color: 'var(--ink-soft)', fontSize: 13 }}>{row.method}</td>
+                <td><PayBadge provider={row.provider} fallback={<span style={{ color: 'var(--ink-soft)', fontSize: 13 }}>{row.method}</span>} /></td>
                 <td>
                   <span style={{
                     display: 'inline-block',
@@ -1288,12 +1347,26 @@ const ADMIN_TAB = { id: 'inquiries', label: '문의 내역' };
 
 export default function MypagePage({ openPage, closePage, initialTab = 'info', user = null, onUserUpdate }) {
   const [activeTab, setActiveTab] = useState(initialTab);
+  const [profile, setProfile] = useState(null);
   const isAdmin = user?.role === 'admin';
   const tabs = isAdmin ? [...TABS, ADMIN_TAB] : TABS;
 
   useEffect(() => {
     setActiveTab(initialTab);
   }, [initialTab]);
+
+  useEffect(() => {
+    let ignore = false;
+    (async () => {
+      try {
+        const { data } = await api.get('/auth/me');
+        if (!ignore) setProfile(data);
+      } catch {
+        if (!ignore) setProfile(null);
+      }
+    })();
+    return () => { ignore = true; };
+  }, []);
 
   return (
     <div className="mp-wrap">
@@ -1307,10 +1380,10 @@ export default function MypagePage({ openPage, closePage, initialTab = 'info', u
         ))}
       </div>
       <div className="mp-content">
-        {activeTab === 'info'       && <InfoTab user={user} onUserUpdate={onUserUpdate} />}
-        {activeTab === 'apikey'     && <ApiKeyTab openPage={openPage} />}
+        {activeTab === 'info'       && <InfoTab user={user} onUserUpdate={onUserUpdate} profile={profile} />}
+        {activeTab === 'apikey'     && <ApiKeyTab openPage={openPage} closePage={closePage} profile={profile} />}
         {activeTab === 'usage'      && <UsageTab />}
-        {activeTab === 'billing'    && <BillingTab closePage={closePage} />}
+        {activeTab === 'billing'    && <BillingTab closePage={closePage} profile={profile} />}
         {activeTab === 'deactivate' && <DeactivateTab closePage={closePage} />}
         {activeTab === 'inquiries' && isAdmin && <InquiriesTab />}
       </div>

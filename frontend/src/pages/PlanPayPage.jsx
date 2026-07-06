@@ -92,6 +92,20 @@ export default function PlanPayPage({ planName = 'Pro', initialSuccess = false, 
   ];
   const stepLabels = method === 'kakao' ? kakaoSteps : tossSteps;
 
+  const startFreePlan = async () => {
+    if (!localStorage.getItem('access_token')) {
+      openPage('login');
+      return;
+    }
+    setPaymentError('');
+    try {
+      await api.post('/payments/free/activate');
+      setSuccess(true);
+    } catch (err) {
+      setPaymentError(err.response?.data?.detail || 'Basic 요금제 활성화에 실패했습니다.');
+    }
+  };
+
   const startPayment = async () => {
     if (!localStorage.getItem('access_token')) {
       openPage('login');
@@ -253,7 +267,7 @@ export default function PlanPayPage({ planName = 'Pro', initialSuccess = false, 
                 <button
                   className="pg-btn primary"
                   style={{ flex: 1, padding: 14, fontSize: 15, opacity: isEmailValid ? 1 : 0.5, cursor: isEmailValid ? 'pointer' : 'not-allowed' }}
-                  onClick={() => setSuccess(true)}
+                  onClick={startFreePlan}
                   disabled={!isEmailValid}
                 >
                   무료로 시작하기

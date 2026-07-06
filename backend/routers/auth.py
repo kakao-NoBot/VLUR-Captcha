@@ -88,13 +88,11 @@ def _find_or_create_social_user(
                 if not user:
                     identifier = hashlib.sha256(provider_user_id.encode()).hexdigest()[:40]
                     user_id = f"{provider}_{identifier}"[:50]
-                    cur.execute("SELECT plan_id FROM plans WHERE plan_name = 'Free' LIMIT 1")
-                    plan = cur.fetchone()
                     cur.execute(
                         """INSERT INTO users
                            (user_id, user_name, password_hash, email, phone, plan_id, subscription_date)
-                           VALUES (%s, %s, NULL, %s, NULL, %s, NOW())""",
-                        (user_id, user_name, email, plan["plan_id"] if plan else None),
+                           VALUES (%s, %s, NULL, %s, NULL, NULL, NULL)""",
+                        (user_id, user_name, email),
                     )
                     user = {
                         "user_id": user_id,
@@ -375,14 +373,11 @@ def signup(body: SignupRequest):
                         status_code=status.HTTP_409_CONFLICT,
                         detail="이미 사용 중인 전화번호입니다.",
                     )
-            cur.execute("SELECT plan_id FROM plans WHERE plan_name = 'Free' LIMIT 1")
-            plan = cur.fetchone()
             pw_hash = hash_password(body.password)
             cur.execute(
                 """INSERT INTO users (user_id, user_name, password_hash, email, phone, plan_id, subscription_date)
-                   VALUES (%s, %s, %s, %s, %s, %s, NOW())""",
-                (body.user_id, body.user_name, pw_hash, body.email, body.phone,
-                 plan["plan_id"] if plan else None),
+                   VALUES (%s, %s, %s, %s, %s, NULL, NULL)""",
+                (body.user_id, body.user_name, pw_hash, body.email, body.phone),
             )
             cur.execute("SELECT created_at FROM users WHERE user_id = %s", (body.user_id,))
             created = cur.fetchone()
@@ -411,7 +406,23 @@ def signup(body: SignupRequest):
 
 @router.get("/me")
 def me(current_user: dict = Depends(get_current_user)):
-    return current_user
+    conn = get_conn()
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT u.user_id, u.user_name, u.email, u.phone, u.role,
+                          u.created_at, u.subscription_date, pl.plan_name
+                   FROM users u
+                   LEFT JOIN plans pl ON pl.plan_id = u.plan_id
+                   WHERE u.user_id = %s""",
+                (current_user["sub"],),
+            )
+            profile = cur.fetchone()
+
+    if not profile:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="사용자를 찾을 수 없습니다.")
+
+    return profile
 
 
 class UpdateProfileRequest(BaseModel):
