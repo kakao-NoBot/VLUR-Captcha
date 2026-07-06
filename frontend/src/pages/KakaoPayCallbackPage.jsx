@@ -54,12 +54,12 @@ export default function KakaoPayCallbackPage() {
       resolvePayment()
         .then(({ data, orderId: resolvedOrderId }) => {
           if (!active) return;
-          localStorage.setItem('kakaopay_order_id', resolvedOrderId);
-          window.history.replaceState({}, '', `/payments/kakao/success/${resolvedOrderId}`);
-          setState({
-            status: 'success',
-            message: `${data.plan_name} 결제가 완료되었습니다. (${Number(data.amount).toLocaleString()}원)`,
-          });
+          localStorage.removeItem('kakaopay_order_id');
+          sessionStorage.setItem('completed_payment', JSON.stringify({
+            plan_name: data.plan_name,
+            amount: data.amount,
+          }));
+          window.location.replace('/');
         })
         .catch((err) => {
           if (!active) return;
