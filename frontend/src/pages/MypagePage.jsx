@@ -1259,8 +1259,10 @@ function DeactivateTab({ closePage, onLogout }) {
   const [showAgreeWarn, setShowAgreeWarn] = useState(false);
   const [showPwWarn, setShowPwWarn] = useState(false);
   const [apiError, setApiError] = useState('');
+  const [busy, setBusy] = useState(false);
 
   const confirm_ = () => {
+    if (busy) return;
     if (!password.trim()) { setShowPwWarn(true); return; }
     if (!agreed) { setShowAgreeWarn(true); return; }
     setApiError('');
@@ -1268,6 +1270,7 @@ function DeactivateTab({ closePage, onLogout }) {
   };
 
   const doDeactivate = async () => {
+    setBusy(true);
     try {
       await api.post('/auth/deactivate', { password });
       setShowConfirm(false);
@@ -1275,6 +1278,8 @@ function DeactivateTab({ closePage, onLogout }) {
     } catch (err) {
       setShowConfirm(false);
       setApiError(err.response?.data?.detail || '탈퇴 처리 중 오류가 발생했습니다.');
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -1309,9 +1314,6 @@ function DeactivateTab({ closePage, onLogout }) {
           <input type="checkbox" checked={agreed} onChange={e => setAgreed(e.target.checked)} style={{ width: 17, height: 17, accentColor: '#c0392b' }}/>
           위 내용을 확인했으며 탈퇴에 동의합니다
         </label>
-        {apiError && (
-          <p style={{ margin: 0, fontSize: 12.5, color: '#c0392b' }}>{apiError}</p>
-        )}
         <div style={{ display: 'flex', gap: 10 }}>
           <button className="pg-btn" onClick={closePage}>취소</button>
           <button
