@@ -2923,6 +2923,8 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
 }
 .pp-logo.kakao { background: #FEE500; color: #3A1D1D; }
 .pp-logo.toss { background: #0064FF; color: #fff; }
+.pay-badge-logo { height: 20px; width: auto; display: inline-block; vertical-align: middle; border-radius: 4px; }
+.pay-badge-logo.toss { height: 28px; }
 .pp-meta { flex: 1; }
 .pp-meta b { display: block; font-size: 15px; margin-bottom: 3px; }
 .pp-meta span { font-size: 12.5px; color: var(--muted); }

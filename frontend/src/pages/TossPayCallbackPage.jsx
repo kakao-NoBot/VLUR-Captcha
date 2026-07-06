@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api/axios';
+import { markSkipNextDevLogoutClear } from '../utils/devAuthSkip';
 
 let pendingConfirmKey = null;
 let pendingConfirmRequest = null;
@@ -54,6 +55,7 @@ export default function TossPayCallbackPage() {
             plan_name: data.plan_name,
             amount: data.amount,
           }));
+          markSkipNextDevLogoutClear();
           window.location.replace('/');
         })
         .catch((err) => {
@@ -81,6 +83,7 @@ export default function TossPayCallbackPage() {
             plan_name: 'Pro',
             message: '결제를 취소하였습니다.',
           }));
+          markSkipNextDevLogoutClear();
           window.location.replace('/');
         };
 
@@ -115,7 +118,7 @@ export default function TossPayCallbackPage() {
       </p>
       {state.status !== 'loading' && (
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: 24 }}>
-          <button type="button" className="pg-btn primary" onClick={() => window.location.assign('/')}>
+          <button type="button" className="pg-btn primary" onClick={() => { markSkipNextDevLogoutClear(); window.location.assign('/'); }}>
             메인으로 돌아가기
           </button>
         </div>

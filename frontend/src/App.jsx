@@ -30,6 +30,7 @@ import NaverCallbackPage from './pages/NaverCallbackPage';
 import GoogleCallbackPage from './pages/GoogleCallbackPage';
 import KakaoPayCallbackPage from './pages/KakaoPayCallbackPage';
 import TossPayCallbackPage from './pages/TossPayCallbackPage';
+import { consumeSkipNextDevLogoutClear } from './utils/devAuthSkip';
 
 // Page overlay wrapper
 function PageOverlay({ id, activePage, onBack, openPage, isLoggedIn, onLogout, user, children }) {
@@ -78,8 +79,22 @@ const DEV_AUTH_STORAGE_KEYS = [
   'aicaptcha_auto_login_enabled',
 ];
 
+// 카카오/네이버/구글 로그인 콜백, 카카오페이·토스페이먼츠 결제 콜백은
+// 외부 사이트에서 브라우저가 완전히 새로고침되어 돌아오는 경로라서
+// 개발용 강제 로그아웃 대상에서 제외해야 한다 (그렇지 않으면 돌아오자마자 로그인이 풀림).
+function isAuthOrPaymentCallbackPath(pathname) {
+  if (pathname === '/auth/kakao/callback') return true;
+  if (pathname === '/auth/naver/callback') return true;
+  if (pathname === '/auth/google/callback') return true;
+  if (pathname.startsWith('/payments/kakao/')) return true;
+  if (pathname.startsWith('/payments/toss/')) return true;
+  return false;
+}
+
 function clearDevAuthState() {
   if (!DEV_FORCE_LOGOUT_ON_LOAD) return;
+  if (isAuthOrPaymentCallbackPath(window.location.pathname)) return;
+  if (consumeSkipNextDevLogoutClear()) return;
   try {
     DEV_AUTH_STORAGE_KEYS.forEach((key) => {
       localStorage.removeItem(key);

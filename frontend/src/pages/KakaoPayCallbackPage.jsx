@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api/axios';
+import { markSkipNextDevLogoutClear } from '../utils/devAuthSkip';
 
 let pendingApprovalKey = null;
 let pendingApprovalRequest = null;
@@ -59,6 +60,7 @@ export default function KakaoPayCallbackPage() {
             plan_name: data.plan_name,
             amount: data.amount,
           }));
+          markSkipNextDevLogoutClear();
           window.location.replace('/');
         })
         .catch((err) => {
@@ -94,7 +96,7 @@ export default function KakaoPayCallbackPage() {
       </p>
       {state.status !== 'loading' && (
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: 24 }}>
-          <button type="button" className="pg-btn primary" onClick={() => window.location.assign('/')}>
+          <button type="button" className="pg-btn primary" onClick={() => { markSkipNextDevLogoutClear(); window.location.assign('/'); }}>
             메인으로 돌아가기
           </button>
         </div>

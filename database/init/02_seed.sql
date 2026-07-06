@@ -32,7 +32,7 @@ VALUES (
 );
 
 -- ============================================================
--- [3] 테스트 일반 사용자 (Free 플랜)
+-- [3] 테스트 일반 사용자 (Basic 플랜)
 --   아이디: testuser  /  비밀번호: test1234
 -- ============================================================
 INSERT INTO users (user_id, user_name, password_hash, email, phone, role, plan_id, created_at, subscription_date)
@@ -43,7 +43,7 @@ VALUES (
     'test@example.com',
     '010-1234-5678',
     'user',
-    (SELECT plan_id FROM plans WHERE plan_name = 'Free'),
+    (SELECT plan_id FROM plans WHERE plan_name = 'Basic'),
     NOW(),
     NOW()
 );
@@ -56,7 +56,7 @@ INSERT INTO api_keys (api_key_hash, user_id, plan_id, created_at, expired_at, is
 VALUES (
     SHA2('dev-sample-key-001', 256),
     'testuser',
-    (SELECT plan_id FROM plans WHERE plan_name = 'Free'),
+    (SELECT plan_id FROM plans WHERE plan_name = 'Basic'),
     NOW(),
     DATE_ADD(NOW(), INTERVAL 1 YEAR),
     1

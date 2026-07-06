@@ -286,6 +286,59 @@ async def kakao_pay_approve(
     }
 
 
+@router.post("/free/activate")
+def activate_free_plan(current_user: dict = Depends(get_current_user)):
+    conn = get_conn()
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT plan_id FROM plans WHERE plan_name = 'Basic' LIMIT 1")
+            plan = cur.fetchone()
+            if not plan:
+                raise HTTPException(status_code=404, detail="Basic 요금제를 찾을 수 없습니다.")
+            cur.execute(
+                "UPDATE users SET plan_id = %s, subscription_date = NOW() WHERE user_id = %s",
+                (plan["plan_id"], current_user["sub"]),
+            )
+        conn.commit()
+    return {"plan_name": "Basic"}
+
+
+PG_PROVIDER_LABEL = {
+    "kakao": "카카오페이",
+    "toss": "토스페이먼츠",
+}
+
+
+@router.get("/history")
+def payment_history(current_user: dict = Depends(get_current_user)):
+    conn = get_conn()
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT p.paid_at, p.amount, p.pg_provider, pl.plan_name
+                   FROM payments p
+                   JOIN plans pl ON pl.plan_id = p.plan_id
+                   WHERE p.user_id = %s AND p.payment_status = 'paid'
+                   ORDER BY p.paid_at DESC""",
+                (current_user["sub"],),
+            )
+            rows = cur.fetchall()
+
+    return {
+        "payments": [
+            {
+                "date": row["paid_at"].strftime("%Y-%m-%d") if row["paid_at"] else None,
+                "plan_name": row["plan_name"],
+                "amount": int(row["amount"]),
+                "provider": row["pg_provider"],
+                "method": PG_PROVIDER_LABEL.get(row["pg_provider"], row["pg_provider"]),
+                "status": "완료",
+            }
+            for row in rows
+        ]
+    }
+
+
 @router.get("/kakao/latest")
 def kakao_pay_latest(current_user: dict = Depends(get_current_user)):
     conn = get_conn()
