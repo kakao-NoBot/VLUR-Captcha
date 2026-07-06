@@ -17,12 +17,14 @@ export default function ContactModal({ open, onClose }) {
   const [requester, setRequester] = useState('');
   const [email, setEmail] = useState('');
   const [inquiryCategory, setInquiryCategory] = useState('');
+  const [inquiryMenuOpen, setInquiryMenuOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [sent, setSent] = useState(false);
   const [validationError, setValidationError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const requesterInputRef = useRef(null);
   const inquiryTypeRef = useRef(null);
+  const inquiryWrapRef = useRef(null);
   const messageInputRef = useRef(null);
 
   useEffect(() => {
@@ -47,11 +49,29 @@ export default function ContactModal({ open, onClose }) {
       setRequester('');
       setEmail('');
       setInquiryCategory('');
+      setInquiryMenuOpen(false);
       setMessage('');
       setSent(false);
       setValidationError(null);
     }
   }, [open]);
+
+  // 문의 유형 드롭다운: 바깥 클릭 / Esc로 닫기
+  useEffect(() => {
+    if (!inquiryMenuOpen) return undefined;
+    const onDown = (e) => {
+      if (inquiryWrapRef.current && !inquiryWrapRef.current.contains(e.target)) {
+        setInquiryMenuOpen(false);
+      }
+    };
+    const onKey = (e) => { if (e.key === 'Escape') setInquiryMenuOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [inquiryMenuOpen]);
 
   if (!open) return null;
 
@@ -180,21 +200,92 @@ export default function ContactModal({ open, onClose }) {
 
               <label className={validationError?.field === 'inquiryType' ? 'has-error' : ''}>
                 <span>문의 유형</span>
-                <select
-                  ref={inquiryTypeRef}
-                  value={inquiryCategory}
-                  aria-invalid={validationError?.field === 'inquiryType'}
-                  aria-describedby={validationError?.field === 'inquiryType' ? 'contact-inquiryType-error' : undefined}
-                  onChange={(event) => {
-                    setInquiryCategory(event.target.value);
-                    if (validationError?.field === 'inquiryType') setValidationError(null);
-                  }}
-                >
-                  <option value="">문의 유형을 선택해 주세요.</option>
-                  {GENERAL_INQUIRY_TYPES.map((type) => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
+                <div ref={inquiryWrapRef} style={{ position: 'relative' }}>
+                  <button
+                    type="button"
+                    ref={inquiryTypeRef}
+                    onClick={() => setInquiryMenuOpen((v) => !v)}
+                    aria-haspopup="listbox"
+                    aria-expanded={inquiryMenuOpen}
+                    aria-invalid={validationError?.field === 'inquiryType'}
+                    aria-describedby={validationError?.field === 'inquiryType' ? 'contact-inquiryType-error' : undefined}
+                    className="pg-input"
+                    style={{
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 8,
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      color: inquiryCategory ? 'var(--ink)' : 'var(--muted)',
+                      ...(validationError?.field === 'inquiryType' ? { border: '1.5px solid #c0392b' } : {}),
+                    }}
+                  >
+                    <span>{inquiryCategory || '문의 유형을 선택해 주세요.'}</span>
+                    <svg
+                      width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                      strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                      style={{
+                        color: 'var(--orange)',
+                        flexShrink: 0,
+                        transform: inquiryMenuOpen ? 'rotate(180deg)' : 'none',
+                        transition: 'transform .15s',
+                      }}
+                    >
+                      <path d="M6 9l6 6 6-6" />
+                    </svg>
+                  </button>
+
+                  {inquiryMenuOpen && (
+                    <div
+                      role="listbox"
+                      style={{
+                        position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, zIndex: 20,
+                        background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12,
+                        boxShadow: '0 16px 38px -18px rgba(55,38,25,.34)',
+                        padding: 6, display: 'flex', flexDirection: 'column', gap: 2,
+                        maxHeight: 260, overflowY: 'auto',
+                      }}
+                    >
+                      {GENERAL_INQUIRY_TYPES.map((type) => {
+                        const isActive = inquiryCategory === type;
+                        return (
+                          <button
+                            key={type}
+                            type="button"
+                            role="option"
+                            aria-selected={isActive}
+                            onClick={() => {
+                              setInquiryCategory(type);
+                              setInquiryMenuOpen(false);
+                              if (validationError?.field === 'inquiryType') setValidationError(null);
+                            }}
+                            style={{
+                              textAlign: 'left', border: 'none', borderRadius: 8,
+                              padding: '10px 12px', fontSize: 14, fontFamily: 'var(--body)',
+                              cursor: 'pointer',
+                              background: isActive ? 'var(--peach)' : 'transparent',
+                              color: isActive ? 'var(--orange-2)' : 'var(--ink-soft)',
+                              fontWeight: isActive ? 600 : 500,
+                              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                            }}
+                            onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = 'var(--peach)'; }}
+                            onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
+                          >
+                            <span>{type}</span>
+                            {isActive && (
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M20 6L9 17l-5-5" />
+                              </svg>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
                 {renderValidationAlert('inquiryType')}
               </label>
 
