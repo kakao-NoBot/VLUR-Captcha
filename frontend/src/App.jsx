@@ -70,13 +70,15 @@ function readCancelledPayment() {
   }
 }
 
-const DEV_FORCE_LOGOUT_ON_LOAD = import.meta.env.DEV;
+// 새로고침 시 강제 로그아웃(개발 편의 기능)은 기본 꺼짐.
+// 필요하면 frontend/.env에 VITE_DEV_FORCE_LOGOUT=true 를 넣어 다시 켤 수 있다.
+const DEV_FORCE_LOGOUT_ON_LOAD =
+  import.meta.env.DEV && import.meta.env.VITE_DEV_FORCE_LOGOUT === 'true';
+// 자동 로그인 정보(auto_login 등)는 지우지 않는다 — 로그인 폼 자동 채움 유지
 const DEV_AUTH_STORAGE_KEYS = [
   'access_token',
   'refresh_token',
   'user',
-  'auto_login',
-  'aicaptcha_auto_login_enabled',
 ];
 
 // 카카오/네이버/구글 로그인 콜백, 카카오페이·토스페이먼츠 결제 콜백은
@@ -302,7 +304,7 @@ export default function App() {
       {/* Mypage */}
       <PageOverlay id="mypage" activePage={page} onBack={closePage} openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} user={currentUser}>
         <div className="po-body">
-          <MypagePage key={mypageKey} openPage={openPage} closePage={closePage} initialTab={mypageTab} user={currentUser} onUserUpdate={handleUserUpdate} />
+          <MypagePage key={mypageKey} openPage={openPage} closePage={closePage} initialTab={mypageTab} user={currentUser} onUserUpdate={handleUserUpdate} onLogout={handleLogout} />
         </div>
       </PageOverlay>
 

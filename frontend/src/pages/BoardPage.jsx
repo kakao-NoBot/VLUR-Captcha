@@ -3,24 +3,13 @@ import api from '../api/axios';
 
 const PAGE_SIZE = 10;
 
-const FAQS = [
-  ['API Key는 어떻게 발급받나요?', '이용 신청 페이지에서 요금제를 선택하고 신청하면 자동으로 API Key가 발급됩니다. 마이페이지 > API Key 관리에서도 확인할 수 있습니다.'],
-  ['CAPTCHA 통과율이 낮으면 어떻게 하나요?', '유형 2(드래그) 실패 시 유형 1(4지선다)로 자동 전환됩니다. 사용자 피로도를 최소화하는 폴백 구조입니다.'],
-  ['one-time token의 유효 시간은 얼마인가요?', '기본 180초(3분)입니다. 재사용이 불가능하며 만료 시 CAPTCHA를 다시 풀어야 합니다.'],
-  ['React/Vue 위젯은 지원하나요?', '네, SDK 플러그인 형태로 React, Vue, FastAPI, Node.js, Django 등을 지원합니다.'],
-];
-
-const RESEARCH = [
-  { id: 3, title: 'ASCII 아트 CAPTCHA — 인간 정답률 vs VLM 인식률 비교 리포트', date: '2026-05-20' },
-  { id: 2, title: '드래그 궤적 기반 봇 탐지 알고리즘 설계 노트', date: '2026-04-30' },
-  { id: 1, title: 'ImageNet 8-class 전이학습 결과 요약', date: '2026-04-10' },
-];
-
 const BOARD_TABS = [
   ['notice', '공지사항'],
   ['faq', 'FAQ'],
   ['research', 'CAPTCHA 연구'],
 ];
+
+const TAB_LABELS = Object.fromEntries(BOARD_TABS);
 
 /* 페이지네이션 컴포넌트 */
 function Pagination({ total, page, pageSize, onChange }) {
@@ -100,11 +89,22 @@ function BoardDetail({ post, previousPost, nextPost, onBack, onSelectPost, onEdi
   );
 }
 
-function BoardWrite({ initialPost, onCancel, onSubmit }) {
+// 글쓰기 드롭다운에서 선택 가능한 커뮤니티 구분 (탭과 1:1 대응)
+const WRITE_CATEGORIES = [
+  ['notice', '공지사항'],
+  ['faq', 'FAQ'],
+  ['research', 'CAPTCHA 연구'],
+];
+
+const WRITE_CATEGORY_LABELS = Object.fromEntries(WRITE_CATEGORIES);
+
+function BoardWrite({ boardType = 'notice', initialPost, onCancel, onSubmit, onSectionChange }) {
   const isEditing = Boolean(initialPost);
-  const [category, setCategory] = useState(
-    initialPost ? (initialPost.badge ? 'notice' : 'general') : 'notice'
+  // section: 커뮤니티 구분 / pinned: 공지사항 내 '공지로 고정' 여부 (notice=고정, general=일반)
+  const [section, setSection] = useState(
+    initialPost ? (initialPost.type === 'general' ? 'notice' : initialPost.type) : boardType
   );
+  const [pinned, setPinned] = useState(initialPost ? initialPost.type === 'notice' : false);
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const categoryRef = useRef(null);
   const [title, setTitle] = useState(initialPost?.title ?? '');
@@ -133,7 +133,7 @@ function BoardWrite({ initialPost, onCancel, onSubmit }) {
     onSubmit({
       title: trimmedTitle,
       content: trimmedContent,
-      badge: category === 'notice' ? '공지' : null,
+      board_type: section === 'notice' ? (pinned ? 'notice' : 'general') : section,
     });
   };
 
@@ -149,25 +149,22 @@ function BoardWrite({ initialPost, onCancel, onSubmit }) {
               aria-expanded={isCategoryOpen}
               onClick={() => setIsCategoryOpen(open => !open)}
             >
-              {category === 'notice' ? '공지' : '일반 글'}
+              {WRITE_CATEGORY_LABELS[section]}
             </button>
 
             {isCategoryOpen && (
               <div className="board-write-select-menu" role="listbox" aria-label="게시글 분류">
-                {[
-                  ['notice', '공지'],
-                  ['general', '일반 글'],
-                ].map(([value, label]) => (
+                {WRITE_CATEGORIES.map(([value, label]) => (
                   <button
                     key={value}
                     type="button"
                     role="option"
-                    aria-selected={category === value}
-                    className={category === value ? 'selected' : ''}
-                    onClick={() => { setCategory(value); setIsCategoryOpen(false); }}
+                    aria-selected={section === value}
+                    className={section === value ? 'selected' : ''}
+                    onClick={() => { setSection(value); setIsCategoryOpen(false); onSectionChange?.(value); }}
                   >
                     <span>{label}</span>
-                    {category === value && <b aria-hidden="true">✓</b>}
+                    {section === value && <b aria-hidden="true">✓</b>}
                   </button>
                 ))}
               </div>
@@ -175,13 +172,27 @@ function BoardWrite({ initialPost, onCancel, onSubmit }) {
           </div>
         </div>
 
+        {section === 'notice' && (
+          <div className="board-write-field" style={{ padding: '14px 24px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, color: 'var(--ink-soft)', cursor: 'pointer', width: 'fit-content' }}>
+              <input
+                type="checkbox"
+                checked={pinned}
+                onChange={e => setPinned(e.target.checked)}
+                style={{ width: 16, height: 16, padding: 0, margin: 0, flexShrink: 0, accentColor: 'var(--orange)', cursor: 'pointer' }}
+              />
+              상단에 고정
+            </label>
+          </div>
+        )}
+
         <div className="board-write-field board-write-title-field">
           <input
             type="text"
             value={title}
             maxLength={100}
             aria-label="게시글 제목"
-            placeholder="제목을 입력하세요"
+            placeholder={section === 'faq' ? '질문을 입력하세요' : '제목을 입력하세요'}
             onChange={(event) => setTitle(event.target.value)}
             required
           />
@@ -193,7 +204,7 @@ function BoardWrite({ initialPost, onCancel, onSubmit }) {
             value={content}
             maxLength={3000}
             aria-label="게시글 내용"
-            placeholder="내용을 입력하세요"
+            placeholder={section === 'faq' ? '답변을 입력하세요' : '내용을 입력하세요'}
             onChange={(event) => setContent(event.target.value)}
             required
           />
@@ -233,24 +244,25 @@ export default function BoardPage({ user = null }) {
   const isAdmin = user?.role === 'admin';
   const [tab, setTab] = useState('notice');
   const [noticePage, setNoticePage] = useState(1);
-  const [notices, setNotices] = useState([]);
+  const [posts, setPosts] = useState([]);
   const [selectedPost, setSelectedPost] = useState(null);
   const [isWriting, setIsWriting] = useState(false);
   const [editingPost, setEditingPost] = useState(null);
 
-  // DB에서 공지사항 목록 로드
+  // DB에서 게시글 전체 로드 (공지/일반/FAQ/연구)
   const loadNotices = async () => {
     try {
       const { data } = await api.get('/boards');
-      setNotices((data.notices || []).map(n => ({
+      setPosts((data.notices || []).map(n => ({
         id: n.board_id,
+        type: n.board_type,
         title: n.title,
         content: n.content,
-        badge: '공지',
+        badge: n.board_type === 'notice' ? '공지' : n.board_type === 'general' ? '일반' : null,
         date: String(n.created_at).slice(0, 10),
       })));
     } catch {
-      setNotices([]);
+      setPosts([]);
     }
   };
 
@@ -258,17 +270,30 @@ export default function BoardPage({ user = null }) {
     loadNotices();
   }, []);
 
+  // 공지(notice)는 목록 상단 고정, 그 외에는 최신순
+  const notices = posts
+    .filter(p => p.type === 'notice' || p.type === 'general')
+    .sort((a, b) => {
+      if ((a.type === 'notice') !== (b.type === 'notice')) return a.type === 'notice' ? -1 : 1;
+      return b.id - a.id;
+    });
+  const faqPosts = posts.filter(p => p.type === 'faq');
+  const researchPosts = posts.filter(p => p.type === 'research');
+  // 상세 보기의 이전/다음 글은 해당 글이 속한 탭 목록 기준
+  const detailList = selectedPost?.type === 'research' ? researchPosts : notices;
+
   useEffect(() => {
     if (selectedPost || isWriting) {
       document.querySelector('.page-overlay.active')?.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }, [selectedPost, isWriting]);
 
-  /* 공지사항 페이지네이션 */
+  /* 페이지네이션 (공지사항·연구 탭 공용, 탭 전환 시 1페이지로 초기화) */
   const noticeSlice = notices.slice((noticePage - 1) * PAGE_SIZE, noticePage * PAGE_SIZE);
-  const selectedIndex = selectedPost ? notices.findIndex(post => post.id === selectedPost.id) : -1;
-  const previousPost = selectedIndex > 0 ? notices[selectedIndex - 1] : null;
-  const nextPost = selectedIndex >= 0 && selectedIndex < notices.length - 1 ? notices[selectedIndex + 1] : null;
+  const researchSlice = researchPosts.slice((noticePage - 1) * PAGE_SIZE, noticePage * PAGE_SIZE);
+  const selectedIndex = selectedPost ? detailList.findIndex(post => post.id === selectedPost.id) : -1;
+  const previousPost = selectedIndex > 0 ? detailList[selectedIndex - 1] : null;
+  const nextPost = selectedIndex >= 0 && selectedIndex < detailList.length - 1 ? detailList[selectedIndex + 1] : null;
 
   const changeTab = (nextTab) => {
     setTab(nextTab);
@@ -278,12 +303,12 @@ export default function BoardPage({ user = null }) {
     setEditingPost(null);
   };
 
-  const submitPost = async ({ title, content }) => {
+  const submitPost = async ({ title, content, board_type }) => {
     try {
       if (editingPost) {
-        await api.put(`/boards/${editingPost.id}`, { title, content });
+        await api.put(`/boards/${editingPost.id}`, { title, content, board_type });
       } else {
-        await api.post('/boards', { title, content });
+        await api.post('/boards', { title, content, board_type });
       }
       await loadNotices();
       setEditingPost(null);
@@ -296,7 +321,7 @@ export default function BoardPage({ user = null }) {
   };
 
   const deletePost = async (post) => {
-    if (!window.confirm('이 공지사항을 삭제하시겠습니까?')) return;
+    if (!window.confirm('이 게시글을 삭제하시겠습니까?')) return;
     try {
       await api.delete(`/boards/${post.id}`);
       await loadNotices();
@@ -317,15 +342,17 @@ export default function BoardPage({ user = null }) {
             <section className="board-main-content" aria-labelledby="board-section-title">
               <div className="board-section-header">
                 <h1 className="pg-h1" id="board-section-title">
-                  {isWriting ? (editingPost ? '글 수정' : '글쓰기') : '공지사항'}
+                  {isWriting ? (editingPost ? '글 수정' : '글쓰기') : TAB_LABELS[tab]}
                 </h1>
               </div>
 
               {isWriting ? (
                 <BoardWrite
+                  boardType={tab}
                   initialPost={editingPost}
                   onCancel={() => { setIsWriting(false); setEditingPost(null); }}
                   onSubmit={submitPost}
+                  onSectionChange={(section) => { setTab(section); setNoticePage(1); }}
                 />
               ) : (
                 <BoardDetail
@@ -348,8 +375,8 @@ export default function BoardPage({ user = null }) {
 
   return (
     <div className="po-body">
-      <h1 className="pg-h1">공지사항</h1>
-      
+      <h1 className="pg-h1">{TAB_LABELS[tab]}</h1>
+
       <div className="tab-bar">
         {BOARD_TABS.map(([id, label]) => (
           <button key={id} className={`tab${tab === id ? ' active' : ''}`} onClick={() => changeTab(id)}>{label}</button>
@@ -381,7 +408,9 @@ export default function BoardPage({ user = null }) {
                 >
                   <td className="num">{n.id}</td>
                   <td>
-                    {n.badge && <span className="badge-notice">공지</span>}
+                    {n.badge && (
+                      <span className={`badge-notice${n.type === 'general' ? ' badge-general' : ''}`}>{n.badge}</span>
+                    )}
                     {n.title}
                   </td>
                   <td style={{ color: 'var(--muted)' }}>{n.date}</td>
@@ -408,33 +437,96 @@ export default function BoardPage({ user = null }) {
 
       {/* FAQ */}
       {tab === 'faq' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {FAQS.map(([q, a], i) => (
-            <details key={i} className="pg-card" style={{ cursor: 'pointer' }}>
-              <summary style={{ fontWeight: 600, fontSize: 15, listStyle: 'none', display: 'flex', justifyContent: 'space-between' }}>
-                <span><span className="badge-notice badge-faq">FAQ</span>{q}</span>
-                <span style={{ color: 'var(--orange)' }}>+</span>
-              </summary>
-              <p style={{ margin: '12px 0 0', fontSize: 14, color: 'var(--ink-soft)' }}>{a}</p>
-            </details>
-          ))}
-        </div>
+        <>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {faqPosts.map(p => (
+              <details key={p.id} className="pg-card" style={{ cursor: 'pointer' }}>
+                <summary style={{ fontWeight: 600, fontSize: 15, listStyle: 'none', display: 'flex', justifyContent: 'space-between' }}>
+                  <span><span className="badge-notice badge-faq">FAQ</span>{p.title}</span>
+                  <span style={{ color: 'var(--orange)' }}>+</span>
+                </summary>
+                <p style={{ margin: '12px 0 0', fontSize: 14, color: 'var(--ink-soft)', whiteSpace: 'pre-line' }}>{p.content}</p>
+                {isAdmin && (
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, marginTop: 10 }}>
+                    <button
+                      type="button"
+                      className="pg-btn"
+                      style={{ padding: '6px 12px', fontSize: 12.5 }}
+                      onClick={(e) => { e.preventDefault(); setEditingPost(p); setIsWriting(true); }}
+                    >
+                      수정
+                    </button>
+                    <button
+                      type="button"
+                      className="pg-btn"
+                      style={{ padding: '6px 12px', fontSize: 12.5, color: '#c0392b' }}
+                      onClick={(e) => { e.preventDefault(); deletePost(p); }}
+                    >
+                      삭제
+                    </button>
+                  </div>
+                )}
+              </details>
+            ))}
+          </div>
+          {isAdmin && (
+            <div className="board-list-footer">
+              <div className="board-list-pagination" />
+              <button
+                type="button"
+                className="pg-btn primary board-write-button"
+                onClick={() => { setEditingPost(null); setIsWriting(true); }}
+              >
+                글쓰기
+              </button>
+            </div>
+          )}
+        </>
       )}
 
       {/* CAPTCHA 연구 */}
       {tab === 'research' && (
-        <table className="pg-table board-table">
-          <thead><tr><th style={{ width: 60 }}>번호</th><th>제목</th><th style={{ width: 130 }}>작성일</th></tr></thead>
-          <tbody>
-            {RESEARCH.map(r => (
-              <tr key={r.id} style={{ cursor: 'pointer' }}>
-                <td className="num">{r.id}</td>
-                <td><span className="badge-notice badge-research">연구</span>{r.title}</td>
-                <td style={{ color: 'var(--muted)' }}>{r.date}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <>
+          <table className="pg-table board-table" style={{ marginBottom: 8 }}>
+            <thead><tr><th style={{ width: 60 }}>번호</th><th>제목</th><th style={{ width: 130 }}>작성일</th></tr></thead>
+            <tbody>
+              {researchSlice.map(r => (
+                <tr
+                  key={r.id}
+                  className="board-row"
+                  role="link"
+                  tabIndex={0}
+                  aria-label={`${r.title} 상세 보기`}
+                  onClick={() => setSelectedPost(r)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      setSelectedPost(r);
+                    }
+                  }}
+                >
+                  <td className="num">{r.id}</td>
+                  <td><span className="badge-notice badge-research">연구</span>{r.title}</td>
+                  <td style={{ color: 'var(--muted)' }}>{r.date}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="board-list-footer">
+            <div className="board-list-pagination">
+              <Pagination total={researchPosts.length} page={noticePage} pageSize={PAGE_SIZE} onChange={setNoticePage} />
+            </div>
+            {isAdmin && (
+              <button
+                type="button"
+                className="pg-btn primary board-write-button"
+                onClick={() => { setEditingPost(null); setIsWriting(true); }}
+              >
+                글쓰기
+              </button>
+            )}
+          </div>
+        </>
       )}
     </div>
   );

@@ -43,12 +43,24 @@ function FindIdModal({ onClose }) {
   const [step, setStep] = useState(1);
   const [email, setEmail] = useState('');
   const [attempted, setAttempted] = useState(false);
+  const [apiError, setApiError] = useState('');
+  const [busy, setBusy] = useState(false);
 
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
-  const handleFind = () => {
+  const handleFind = async () => {
     if (!isEmailValid) { setAttempted(true); return; }
-    setStep(2);
+    if (busy) return;
+    setBusy(true);
+    setApiError('');
+    try {
+      await api.post('/auth/find-id', { email });
+      setStep(2);
+    } catch (err) {
+      setApiError(err.response?.data?.detail || '아이디 찾기에 실패했습니다.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -56,24 +68,28 @@ function FindIdModal({ onClose }) {
       {step === 1 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <p style={{ margin: 0, fontSize: 14, color: 'var(--ink-soft)' }}>가입 시 등록한 이메일로 아이디를 확인하세요.</p>
-          <EmailInput onChange={setEmail} error={attempted && !isEmailValid} />
+          <EmailInput onChange={(v) => { setEmail(v); setApiError(''); }} error={attempted && !isEmailValid} />
+          {apiError && !(attempted && !isEmailValid) && (
+            <p style={{ margin: 0, fontSize: 12.5, color: '#c0392b' }}>{apiError}</p>
+          )}
           <button
             type="button"
             className="pg-btn primary"
-            style={{ width: '100%', padding: 13, opacity: email.trim() ? 1 : 0.5, cursor: email.trim() ? 'pointer' : 'not-allowed' }}
+            style={{ width: '100%', padding: 13, opacity: (email.trim() && !busy) ? 1 : 0.5, cursor: (email.trim() && !busy) ? 'pointer' : 'not-allowed' }}
             onClick={handleFind}
-          >아이디 찾기</button>
+          >{busy ? '전송 중...' : '아이디 찾기'}</button>
         </div>
       )}
       {step === 2 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, textAlign: 'center' }}>
-          <div style={{ fontSize: 40 }}>📧</div>
+          <div className="contact-success-icon" aria-hidden="true" style={{ margin: '8px auto 0' }}>
+            <svg viewBox="0 0 34 34" fill="none">
+              <path d="M7 17.5 13.5 24 27 10" />
+            </svg>
+          </div>
           <div>
             <p style={{ margin: '0 0 6px', fontWeight: 700, fontSize: 16 }}>이메일로 아이디를 전송했습니다.</p>
             <p style={{ margin: 0, fontSize: 13, color: 'var(--muted)' }}>입력하신 이메일 받은편지함을 확인하세요.</p>
-          </div>
-          <div style={{ background: 'var(--peach)', borderRadius: 10, padding: '12px 16px', fontSize: 14, color: 'var(--ink-soft)' }}>
-            확인된 아이디: <strong style={{ color: 'var(--ink)' }}>user***</strong>
           </div>
           <button type="button" className="pg-btn primary" style={{ width: '100%', padding: 13 }} onClick={onClose}>로그인 화면으로</button>
         </div>
@@ -102,10 +118,14 @@ function FindPwModal({ onClose }) {
   const [newPwConfirm, setNewPwConfirm] = useState('');
   const [attempted3, setAttempted3] = useState(false);
 
+  const [apiError, setApiError] = useState('');
+  const [busy, setBusy] = useState(false);
+
   const errorStyle = { border: '1.5px solid #c0392b' };
 
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const isStep1Valid = loginId.trim() && isEmailValid;
+  const isNewPwValid = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_\-+=\[\]{};':"\\|,.<>/?`~]).{8,16}$/.test(newPw);
   const isStep3Valid = newPw.trim() && newPwConfirm.trim();
 
   // step 2에 진입해 있는 동안 1초마다 남은 시간을 감소시킴 (재발송 시 resendKey가 바뀌며 타이머 재시작)
@@ -117,31 +137,94 @@ function FindPwModal({ onClose }) {
     return () => clearInterval(timer);
   }, [step, resendKey]);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!isStep1Valid) { setAttempted1(true); return; }
-    setTimeLeft(PASSWORD_RESET_CODE_TTL);
-    setStep(2);
+    if (busy) return;
+    setBusy(true);
+    setApiError('');
+    try {
+      const { data } = await api.post('/auth/password-reset/send-code', {
+        user_id: loginId.trim(),
+        email,
+      });
+      setTimeLeft(data.ttl || PASSWORD_RESET_CODE_TTL);
+      setStep(2);
+    } catch (err) {
+      setApiError(err.response?.data?.detail || '인증코드 발송에 실패했습니다.');
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const handleResend = () => {
-    // 재발송은 타이머 상태와 무관하게 언제든 가능
-    setCode('');
-    setAttempted2(false);
-    setTimeLeft(PASSWORD_RESET_CODE_TTL);
-    setResendKey((k) => k + 1);
-    // TODO: 실제 인증코드 재발송 API 연동
+  const handleResend = async () => {
+    // 재발송은 타이머 상태와 무관하게 언제든 가능 (서버에서 30초 쿨다운 적용)
+    if (busy) return;
+    setBusy(true);
+    setApiError('');
+    try {
+      const { data } = await api.post('/auth/password-reset/send-code', {
+        user_id: loginId.trim(),
+        email,
+      });
+      setCode('');
+      setAttempted2(false);
+      setTimeLeft(data.ttl || PASSWORD_RESET_CODE_TTL);
+      setResendKey((k) => k + 1);
+    } catch (err) {
+      setApiError(err.response?.data?.detail || '인증코드 재발송에 실패했습니다.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   const isCodeValid = /^\d{6}$/.test(code.trim()) && timeLeft > 0;
 
-  const handleVerify = () => {
+  const handleVerify = async () => {
     if (!isCodeValid) { setAttempted2(true); return; }
-    setStep(3);
+    if (busy) return;
+    setBusy(true);
+    setApiError('');
+    try {
+      await api.post('/auth/password-reset/verify-code', {
+        user_id: loginId.trim(),
+        email,
+        code: code.trim(),
+      });
+      setStep(3);
+    } catch (err) {
+      setApiError(err.response?.data?.detail || '인증에 실패했습니다.');
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const handleChangePw = () => {
+  const handleChangePw = async () => {
     if (!isStep3Valid) { setAttempted3(true); return; }
-    setStep(4);
+    if (!isNewPwValid) {
+      setAttempted3(true);
+      setApiError('비밀번호는 8~16자, 영문 대소문자·숫자·특수문자를 포함해야 합니다.');
+      return;
+    }
+    if (newPw !== newPwConfirm) {
+      setAttempted3(true);
+      setApiError('비밀번호가 일치하지 않습니다.');
+      return;
+    }
+    if (busy) return;
+    setBusy(true);
+    setApiError('');
+    try {
+      await api.post('/auth/password-reset/confirm', {
+        user_id: loginId.trim(),
+        email,
+        new_password: newPw,
+      });
+      setStep(4);
+    } catch (err) {
+      setApiError(err.response?.data?.detail || '비밀번호 변경에 실패했습니다.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -155,13 +238,16 @@ function FindPwModal({ onClose }) {
             onChange={e => setLoginId(e.target.value)}
             style={attempted1 && !loginId.trim() ? errorStyle : {}}
           />
-          <EmailInput onChange={setEmail} error={attempted1 && !isEmailValid} />
+          <EmailInput onChange={(v) => { setEmail(v); setApiError(''); }} error={attempted1 && !isEmailValid} />
+          {apiError && !(attempted1 && !isEmailValid) && (
+            <p style={{ margin: 0, fontSize: 12.5, color: '#c0392b' }}>{apiError}</p>
+          )}
           <button
             type="button"
             className="pg-btn primary"
-            style={{ width: '100%', padding: 13, opacity: isStep1Valid ? 1 : 0.5, cursor: isStep1Valid ? 'pointer' : 'not-allowed' }}
+            style={{ width: '100%', padding: 13, opacity: (isStep1Valid && !busy) ? 1 : 0.5, cursor: (isStep1Valid && !busy) ? 'pointer' : 'not-allowed' }}
             onClick={handleSend}
-          >인증코드 발송</button>
+          >{busy ? '발송 중...' : '인증코드 발송'}</button>
         </div>
       )}
       {step === 2 && (
@@ -226,12 +312,15 @@ function FindPwModal({ onClose }) {
               {timeLeft > 0 ? '인증코드 6자리 숫자를 입력해주세요.' : '인증코드가 만료되었습니다. 재발송해주세요.'}
             </p>
           )}
+          {apiError && (
+            <p style={{ margin: 0, fontSize: 12.5, color: '#c0392b' }}>{apiError}</p>
+          )}
           <button
             type="button"
             className="pg-btn primary"
-            style={{ width: '100%', padding: 13, opacity: isCodeValid ? 1 : 0.5, cursor: isCodeValid ? 'pointer' : 'not-allowed' }}
+            style={{ width: '100%', padding: 13, opacity: (isCodeValid && !busy) ? 1 : 0.5, cursor: (isCodeValid && !busy) ? 'pointer' : 'not-allowed' }}
             onClick={handleVerify}
-          >인증 확인</button>
+          >{busy ? '확인 중...' : '인증 확인'}</button>
         </div>
       )}
       {step === 3 && (
@@ -249,17 +338,27 @@ function FindPwModal({ onClose }) {
             onChange={e => setNewPwConfirm(e.target.value)}
             style={attempted3 && !newPwConfirm.trim() ? errorStyle : {}}
           />
+          <p style={{ margin: 0, fontSize: 12, color: 'var(--muted)' }}>
+            8~16자 · 영문 대소문자 · 숫자 · 특수문자 포함
+          </p>
+          {apiError && (
+            <p style={{ margin: 0, fontSize: 12.5, color: '#c0392b' }}>{apiError}</p>
+          )}
           <button
             type="button"
             className="pg-btn primary"
-            style={{ width: '100%', padding: 13, opacity: isStep3Valid ? 1 : 0.5, cursor: isStep3Valid ? 'pointer' : 'not-allowed' }}
+            style={{ width: '100%', padding: 13, opacity: (isStep3Valid && !busy) ? 1 : 0.5, cursor: (isStep3Valid && !busy) ? 'pointer' : 'not-allowed' }}
             onClick={handleChangePw}
-          >비밀번호 변경</button>
+          >{busy ? '변경 중...' : '비밀번호 변경'}</button>
         </div>
       )}
       {step === 4 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, textAlign: 'center' }}>
-          <div style={{ fontSize: 40 }}>✅</div>
+          <div className="demo-check-circle" style={{ margin: '8px auto 0' }}>
+            <svg viewBox="0 0 34 34" fill="none" width={36} height={36}>
+              <path d="M7 17.5 13.5 24 27 10" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
           <div>
             <p style={{ margin: '0 0 6px', fontWeight: 700, fontSize: 16 }}>비밀번호가 변경되었습니다.</p>
             <p style={{ margin: 0, fontSize: 13, color: 'var(--muted)' }}>새 비밀번호로 로그인하세요.</p>

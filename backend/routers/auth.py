@@ -1,12 +1,13 @@
 import hashlib
 
 from fastapi import APIRouter, HTTPException, status, Depends, Query
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 from auth.hash import hash_password, verify_password
 from auth.jwt import create_access_token
 from auth.deps import get_current_user
 from db import get_conn
-from services import email_verify
+from services import email_verify, smtp_mailer
 from services.kakao_oauth import (
     KakaoConfigurationError,
     KakaoOAuthError,
@@ -153,6 +154,8 @@ def login(body: LoginRequest):
         not user
         or not user["password_hash"]
         or not verify_password(body.password, user["password_hash"])
+        # 탈퇴 계정은 존재 여부를 노출하지 않도록 잘못된 자격증명과 동일하게 응답
+        or user["user_status"] == "deleted"
     ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -520,3 +523,102 @@ def change_password(
         conn.commit()
 
     return {"message": "비밀번호가 변경되었습니다."}
+
+
+class FindIdRequest(BaseModel):
+    email: str
+
+
+def _mask_user_id(user_id: str) -> str:
+    """앞 3자만 남기고 마스킹 (3자 이하면 첫 글자만)"""
+    visible = 3 if len(user_id) > 3 else 1
+    return user_id[:visible] + "*" * max(len(user_id) - visible, 2)
+
+
+@router.post("/find-id")
+async def find_id(body: FindIdRequest):
+    """가입 이메일로 아이디 발송"""
+    email = body.email.strip().lower()
+    conn = get_conn()
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT user_id, password_hash FROM users
+                   WHERE email = %s AND user_status = 'active'""",
+                (email,),
+            )
+            user = cur.fetchone()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="해당 이메일로 가입된 계정이 없습니다.",
+        )
+    if not user["password_hash"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="소셜 로그인으로 가입된 계정입니다. 소셜 로그인을 이용해 주세요.",
+        )
+
+    title = "[VLUR CAPTCHA] 아이디 찾기 안내"
+    mail_body = (
+        "<div style='font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px'>"
+        "<h2 style='color:#e8590c'>VLUR CAPTCHA 아이디 찾기</h2>"
+        "<p>요청하신 계정의 아이디는 아래와 같습니다.</p>"
+        f"<div style='font-size:24px;font-weight:700;"
+        f"background:#faf6f1;border-radius:12px;padding:20px;text-align:center'>{user['user_id']}</div>"
+        "<p style='color:#888;font-size:13px'>본인이 요청하지 않았다면 이 메일을 무시해 주세요.</p>"
+        "</div>"
+    )
+    try:
+        await run_in_threadpool(smtp_mailer.send_mail, email, title, mail_body)
+    except RuntimeError as e:
+        print(f"[find-id] 발송 실패: {e}")
+        raise HTTPException(status_code=502, detail="메일 발송에 실패했습니다. 잠시 후 다시 시도해 주세요.")
+
+    return {"message": "이메일로 아이디를 전송했습니다.", "masked_id": _mask_user_id(user["user_id"])}
+
+
+class DeactivateRequest(BaseModel):
+    password: str = ""
+
+
+@router.post("/deactivate")
+def deactivate(body: DeactivateRequest, current_user: dict = Depends(get_current_user)):
+    """계정 탈퇴 — 결제/게시글 이력의 FK 무결성을 위해 user_status='deleted' 소프트 삭제"""
+    conn = get_conn()
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT password_hash, user_status FROM users WHERE user_id = %s",
+                (current_user["sub"],),
+            )
+            user = cur.fetchone()
+            if not user or user["user_status"] != "active":
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="탈퇴할 수 있는 계정이 아닙니다.",
+                )
+            # 일반 계정은 비밀번호 확인, 소셜 계정(해시 없음)은 토큰 인증만으로 진행
+            if user["password_hash"] and not verify_password(body.password, user["password_hash"]):
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="비밀번호가 일치하지 않습니다.",
+                )
+            # 이메일을 익명화해 같은 이메일로 재가입할 수 있게 함 (UNIQUE 제약 해제 효과)
+            cur.execute(
+                """UPDATE users
+                   SET user_status = 'deleted',
+                       subscription_date = NULL,
+                       email = CONCAT('deleted_', user_id, '_', UNIX_TIMESTAMP(), '@deleted.invalid')
+                   WHERE user_id = %s""",
+                (current_user["sub"],),
+            )
+            # 소셜 연결 해제 — 같은 소셜 계정으로 재가입 가능하게
+            cur.execute(
+                "DELETE FROM social_accounts WHERE user_id = %s",
+                (current_user["sub"],),
+            )
+        conn.commit()
+
+    return {"message": "탈퇴가 완료되었습니다."}

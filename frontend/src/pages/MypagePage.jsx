@@ -41,13 +41,10 @@ function Modal({ title, onClose, children }) {
 }
 
 function SuccessCheckIcon() {
+  // CAPTCHA 데모 검증 성공 화면과 동일한 체크 UI (그라데이션 + 팝 애니메이션)
   return (
-    <div style={{
-      width: 48, height: 48, margin: '0 auto', borderRadius: '50%',
-      background: 'var(--ok)', display: 'flex',
-      alignItems: 'center', justifyContent: 'center',
-    }}>
-      <svg viewBox="0 0 34 34" fill="none" width={22} height={22} aria-hidden="true">
+    <div className="demo-check-circle" style={{ margin: '0 auto' }}>
+      <svg viewBox="0 0 34 34" fill="none" width={36} height={36} aria-hidden="true">
         <path
           d="M7 17.5 13.5 24 27 10"
           stroke="#fff"
@@ -171,15 +168,7 @@ function ChangePwModal({ onClose }) {
         </div>
       ) : (
         <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-  <div style={{
-    width: 48, height: 48, borderRadius: '50%',
-    background: 'var(--ok)', display: 'flex',
-    alignItems: 'center', justifyContent: 'center',
-  }}>
-    <svg viewBox="0 0 34 34" fill="none" width={22} height={22}>
-      <path d="M7 17.5 13.5 24 27 10" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-    </div>
+    <SuccessCheckIcon />
     <p style={{ margin: 0, fontWeight: 700, fontSize: 16 }}>비밀번호가 변경되었습니다.</p>
     <button className="pg-btn primary" style={{ width: '100%', padding: 13 }} onClick={onClose}>확인</button>
   </div>
@@ -1052,11 +1041,11 @@ function ConfirmDeactivateModal({ onConfirm, onClose }) {
         textAlign: 'center',
       }}>
         <div style={{
-          width: 48, height: 48, borderRadius: '50%',
-          background: '#c0392b', display: 'flex',
+          width: 68, height: 68, borderRadius: '50%',
+          background: 'linear-gradient(135deg, #f57a65, #c02a12)', display: 'flex',
           alignItems: 'center', justifyContent: 'center',
         }}>
-          <svg viewBox="0 0 24 24" fill="none" width={22} height={22}>
+          <svg viewBox="0 0 24 24" fill="none" width={30} height={30}>
             <path d="M12 8v5M12 16.5h.01" stroke="#fff" strokeWidth="2.2" strokeLinecap="round"/>
             <path d="M10.3 3.9 2.6 17.5A1.6 1.6 0 0 0 4 20h16a1.6 1.6 0 0 0 1.4-2.5L13.7 3.9a1.6 1.6 0 0 0-2.8 0Z" stroke="#fff" strokeWidth="1.8" strokeLinejoin="round"/>
           </svg>
@@ -1089,11 +1078,11 @@ function AgreeWarnModal({ onClose }) {
         textAlign: 'center',
       }}>
         <div style={{
-          width: 48, height: 48, borderRadius: '50%',
-          background: '#c0392b', display: 'flex',
+          width: 68, height: 68, borderRadius: '50%',
+          background: 'linear-gradient(135deg, #f57a65, #c02a12)', display: 'flex',
           alignItems: 'center', justifyContent: 'center',
         }}>
-          <svg viewBox="0 0 24 24" fill="none" width={22} height={22}>
+          <svg viewBox="0 0 24 24" fill="none" width={30} height={30}>
             <path d="M12 8v5M12 16.5h.01" stroke="#fff" strokeWidth="2.2" strokeLinecap="round"/>
             <path d="M10.3 3.9 2.6 17.5A1.6 1.6 0 0 0 4 20h16a1.6 1.6 0 0 0 1.4-2.5L13.7 3.9a1.6 1.6 0 0 0-2.8 0Z" stroke="#fff" strokeWidth="1.8" strokeLinejoin="round"/>
           </svg>
@@ -1120,11 +1109,11 @@ function PasswordWarnModal({ onClose }) {
         textAlign: 'center',
       }}>
         <div style={{
-          width: 48, height: 48, borderRadius: '50%',
-          background: '#c0392b', display: 'flex',
+          width: 68, height: 68, borderRadius: '50%',
+          background: 'linear-gradient(135deg, #f57a65, #c02a12)', display: 'flex',
           alignItems: 'center', justifyContent: 'center',
         }}>
-          <svg viewBox="0 0 24 24" fill="none" width={22} height={22}>
+          <svg viewBox="0 0 24 24" fill="none" width={30} height={30}>
             <path d="M12 8v5M12 16.5h.01" stroke="#fff" strokeWidth="2.2" strokeLinecap="round"/>
             <path d="M10.3 3.9 2.6 17.5A1.6 1.6 0 0 0 4 20h16a1.6 1.6 0 0 0 1.4-2.5L13.7 3.9a1.6 1.6 0 0 0-2.8 0Z" stroke="#fff" strokeWidth="1.8" strokeLinejoin="round"/>
           </svg>
@@ -1161,28 +1150,43 @@ function DeactivateDoneModal({ onClose }) {
 }
 
 /* ── SC-17 계정 탈퇴 탭 (탈퇴사유 제거) ── */
-function DeactivateTab({ closePage }) {
+function DeactivateTab({ closePage, onLogout }) {
   const [password, setPassword] = useState('');
   const [agreed, setAgreed] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [showDone, setShowDone] = useState(false);
   const [showAgreeWarn, setShowAgreeWarn] = useState(false);
   const [showPwWarn, setShowPwWarn] = useState(false);
+  const [apiError, setApiError] = useState('');
+  const [busy, setBusy] = useState(false);
 
   const confirm_ = () => {
     if (!password.trim()) { setShowPwWarn(true); return; }
     if (!agreed) { setShowAgreeWarn(true); return; }
+    setApiError('');
     setShowConfirm(true);
   };
 
-  const doDeactivate = () => {
-    setShowConfirm(false);
-    setShowDone(true);
+  const doDeactivate = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await api.post('/auth/deactivate', { password });
+      setShowConfirm(false);
+      setShowDone(true);
+    } catch (err) {
+      setShowConfirm(false);
+      setApiError(err.response?.data?.detail || '탈퇴 처리 중 오류가 발생했습니다.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   const finishClose = () => {
     setShowDone(false);
-    closePage();
+    // 탈퇴된 계정의 토큰/세션 정리 후 홈으로
+    if (onLogout) onLogout();
+    else closePage();
   };
 
   const isValid = password.trim() && agreed;
@@ -1206,13 +1210,16 @@ function DeactivateTab({ closePage }) {
           <input type="checkbox" checked={agreed} onChange={e => setAgreed(e.target.checked)} style={{ width: 17, height: 17, accentColor: '#c0392b' }}/>
           위 내용을 확인했으며 탈퇴에 동의합니다
         </label>
+        {apiError && (
+          <p style={{ margin: 0, fontSize: 12.5, color: '#c0392b' }}>{apiError}</p>
+        )}
         <div style={{ display: 'flex', gap: 10 }}>
-          <button className="pg-btn">취소</button>
+          <button className="pg-btn" onClick={closePage}>취소</button>
           <button
             className="pg-btn danger"
             onClick={confirm_}
-            style={{ opacity: isValid ? 1 : 0.5, cursor: isValid ? 'pointer' : 'not-allowed' }}
-          >탈퇴하기</button>
+            style={{ opacity: (isValid && !busy) ? 1 : 0.5, cursor: (isValid && !busy) ? 'pointer' : 'not-allowed' }}
+          >{busy ? '처리 중...' : '탈퇴하기'}</button>
         </div>
       </div>
 
@@ -1345,7 +1352,7 @@ const TABS = [
 
 const ADMIN_TAB = { id: 'inquiries', label: '문의 내역' };
 
-export default function MypagePage({ openPage, closePage, initialTab = 'info', user = null, onUserUpdate }) {
+export default function MypagePage({ openPage, closePage, initialTab = 'info', user = null, onUserUpdate, onLogout }) {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [profile, setProfile] = useState(null);
   const isAdmin = user?.role === 'admin';
@@ -1384,7 +1391,7 @@ export default function MypagePage({ openPage, closePage, initialTab = 'info', u
         {activeTab === 'apikey'     && <ApiKeyTab openPage={openPage} closePage={closePage} profile={profile} />}
         {activeTab === 'usage'      && <UsageTab />}
         {activeTab === 'billing'    && <BillingTab closePage={closePage} profile={profile} />}
-        {activeTab === 'deactivate' && <DeactivateTab closePage={closePage} />}
+        {activeTab === 'deactivate' && <DeactivateTab closePage={closePage} onLogout={onLogout} />}
         {activeTab === 'inquiries' && isAdmin && <InquiriesTab />}
       </div>
     </div>
