@@ -305,7 +305,8 @@ export default function SignupPage({ openPage, onLogin }) {
           )}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
+          {/* flex-start + 고정 높이: 이메일 에러 문구가 떠도 인증코드 버튼이 늘어나지 않게 */}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
             <div style={{ flex: 1 }}>
               <EmailInput
                 onChange={setFinalEmail}
@@ -324,7 +325,7 @@ export default function SignupPage({ openPage, onLogin }) {
               style={{
                 whiteSpace: 'nowrap',
                 boxSizing: 'border-box',
-                height: 'auto',
+                height: 48,
                 minWidth: 74,
                 padding: '0 14px',
                 fontSize: 13,
