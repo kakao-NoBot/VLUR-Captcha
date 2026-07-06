@@ -2548,6 +2548,7 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
 .pg-table tr:hover td { background: var(--paper); }
 .pg-table .num { font-family: var(--disp); color: var(--muted); }
 .badge-notice { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 6px; background: var(--orange); color: #fff; font-weight: 700; margin-right: 6px; }
+.badge-general { background: #fff; color: var(--orange); border: 1px solid var(--orange); padding: 1px 7px; }
 .board-row { cursor: pointer; }
 .board-row:focus { outline: none; }
 .board-row:focus-visible td { background: var(--peach); }
@@ -2584,7 +2585,7 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
 }
 .board-sidebar nav button:last-child { border-bottom: 0; }
 .board-sidebar nav button:hover { color: var(--orange-2); background: var(--paper); }
-.board-sidebar nav button.active { color: #fff; background: var(--orange); }
+.board-sidebar nav button.active { color: #fff; background: linear-gradient(90deg, var(--gold), var(--orange)); }
 .board-main-content { min-width: 0; }
 .board-section-header { padding: 0 0 28px; border-bottom: 1px solid var(--line); }
 .board-section-header .pg-h1 {
@@ -2852,7 +2853,8 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
     border-bottom: 3px solid transparent;
   }
   .mp-nav-item:focus-visible { outline: 2px solid var(--orange); outline-offset: -2px; }
-  .mp-nav-item.active { border-bottom-color: var(--orange); border-right: none; }
+  /* 가로 탭에서는 굵기 변화로 글자 폭이 늘어 옆 탭이 밀리므로 굵기 고정 (색·밑줄로만 강조) */
+  .mp-nav-item.active { border-bottom-color: var(--orange); border-right: none; font-weight: 500; }
   .mp-nav-item.danger.active { border-bottom-color: #c0392b; }
   .api-panel-wrap, .flow-steps { grid-template-columns: 1fr; }
   .flow-step { border-right: none; border-bottom: 1px solid var(--line); }

@@ -86,8 +86,6 @@ const DEV_AUTH_STORAGE_KEYS = [
   'access_token',
   'refresh_token',
   'user',
-  'auto_login',
-  'aicaptcha_auto_login_enabled',
 ];
 
 // 카카오/네이버/구글 로그인 콜백, 카카오페이·토스페이먼츠 결제 콜백은

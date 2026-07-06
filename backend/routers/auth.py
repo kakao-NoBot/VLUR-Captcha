@@ -2,12 +2,13 @@ import hashlib
 
 import pymysql
 from fastapi import APIRouter, HTTPException, status, Depends, Query
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 from auth.hash import hash_password, verify_password
 from auth.jwt import create_access_token
 from auth.deps import get_current_user
 from db import get_conn
-from services import email_verify
+from services import email_verify, smtp_mailer
 from services.kakao_oauth import (
     KakaoConfigurationError,
     KakaoOAuthError,
@@ -154,6 +155,8 @@ def login(body: LoginRequest):
         not user
         or not user["password_hash"]
         or not verify_password(body.password, user["password_hash"])
+        # 탈퇴 계정은 존재 여부를 노출하지 않도록 잘못된 자격증명과 동일하게 응답
+        or user["user_status"] == "deleted"
     ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
