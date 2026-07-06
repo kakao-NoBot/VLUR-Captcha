@@ -1,21 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
+import api from '../api/axios';
 
 const PAGE_SIZE = 10;
-
-/* 공지사항 — 11개 이상 데이터로 2페이지 동작 확인 */
-const NOTICES = [
-  { id: 11, badge: '공지', title: 'API v1.3 배포 예정 안내 — 멀티 유형 캡챠 지원', date: '2026-06-28' },
-  { id: 10, badge: '공지', title: '서버 증설 완료 — 응답 속도 개선 (평균 98ms)', date: '2026-06-25' },
-  { id: 9,  badge: '공지', title: 'Enterprise 요금제 온프레미스 배포 가이드 공개', date: '2026-06-22' },
-  { id: 8,  badge: '공지', title: 'API v1.2 배포 안내 — 드래그 궤적 검증 강화', date: '2026-06-20' },
-  { id: 7,  badge: '공지', title: '카카오페이 · 토스페이먼츠 결제 연동 데모 추가', date: '2026-06-10' },
-  { id: 6,  badge: null,   title: 'React SDK v0.9 베타 릴리즈', date: '2026-06-08' },
-  { id: 5,  badge: null,   title: '서비스 점검 안내 (6월 5일 새벽 2:00~4:00)', date: '2026-06-01' },
-  { id: 4,  badge: null,   title: 'Vue.js 플러그인 정식 배포', date: '2026-05-28' },
-  { id: 3,  badge: null,   title: 'Pro 요금제 API 한도 상향 조정 완료', date: '2026-05-15' },
-  { id: 2,  badge: null,   title: 'FastAPI · Django 백엔드 SDK 공개', date: '2026-05-08' },
-  { id: 1,  badge: null,   title: 'VLUR CAPTCHA 서비스 공개 오픈', date: '2026-05-01' },
-];
 
 const FAQS = [
   ['API Key는 어떻게 발급받나요?', '이용 신청 페이지에서 요금제를 선택하고 신청하면 자동으로 API Key가 발급됩니다. 마이페이지 > API Key 관리에서도 확인할 수 있습니다.'],
@@ -56,7 +42,7 @@ function Pagination({ total, page, pageSize, onChange }) {
   );
 }
 
-function BoardDetail({ post, previousPost, nextPost, onBack, onSelectPost, onEdit, canEdit }) {
+function BoardDetail({ post, previousPost, nextPost, onBack, onSelectPost, onEdit, onDelete, canEdit }) {
   return (
     <article className="board-detail">
       <header className="board-detail-header">
@@ -81,6 +67,16 @@ function BoardDetail({ post, previousPost, nextPost, onBack, onSelectPost, onEdi
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M4 20h4.2L19 9.2a2.1 2.1 0 0 0 0-3L17.8 5a2.1 2.1 0 0 0-3 0L4 15.8V20Z" />
                 <path d="m13.7 6.1 4.2 4.2" />
+              </svg>
+            </button>
+          )}
+          {canEdit && (
+            <button type="button" className="board-detail-edit" onClick={onDelete} aria-label="게시글 삭제">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 7h16" />
+                <path d="M10 11v6M14 11v6" />
+                <path d="M5 7l1 13a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1l1-13" />
+                <path d="M9 7V4h6v3" />
               </svg>
             </button>
           )}
@@ -237,10 +233,30 @@ export default function BoardPage({ user = null }) {
   const isAdmin = user?.role === 'admin';
   const [tab, setTab] = useState('notice');
   const [noticePage, setNoticePage] = useState(1);
-  const [notices, setNotices] = useState(NOTICES);
+  const [notices, setNotices] = useState([]);
   const [selectedPost, setSelectedPost] = useState(null);
   const [isWriting, setIsWriting] = useState(false);
   const [editingPost, setEditingPost] = useState(null);
+
+  // DB에서 공지사항 목록 로드
+  const loadNotices = async () => {
+    try {
+      const { data } = await api.get('/boards');
+      setNotices((data.notices || []).map(n => ({
+        id: n.board_id,
+        title: n.title,
+        content: n.content,
+        badge: '공지',
+        date: String(n.created_at).slice(0, 10),
+      })));
+    } catch {
+      setNotices([]);
+    }
+  };
+
+  useEffect(() => {
+    loadNotices();
+  }, []);
 
   useEffect(() => {
     if (selectedPost || isWriting) {
@@ -262,34 +278,33 @@ export default function BoardPage({ user = null }) {
     setEditingPost(null);
   };
 
-  const submitPost = ({ title, content, badge }) => {
-    if (editingPost) {
-      const updatedPost = { ...editingPost, title, content, badge };
-      setNotices(current => current.map(post => post.id === updatedPost.id ? updatedPost : post));
-      setSelectedPost(updatedPost);
+  const submitPost = async ({ title, content }) => {
+    try {
+      if (editingPost) {
+        await api.put(`/boards/${editingPost.id}`, { title, content });
+      } else {
+        await api.post('/boards', { title, content });
+      }
+      await loadNotices();
       setEditingPost(null);
       setIsWriting(false);
-      return;
+      setSelectedPost(null);
+      setNoticePage(1);
+    } catch (err) {
+      alert(err.response?.data?.detail || '저장 중 오류가 발생했습니다.');
     }
+  };
 
-    const now = new Date();
-    const date = [
-      now.getFullYear(),
-      String(now.getMonth() + 1).padStart(2, '0'),
-      String(now.getDate()).padStart(2, '0'),
-    ].join('-');
-    const post = {
-      id: notices.reduce((highest, notice) => Math.max(highest, notice.id), 0) + 1,
-      badge,
-      title,
-      content,
-      date,
-    };
-
-    setNotices(current => [post, ...current]);
-    setNoticePage(1);
-    setIsWriting(false);
-    setSelectedPost(post);
+  const deletePost = async (post) => {
+    if (!window.confirm('이 공지사항을 삭제하시겠습니까?')) return;
+    try {
+      await api.delete(`/boards/${post.id}`);
+      await loadNotices();
+      setSelectedPost(null);
+      setNoticePage(1);
+    } catch (err) {
+      alert(err.response?.data?.detail || '삭제 중 오류가 발생했습니다.');
+    }
   };
 
   if (selectedPost || isWriting) {
@@ -320,6 +335,7 @@ export default function BoardPage({ user = null }) {
                   onBack={() => setSelectedPost(null)}
                   onSelectPost={setSelectedPost}
                   onEdit={() => { setEditingPost(selectedPost); setIsWriting(true); }}
+                  onDelete={() => deletePost(selectedPost)}
                   canEdit={isAdmin}
                 />
               )}

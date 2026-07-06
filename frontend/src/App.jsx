@@ -25,6 +25,10 @@ import PlanPayPage from './pages/PlanPayPage';
 import EnterprisePage from './pages/EnterprisePage';
 import KakaoCallbackPage from './pages/KakaoCallbackPage';
 import AdminPage from './pages/AdminPage';
+import NaverCallbackPage from './pages/NaverCallbackPage';
+import GoogleCallbackPage from './pages/GoogleCallbackPage';
+import KakaoPayCallbackPage from './pages/KakaoPayCallbackPage';
+import TossPayCallbackPage from './pages/TossPayCallbackPage';
 
 // Page overlay wrapper
 function PageOverlay({ id, activePage, onBack, openPage, isLoggedIn, onLogout, user, children }) {
@@ -44,9 +48,48 @@ function PageOverlay({ id, activePage, onBack, openPage, isLoggedIn, onLogout, u
   );
 }
 
+function readCompletedPayment() {
+  try {
+    const stored = sessionStorage.getItem('completed_payment');
+    if (!stored) return null;
+    return JSON.parse(stored);
+  } catch {
+    return null;
+  }
+}
+
+const DEV_FORCE_LOGOUT_ON_LOAD = import.meta.env.DEV;
+const DEV_AUTH_STORAGE_KEYS = [
+  'access_token',
+  'refresh_token',
+  'user',
+  'auto_login',
+  'aicaptcha_auto_login_enabled',
+];
+
+function clearDevAuthState() {
+  if (!DEV_FORCE_LOGOUT_ON_LOAD) return;
+  try {
+    DEV_AUTH_STORAGE_KEYS.forEach((key) => {
+      localStorage.removeItem(key);
+      sessionStorage.removeItem(key);
+    });
+  } catch {
+    // 개발 편의용 초기화이므로 storage 접근 실패가 앱 렌더링을 막지 않게 한다.
+  }
+}
+
+clearDevAuthState();
+
 export default function App() {
-  const [page, setPage] = useState(null);
-  const [planPayArgs, setPlanPayArgs] = useState({ plan: 'Pro' });
+  const currentPath = window.location.pathname;
+  const isOAuthCallback = currentPath.startsWith('/auth/') && currentPath.endsWith('/callback');
+  const [completedPayment] = useState(readCompletedPayment);
+  const [page, setPage] = useState(completedPayment ? 'plan-pay' : null);
+  const [planPayArgs, setPlanPayArgs] = useState({
+    plan: completedPayment?.plan_name || 'Pro',
+    completed: Boolean(completedPayment),
+  });
   const [mypageTab, setMypageTab] = useState('info');
   const [mypageKey, setMypageKey] = useState(0);
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('access_token'));
@@ -54,6 +97,15 @@ export default function App() {
     try { return JSON.parse(localStorage.getItem('user') || 'null'); } catch { return null; }
   });
   const [signupKey, setSignupKey] = useState(0);
+  const [boardKey, setBoardKey] = useState(0);
+  // 비로그인 상태로 결제 진입 시 로그인 후 이어갈 요금제
+  const [pendingPlan, setPendingPlan] = useState(null);
+
+  useEffect(() => {
+    if (completedPayment) {
+      sessionStorage.removeItem('completed_payment');
+    }
+  }, [completedPayment]);
 
   const openPage = (id) => {
     if (id === 'admin' && currentUser?.role !== 'admin') {
@@ -67,15 +119,25 @@ export default function App() {
     if (id === 'signup') {
       setSignupKey(k => k + 1);
     }
+    if (id === 'board') {
+      setBoardKey(k => k + 1);
+    }
     setPage(id);
   };
 
   const closePage = () => {
+    setPendingPlan(null);
     setPage(null);
   };
   const handleLogin = (user) => {
     setIsLoggedIn(true);
     setCurrentUser(user);
+    if (pendingPlan) {
+      setPlanPayArgs({ plan: pendingPlan, completed: false });
+      setPendingPlan(null);
+      setPage('plan-pay');
+      return;
+    }
     closePage();
   };
   const handleLogout = () => {
@@ -85,9 +147,18 @@ export default function App() {
     setCurrentUser(null);
     closePage();
   };
+  const handleUserUpdate = (user) => {
+    setCurrentUser(user);
+    localStorage.setItem('user', JSON.stringify(user));
+  };
 
   const openPlanPayment = (plan) => {
-    setPlanPayArgs({ plan });
+    if (!isLoggedIn) {
+      setPendingPlan(plan);
+      setPage('login');
+      return;
+    }
+    setPlanPayArgs({ plan, completed: false });
     setPage('plan-pay');
   };
 
@@ -149,10 +220,22 @@ export default function App() {
     );
     els.forEach((el) => observer.observe(el));
     return () => { observer.disconnect(); timers.forEach(clearTimeout); };
-  }, []);
+  }, [isOAuthCallback]);
 
-  if (window.location.pathname === '/auth/kakao/callback') {
+  if (currentPath === '/auth/kakao/callback') {
     return <KakaoCallbackPage onLogin={handleLogin} />;
+  }
+  if (currentPath === '/auth/naver/callback') {
+    return <NaverCallbackPage onLogin={handleLogin} />;
+  }
+  if (currentPath === '/auth/google/callback') {
+    return <GoogleCallbackPage onLogin={handleLogin} />;
+  }
+  if (currentPath.startsWith('/payments/kakao/')) {
+    return <KakaoPayCallbackPage />;
+  }
+  if (currentPath.startsWith('/payments/toss/')) {
+    return <TossPayCallbackPage />;
   }
 
   return (
@@ -187,7 +270,7 @@ export default function App() {
       {/* Mypage */}
       <PageOverlay id="mypage" activePage={page} onBack={closePage} openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} user={currentUser}>
         <div className="po-body">
-          <MypagePage key={mypageKey} openPage={openPage} closePage={closePage} initialTab={mypageTab} user={currentUser} />
+          <MypagePage key={mypageKey} openPage={openPage} closePage={closePage} initialTab={mypageTab} user={currentUser} onUserUpdate={handleUserUpdate} />
         </div>
       </PageOverlay>
 
@@ -198,7 +281,7 @@ export default function App() {
 
       {/* Board */}
       <PageOverlay id="board" activePage={page} onBack={closePage} openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} user={currentUser}>
-        <BoardPage user={currentUser} />
+        <BoardPage key={boardKey} user={currentUser} />
       </PageOverlay>
 
       {/* Enterprise Inquiry */}
@@ -213,7 +296,7 @@ export default function App() {
 
       {/* Plan Payment */}
       <PageOverlay id="plan-pay" activePage={page} onBack={closePage} openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} user={currentUser}>
-        <PlanPayPage planName={planPayArgs.plan} closePage={closePage} openPage={openPage} openMypageOnApiKey={openMypageOnApiKey} />
+        <PlanPayPage planName={planPayArgs.plan} initialSuccess={planPayArgs.completed} closePage={closePage} openPage={openPage} openMypageOnApiKey={openMypageOnApiKey} user={currentUser} />
       </PageOverlay>
     </>
   );

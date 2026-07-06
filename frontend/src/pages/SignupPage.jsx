@@ -33,6 +33,7 @@ export default function SignupPage({ openPage, onLogin }) {
   const [attemptedFields, setAttemptedFields] = useState({});
 
   const [apiError, setApiError] = useState('');
+  const [phoneError, setPhoneError] = useState('');
   const [loading, setLoading] = useState(false);
   const [isPrivacyHelpOpen, setIsPrivacyHelpOpen] = useState(false);
 
@@ -56,9 +57,11 @@ export default function SignupPage({ openPage, onLogin }) {
   const showPhoneError = (attempted || attemptedFields.phone) && !phone.trim();
   const showAgreedError = (attempted || attemptedFields.agreed) && !agreed;
 
+  const hasInvalidIdChar = /[^a-zA-Z0-9]/.test(loginId);
+
   const handleCheckId = async () => {
     const id = loginId.trim();
-    if (!id) return;
+    if (!id || hasInvalidIdChar) return;
     setIdCheck('checking');
     try {
       const { data } = await api.get('/auth/check-id', { params: { user_id: id } });
@@ -88,6 +91,7 @@ export default function SignupPage({ openPage, onLogin }) {
     if (!isValid) { setAttempted(true); return; }
     setLoading(true);
     setApiError('');
+    setPhoneError('');
     try {
       const { data } = await api.post('/auth/signup', {
         user_id: loginId.trim(),
@@ -100,7 +104,12 @@ export default function SignupPage({ openPage, onLogin }) {
       localStorage.setItem('user', JSON.stringify(data.user));
       if (onLogin) onLogin(data.user);
     } catch (err) {
-      setApiError(err.response?.data?.detail || '회원가입 중 오류가 발생했습니다.');
+      const detail = err.response?.data?.detail || '회원가입 중 오류가 발생했습니다.';
+      if (detail.includes('전화번호')) {
+        setPhoneError(detail);
+      } else {
+        setApiError(detail);
+      }
     } finally {
       setLoading(false);
     }
@@ -144,8 +153,7 @@ export default function SignupPage({ openPage, onLogin }) {
             placeholder="아이디"
             value={loginId}
             onChange={e => {
-              const filtered = e.target.value.replace(/[^a-zA-Z0-9]/g, '');
-              setLoginId(filtered);
+              setLoginId(e.target.value);
               setIdCheck(null);
             }}
             onKeyDown={e => {
@@ -162,12 +170,14 @@ export default function SignupPage({ openPage, onLogin }) {
               }
             }}
             style={{
-              ...(showIdError ? errorStyle : {}),
+              ...(showIdError || hasInvalidIdChar ? errorStyle : {}),
               ...(idCheck === 'taken' ? errorStyle : {}),
               ...(idCheck === 'checking' ? { opacity: 0.6 } : {}),
             }}
           />
-          <p style={{ margin: 0, fontSize: 12, color: 'var(--muted)' }}>영문 · 숫자만 사용 가능합니다.</p>
+          {hasInvalidIdChar && (
+            <p style={{ margin: 0, fontSize: 12.5, color: '#c0392b' }}>영문 · 숫자만 사용 가능합니다.</p>
+          )}
           {isIdAvailable && (
             <p style={{ margin: 0, fontSize: 12.5, color: 'var(--orange)', fontWeight: 600 }}>
               <strong>{checkedId}</strong>는 사용 가능한 아이디입니다.
@@ -233,23 +243,27 @@ export default function SignupPage({ openPage, onLogin }) {
               }
             }}
           />
-          {showEmailError && (
-            <p style={{ margin: '6px 0 0', fontSize: 12.5, color: '#c0392b' }}>올바른 이메일을 입력해주세요.</p>
+        </div>
+        <div>
+          <ClearableInput
+            type="tel"
+            placeholder="휴대폰 번호"
+            value={phone}
+            onChange={e => { setPhone(e.target.value.replace(/[^0-9]/g, '')); setPhoneError(''); }}
+            onKeyDown={e => {
+              if (e.key === 'Tab' && !e.shiftKey && !phone.trim()) {
+                e.preventDefault();
+                markAttempted('phone');
+              }
+            }}
+            style={showPhoneError || phoneError ? errorStyle : {}}
+          />
+          {phoneError && (
+            <p className="signup-field-error" style={{ margin: '6px 0 0', fontSize: 12.5, color: '#c0392b' }}>
+              {phoneError}
+            </p>
           )}
         </div>
-        <ClearableInput
-          type="tel"
-          placeholder="휴대폰 번호"
-          value={phone}
-          onChange={e => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
-          onKeyDown={e => {
-            if (e.key === 'Tab' && !e.shiftKey && !phone.trim()) {
-              e.preventDefault();
-              markAttempted('phone');
-            }
-          }}
-          style={showPhoneError ? errorStyle : {}}
-        />
         <div className="signup-agreement-row" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <label className="signup-agreement-label" style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: 'var(--ink-soft)', cursor: 'pointer' }}>
             <span style={{ position: 'relative', width: 20, height: 20, flexShrink: 0 }}>
@@ -275,7 +289,7 @@ export default function SignupPage({ openPage, onLogin }) {
                   border: showAgreedError
                     ? '1.5px solid #c0392b'
                     : `1.5px solid ${agreed ? 'var(--orange-2)' : 'var(--line)'}`,
-                  background: agreed ? 'var(--orange-2)' : '#fff',
+                  background: agreed ? 'var(--orange-2)' : 'var(--card)',
                   transition: 'background 0.15s ease, border-color 0.15s ease',
                   display: 'flex',
                   alignItems: 'center',
@@ -363,7 +377,7 @@ export default function SignupPage({ openPage, onLogin }) {
             aria-modal="true"
             aria-labelledby="signup-privacy-title"
             style={{
-              background: '#fff', borderRadius: 'var(--r)', padding: '28px 26px',
+              background: 'var(--card)', borderRadius: 'var(--r)', padding: '28px 26px',
               width: '100%', maxWidth: 420, boxShadow: 'var(--shadow-md)',
             }}
           >

@@ -27,7 +27,7 @@ function Modal({ title, onClose, children }) {
       background: 'rgba(36,27,21,.45)', display: 'flex',
       alignItems: 'center', justifyContent: 'center', padding: 24,
     }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div style={{ background: '#fff', borderRadius: 'var(--r)', padding: '32px 28px', width: '100%', maxWidth: 440, boxShadow: 'var(--shadow-md)' }}>
+      <div style={{ background: 'var(--card)', borderRadius: 'var(--r)', padding: '32px 28px', width: '100%', maxWidth: 440, boxShadow: 'var(--shadow-md)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <h2 style={{ margin: 0, fontFamily: 'var(--disp)', fontSize: 20, fontWeight: 700 }}>{title}</h2>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: 'var(--muted)', lineHeight: 1 }}>✕</button>
@@ -63,18 +63,66 @@ function ChangePwModal({ onClose }) {
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [confirm, setConfirm] = useState('');
-  const [attempted, setAttempted] = useState(false);   // ← 추가
+  const [attempted, setAttempted] = useState(false);
+  const [currentError, setCurrentError] = useState('');
+  const [formatError, setFormatError] = useState('');
+  const [matchError, setMatchError] = useState('');
+  const [checkingCurrent, setCheckingCurrent] = useState(false);
 
-  const isValid = current.trim() && next.trim() && confirm.trim();
+  const allFilled = current.trim() && next.trim() && confirm.trim();
+  const isFormatValid = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,16}$/.test(next);
 
   const errorStyle = { border: '1.5px solid #c0392b' };
 
-  const handleChange = () => {
-    if (!isValid) {
+  const checkCurrentPassword = async () => {
+    if (!current.trim()) return;
+    setCheckingCurrent(true);
+    try {
+      await api.post('/auth/verify-password', { password: current });
+      setCurrentError('');
+    } catch (err) {
+      setCurrentError(err.response?.data?.detail || '비밀번호가 일치하지 않습니다.');
+    } finally {
+      setCheckingCurrent(false);
+    }
+  };
+
+  const handleChange = async () => {
+    setFormatError('');
+    setMatchError('');
+
+    if (!allFilled) {
       setAttempted(true);
       return;
     }
-    setDone(true);
+    if (currentError) return;   // 이미 틀린 걸로 확인됐으면 여기서 중단
+
+    // 현재 비밀번호를 아직 검증 안 했으면 여기서 한 번 더 확인
+    try {
+      await api.post('/auth/verify-password', { password: current });
+    } catch (err) {
+      setCurrentError(err.response?.data?.detail || '비밀번호가 일치하지 않습니다.');
+      return;
+    }
+
+    if (!isFormatValid) {
+      setFormatError('영문 대소문자·숫자·특수문자를 포함해 8~16자로 입력해주세요.');
+      return;
+    }
+    if (next !== confirm) {
+      setMatchError('비밀번호가 일치하지 않습니다.');
+      return;
+    }
+
+    try {
+      await api.post('/auth/change-password', {
+        current_password: current,
+        new_password: next,
+      });
+      setDone(true);
+    } catch (err) {
+      setCurrentError(err.response?.data?.detail || '비밀번호 변경에 실패했습니다.');
+    }
   };
 
   return (
@@ -83,28 +131,38 @@ function ChangePwModal({ onClose }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <PasswordInput
             value={current}
-            onChange={e => setCurrent(e.target.value)}
+            onChange={e => { setCurrent(e.target.value); setCurrentError(''); }}
+            onBlur={checkCurrentPassword}
             placeholder="현재 비밀번호"
-            style={attempted && !current.trim() ? errorStyle : {}}
+            style={(attempted && !current.trim()) || currentError ? errorStyle : {}}
           />
+          {currentError && (
+            <p style={{ margin: '-6px 0 0', fontSize: 12, color: '#c0392b' }}>{currentError}</p>
+          )}
           <PasswordInput
             value={next}
-            onChange={e => setNext(e.target.value)}
+            onChange={e => { setNext(e.target.value); setFormatError(''); }}
             placeholder="새 비밀번호"
-            style={attempted && !next.trim() ? errorStyle : {}}
+            style={(attempted && !next.trim()) || formatError ? errorStyle : {}}
           />
+          {formatError && (
+            <p style={{ margin: '-6px 0 0', fontSize: 12, color: '#c0392b' }}>{formatError}</p>
+          )}
           <PasswordInput
             value={confirm}
-            onChange={e => setConfirm(e.target.value)}
+            onChange={e => { setConfirm(e.target.value); setMatchError(''); }}
             placeholder="새 비밀번호 확인"
-            style={attempted && !confirm.trim() ? errorStyle : {}}
+            style={(attempted && !confirm.trim()) || matchError ? errorStyle : {}}
           />
+          {matchError && (
+            <p style={{ margin: '-6px 0 0', fontSize: 12, color: '#c0392b' }}>{matchError}</p>
+          )}
           <p style={{ margin: 0, fontSize: 12, color: 'var(--muted)' }}>영문·숫자·특수문자 포함 8자 이상</p>
           <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
             <button className="pg-btn" style={{ flex: 1, padding: 13 }} onClick={onClose}>취소</button>
             <button
               className="pg-btn primary"
-              style={{ flex: 1, padding: 13, opacity: isValid ? 1 : 0.5, cursor: isValid ? 'pointer' : 'not-allowed' }}
+              style={{ flex: 1, padding: 13, opacity: allFilled ? 1 : 0.5, cursor: allFilled ? 'pointer' : 'not-allowed' }}
               onClick={handleChange}
             >변경하기</button>
           </div>
@@ -128,27 +186,44 @@ function ChangePwModal({ onClose }) {
   );
 }
 
-function EditInfoModal({ onClose, user }) {
+function EditInfoModal({ onClose, user, onUpdated }) {
   const [done, setDone] = useState(false);
   const [name, setName] = useState(user?.user_name || '');
   const [finalEmail, setFinalEmail] = useState(user?.email || '');
   const [phone, setPhone] = useState(user?.phone || '');
   const [attempted, setAttempted] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [apiError, setApiError] = useState('');
 
   const errorStyle = { border: '1.5px solid #c0392b' };
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(finalEmail);
   const isValid = name.trim() && isEmailValid && phone.trim();
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!isValid) { setAttempted(true); return; }
-    setDone(true);
+    setSaving(true);
+    setApiError('');
+    try {
+      const { data } = await api.put('/auth/me', {
+        user_name: name.trim(),
+        email: finalEmail.trim(),
+        phone: phone.trim(),
+      });
+      if (onUpdated) onUpdated(data.user);
+      setDone(true);
+    } catch (err) {
+      setApiError(err.response?.data?.detail || '정보 수정 중 오류가 발생했습니다.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <Modal title="정보 수정" onClose={onClose}>
       {!done ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <ClearableInput
+          <input
+            className="pg-input"
             value={name}
             onChange={e => setName(e.target.value)}
             placeholder="이름"
@@ -168,13 +243,17 @@ function EditInfoModal({ onClose, user }) {
             placeholder="휴대폰 번호"
             style={attempted && !phone.trim() ? errorStyle : {}}
           />
+          {apiError && (
+            <p style={{ margin: 0, fontSize: 13, color: '#c0392b' }}>{apiError}</p>
+          )}
           <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
             <button className="pg-btn" style={{ flex: 1, padding: 13 }} onClick={onClose}>취소</button>
             <button
               className="pg-btn primary"
-              style={{ flex: 1, padding: 13, opacity: isValid ? 1 : 0.5, cursor: isValid ? 'pointer' : 'not-allowed' }}
+              style={{ flex: 1, padding: 13, opacity: isValid && !saving ? 1 : 0.5, cursor: isValid && !saving ? 'pointer' : 'not-allowed' }}
               onClick={handleSave}
-            >저장</button>
+              disabled={saving}
+            >{saving ? '저장 중...' : '저장'}</button>
           </div>
         </div>
       ) : (
@@ -189,7 +268,7 @@ function EditInfoModal({ onClose, user }) {
 }
 
 /* ── SC-07 내 정보 탭 ── */
-function InfoTab({ user }) {
+function InfoTab({ user, onUserUpdate }) {
   const [modal, setModal] = useState(null); // null | 'pw' | 'edit'
 
   const readOnlyInputStyle = {
@@ -198,6 +277,7 @@ function InfoTab({ user }) {
     caretColor: 'transparent',
   };
   const preventFocus = (e) => e.target.blur();
+  const joinDate = user?.created_at ? String(user.created_at).slice(0, 10) : '-';
 
   return (
     <>
@@ -239,10 +319,11 @@ function InfoTab({ user }) {
           <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 6 }}>가입일</div>
           <input
             className="pg-input"
-            defaultValue="2026-01-01"
+            value={joinDate}
             readOnly
             style={readOnlyInputStyle}
             onFocus={preventFocus}
+            onChange={() => {}}
           />
         </div>
         <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
@@ -252,7 +333,7 @@ function InfoTab({ user }) {
       </div>
 
       {modal === 'pw'   && <ChangePwModal onClose={() => setModal(null)} />}
-      {modal === 'edit' && <EditInfoModal onClose={() => setModal(null)} user={user} />}
+      {modal === 'edit' && <EditInfoModal onClose={() => setModal(null)} user={user} onUpdated={onUserUpdate} />}
     </>
   );
 }
@@ -266,7 +347,7 @@ function ReissueConfirmModal({ onConfirm, onClose }) {
       alignItems: 'center', justifyContent: 'center', padding: 24,
     }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div style={{
-        background: '#fff', borderRadius: 'var(--r)', padding: '28px 24px',
+        background: 'var(--card)', borderRadius: 'var(--r)', padding: '28px 24px',
         width: '100%', maxWidth: 320, boxShadow: 'var(--shadow-md)',
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
         textAlign: 'center',
@@ -303,7 +384,7 @@ function ReissueDoneModal({ onClose }) {
       alignItems: 'center', justifyContent: 'center', padding: 24,
     }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div style={{
-        background: '#fff', borderRadius: 'var(--r)', padding: '28px 24px',
+        background: 'var(--card)', borderRadius: 'var(--r)', padding: '28px 24px',
         width: '100%', maxWidth: 320, boxShadow: 'var(--shadow-md)',
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
         textAlign: 'center',
@@ -745,9 +826,9 @@ const PAYMENT_HISTORY = [
 ];
 
 const STATUS_STYLE = {
-  '완료':   { background: '#e8f7f0', color: '#1e7a4e' },
-  '환불':   { background: '#fdecea', color: '#c0392b' },
-  '실패':   { background: '#fdecea', color: '#c0392b' },
+  '완료':   { background: 'rgba(46,158,107,.15)', color: 'var(--ok)' },
+  '환불':   { background: 'rgba(216,73,47,.15)', color: 'var(--bad)' },
+  '실패':   { background: 'rgba(216,73,47,.15)', color: 'var(--bad)' },
   '대기':   { background: 'var(--peach)', color: 'var(--orange-2)' },
 };
 
@@ -759,7 +840,7 @@ function CancelSubModal({ onConfirm, onClose }) {
       alignItems: 'center', justifyContent: 'center', padding: 24,
     }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div style={{
-        background: '#fff', borderRadius: 'var(--r)', padding: '28px 24px',
+        background: 'var(--card)', borderRadius: 'var(--r)', padding: '28px 24px',
         width: '100%', maxWidth: 340, boxShadow: 'var(--shadow-md)',
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
         textAlign: 'center',
@@ -817,7 +898,7 @@ function BillingTab({ closePage }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--disp)', color: 'var(--ink)' }}>Pro 플랜</span>
               {cancelled && (
-                <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: '#fdecea', color: '#c0392b' }}>
+                <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: 'rgba(216,73,47,.15)', color: 'var(--bad)' }}>
                   해지 예정
                 </span>
               )}
@@ -906,7 +987,7 @@ function ConfirmDeactivateModal({ onConfirm, onClose }) {
       alignItems: 'center', justifyContent: 'center', padding: 24,
     }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div style={{
-        background: '#fff', borderRadius: 'var(--r)', padding: '28px 24px',
+        background: 'var(--card)', borderRadius: 'var(--r)', padding: '28px 24px',
         width: '100%', maxWidth: 320, boxShadow: 'var(--shadow-md)',
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
         textAlign: 'center',
@@ -943,7 +1024,7 @@ function AgreeWarnModal({ onClose }) {
       alignItems: 'center', justifyContent: 'center', padding: 24,
     }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div style={{
-        background: '#fff', borderRadius: 'var(--r)', padding: '28px 24px',
+        background: 'var(--card)', borderRadius: 'var(--r)', padding: '28px 24px',
         width: '100%', maxWidth: 320, boxShadow: 'var(--shadow-md)',
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
         textAlign: 'center',
@@ -974,7 +1055,7 @@ function PasswordWarnModal({ onClose }) {
       alignItems: 'center', justifyContent: 'center', padding: 24,
     }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div style={{
-        background: '#fff', borderRadius: 'var(--r)', padding: '28px 24px',
+        background: 'var(--card)', borderRadius: 'var(--r)', padding: '28px 24px',
         width: '100%', maxWidth: 320, boxShadow: 'var(--shadow-md)',
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
         textAlign: 'center',
@@ -1005,7 +1086,7 @@ function DeactivateDoneModal({ onClose }) {
       alignItems: 'center', justifyContent: 'center', padding: 24,
     }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div style={{
-        background: '#fff', borderRadius: 'var(--r)', padding: '28px 24px',
+        background: 'var(--card)', borderRadius: 'var(--r)', padding: '28px 24px',
         width: '100%', maxWidth: 320, boxShadow: 'var(--shadow-md)',
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
         textAlign: 'center',
@@ -1205,7 +1286,7 @@ const TABS = [
 
 const ADMIN_TAB = { id: 'inquiries', label: '문의 내역' };
 
-export default function MypagePage({ openPage, closePage, initialTab = 'info', user = null }) {
+export default function MypagePage({ openPage, closePage, initialTab = 'info', user = null, onUserUpdate }) {
   const [activeTab, setActiveTab] = useState(initialTab);
   const isAdmin = user?.role === 'admin';
   const tabs = isAdmin ? [...TABS, ADMIN_TAB] : TABS;
@@ -1219,15 +1300,14 @@ export default function MypagePage({ openPage, closePage, initialTab = 'info', u
       <div className="mp-sidebar">
         {tabs.map(t => (
           <button key={t.id}
-            className={`mp-nav-item${activeTab === t.id ? ' active' : ''}`}
-            onClick={() => setActiveTab(t.id)}
-            style={t.danger ? { color: '#c0392b' } : {}}>
-            {t.label}
-          </button>
+          className={`mp-nav-item${activeTab === t.id ? ' active' : ''}${t.danger ? ' danger' : ''}`}
+          onClick={() => setActiveTab(t.id)}>
+          {t.label}
+        </button>
         ))}
       </div>
       <div className="mp-content">
-        {activeTab === 'info'       && <InfoTab user={user} />}
+        {activeTab === 'info'       && <InfoTab user={user} onUserUpdate={onUserUpdate} />}
         {activeTab === 'apikey'     && <ApiKeyTab openPage={openPage} />}
         {activeTab === 'usage'      && <UsageTab />}
         {activeTab === 'billing'    && <BillingTab closePage={closePage} />}

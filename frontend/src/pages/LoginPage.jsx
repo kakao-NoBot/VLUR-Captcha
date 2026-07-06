@@ -16,7 +16,7 @@ function Modal({ title, onClose, children }) {
       alignItems: 'center', justifyContent: 'center', padding: 24,
     }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div style={{
-        background: '#fff', borderRadius: 'var(--r)', padding: '32px 28px',
+        background: 'var(--card)', borderRadius: 'var(--r)', padding: '32px 28px',
         width: '100%', maxWidth: 420, boxShadow: 'var(--shadow-md)',
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
@@ -102,8 +102,10 @@ function FindPwModal({ onClose }) {
     setStep(2);
   };
 
+  const isCodeValid = /^\d{6}$/.test(code.trim());
+
   const handleVerify = () => {
-    if (!code.trim()) { setAttempted2(true); return; }
+    if (!isCodeValid) { setAttempted2(true); return; }
     setStep(3);
   };
 
@@ -139,16 +141,21 @@ function FindPwModal({ onClose }) {
             <ClearableInput
               placeholder="인증코드 6자리"
               value={code}
-              onChange={e => setCode(e.target.value)}
+              inputMode="numeric"
+              maxLength={6}
+              onChange={e => setCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
               containerStyle={{ flex: 1 }}
-              style={attempted2 && !code.trim() ? errorStyle : {}}
+              style={attempted2 && !isCodeValid ? errorStyle : {}}
             />
             <button type="button" className="pg-btn" style={{ whiteSpace: 'nowrap', padding: '0 14px', fontSize: 13 }} onClick={() => setStep(2)}>재발송</button>
           </div>
+          {attempted2 && !isCodeValid && (
+            <p style={{ margin: 0, fontSize: 12.5, color: '#c0392b' }}>인증코드 6자리 숫자를 입력해주세요.</p>
+          )}
           <button
             type="button"
             className="pg-btn primary"
-            style={{ width: '100%', padding: 13, opacity: code.trim() ? 1 : 0.5, cursor: code.trim() ? 'pointer' : 'not-allowed' }}
+            style={{ width: '100%', padding: 13, opacity: isCodeValid ? 1 : 0.5, cursor: isCodeValid ? 'pointer' : 'not-allowed' }}
             onClick={handleVerify}
           >인증 확인</button>
         </div>
@@ -247,27 +254,33 @@ export default function LoginPage({ openPage, closePage, onLogin }) {
   };
 
   const handleSocialLogin = async (provider) => {
-    if (provider !== 'kakao') {
+    const providerNames = { kakao: '카카오', naver: '네이버', google: '구글' };
+    const providerName = providerNames[provider];
+    if (!providerName) {
       setError('해당 간편 로그인은 아직 준비 중입니다.');
       return;
     }
 
     const randomValues = new Uint32Array(4);
     window.crypto.getRandomValues(randomValues);
-    const state = Array.from(randomValues, value => value.toString(16)).join('');
+    const state = Array.from(
+      randomValues,
+      value => value.toString(16).padStart(8, '0')
+    ).join('');
+    const stateStorageKey = `${provider}_oauth_state`;
 
     setLoading(true);
     setError('');
-    sessionStorage.setItem('kakao_oauth_state', state);
+    sessionStorage.setItem(stateStorageKey, state);
 
     try {
-      const { data } = await api.get('/auth/kakao/authorize-url', {
+      const { data } = await api.get(`/auth/${provider}/authorize-url`, {
         params: { state },
       });
       window.location.assign(data.authorize_url);
     } catch (err) {
-      sessionStorage.removeItem('kakao_oauth_state');
-      setError(err.response?.data?.detail || '카카오 로그인을 시작하지 못했습니다.');
+      sessionStorage.removeItem(stateStorageKey);
+      setError(err.response?.data?.detail || `${providerName} 로그인을 시작하지 못했습니다.`);
       setLoading(false);
     }
   };
@@ -346,7 +359,7 @@ export default function LoginPage({ openPage, closePage, onLogin }) {
                   height: 18,
                   borderRadius: 6,
                   border: `1.5px solid ${autoLogin ? 'var(--orange-2)' : 'var(--line)'}`,
-                  background: autoLogin ? 'var(--orange-2)' : '#fff',
+                  background: autoLogin ? 'var(--orange-2)' : 'var(--card)',
                   color: '#fff',
                   fontSize: 12,
                   fontWeight: 800,
@@ -447,11 +460,12 @@ export default function LoginPage({ openPage, closePage, onLogin }) {
           <button
             type="button"
             onClick={() => handleSocialLogin('naver')}
+            disabled={loading}
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               width: '100%', padding: 13, borderRadius: 12, border: 'none',
               background: '#03C75A', color: '#fff', fontSize: 14.5, fontWeight: 700,
-              cursor: 'pointer',
+              cursor: loading ? 'wait' : 'pointer', opacity: loading ? 0.7 : 1,
             }}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff">
@@ -463,11 +477,13 @@ export default function LoginPage({ openPage, closePage, onLogin }) {
           <button
             type="button"
             onClick={() => handleSocialLogin('google')}
+            disabled={loading}
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               width: '100%', padding: 13, borderRadius: 12,
-              border: '1.5px solid var(--line)', background: '#fff', color: 'var(--ink)',
-              fontSize: 14.5, fontWeight: 700, cursor: 'pointer',
+              border: '1.5px solid var(--line)', background: 'var(--card)', color: 'var(--ink)',
+              fontSize: 14.5, fontWeight: 700,
+              cursor: loading ? 'wait' : 'pointer', opacity: loading ? 0.7 : 1,
             }}
           >
             <svg width="17" height="17" viewBox="0 0 24 24">
@@ -477,20 +493,6 @@ export default function LoginPage({ openPage, closePage, onLogin }) {
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53Z"/>
             </svg>
             Google로 시작하기
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleSocialLogin('apple')}
-            style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              width: '100%', padding: 13, borderRadius: 12,
-              border: '1.5px solid #111', background: '#111', color: '#fff',
-              fontSize: 14.5, fontWeight: 700, cursor: 'pointer',
-            }}
-          >
-            <span aria-hidden="true" style={{ fontSize: 18, lineHeight: 1 }}></span>
-            Apple로 시작하기
           </button>
         </div>
 
