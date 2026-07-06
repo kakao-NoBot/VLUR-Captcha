@@ -13,6 +13,7 @@ import Cases from './components/Cases';
 import Pricing from './components/Pricing';
 import Footer from './components/Footer';
 import ChatbotWidget from './components/ChatbotWidget';
+import PaymentCancelModal from './components/PaymentCancelModal';
 
 // Pages (overlays)
 import LoginPage from './pages/LoginPage';
@@ -24,6 +25,7 @@ import BoardPage from './pages/BoardPage';
 import PlanPayPage from './pages/PlanPayPage';
 import EnterprisePage from './pages/EnterprisePage';
 import KakaoCallbackPage from './pages/KakaoCallbackPage';
+import AdminPage from './pages/AdminPage';
 import NaverCallbackPage from './pages/NaverCallbackPage';
 import GoogleCallbackPage from './pages/GoogleCallbackPage';
 import KakaoPayCallbackPage from './pages/KakaoPayCallbackPage';
@@ -57,13 +59,48 @@ function readCompletedPayment() {
   }
 }
 
+function readCancelledPayment() {
+  try {
+    const stored = sessionStorage.getItem('cancelled_payment');
+    if (!stored) return null;
+    return JSON.parse(stored);
+  } catch {
+    return null;
+  }
+}
+
+const DEV_FORCE_LOGOUT_ON_LOAD = import.meta.env.DEV;
+const DEV_AUTH_STORAGE_KEYS = [
+  'access_token',
+  'refresh_token',
+  'user',
+  'auto_login',
+  'aicaptcha_auto_login_enabled',
+];
+
+function clearDevAuthState() {
+  if (!DEV_FORCE_LOGOUT_ON_LOAD) return;
+  try {
+    DEV_AUTH_STORAGE_KEYS.forEach((key) => {
+      localStorage.removeItem(key);
+      sessionStorage.removeItem(key);
+    });
+  } catch {
+    // 개발 편의용 초기화이므로 storage 접근 실패가 앱 렌더링을 막지 않게 한다.
+  }
+}
+
+clearDevAuthState();
+
 export default function App() {
   const currentPath = window.location.pathname;
   const isOAuthCallback = currentPath.startsWith('/auth/') && currentPath.endsWith('/callback');
   const [completedPayment] = useState(readCompletedPayment);
-  const [page, setPage] = useState(completedPayment ? 'plan-pay' : null);
+  const [cancelledPayment] = useState(readCancelledPayment);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(Boolean(cancelledPayment));
+  const [page, setPage] = useState(completedPayment || cancelledPayment ? 'plan-pay' : null);
   const [planPayArgs, setPlanPayArgs] = useState({
-    plan: completedPayment?.plan_name || 'Pro',
+    plan: completedPayment?.plan_name || cancelledPayment?.plan_name || 'Pro',
     completed: Boolean(completedPayment),
   });
   const [mypageTab, setMypageTab] = useState('info');
@@ -83,7 +120,15 @@ export default function App() {
     }
   }, [completedPayment]);
 
+  useEffect(() => {
+    if (cancelledPayment) sessionStorage.removeItem('cancelled_payment');
+  }, [cancelledPayment]);
+
   const openPage = (id) => {
+    if (id === 'admin' && currentUser?.role !== 'admin') {
+      setPage('login');
+      return;
+    }
     if (id === 'mypage') {
       setMypageTab('info');
       setMypageKey(k => k + 1);
@@ -261,10 +306,21 @@ export default function App() {
         <EnterprisePage closePage={closePage} />
       </PageOverlay>
 
+      {/* Admin */}
+      <PageOverlay id="admin" activePage={page} onBack={closePage} openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} user={currentUser}>
+        <AdminPage />
+      </PageOverlay>
+
       {/* Plan Payment */}
       <PageOverlay id="plan-pay" activePage={page} onBack={closePage} openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} user={currentUser}>
         <PlanPayPage planName={planPayArgs.plan} initialSuccess={planPayArgs.completed} closePage={closePage} openPage={openPage} openMypageOnApiKey={openMypageOnApiKey} user={currentUser} />
       </PageOverlay>
+
+      <PaymentCancelModal
+        open={isCancelModalOpen}
+        message={cancelledPayment?.message}
+        onClose={() => setIsCancelModalOpen(false)}
+      />
     </>
   );
 }
