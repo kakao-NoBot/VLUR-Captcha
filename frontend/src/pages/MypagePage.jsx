@@ -6,7 +6,7 @@ import PasswordInput from '../components/PasswordInput';
 import EmailInput from '../components/EmailInput';
 import ClearableInput from '../components/ClearableInput';
 import api from '../api/axios';
-import kakaopayLogo from '../assets/kakaopay.png';
+import kakaopayLogo from '../assets/kakao-pay-logo.png';
 import tossLogo from '../assets/toss.png';
 
 const realKey = 'sk-aicap_prod_7f3a91b2c4d5e6f789012345xxxx';
@@ -806,8 +806,8 @@ function UsageTab() {
     const rows = usageTableRows.map((row) => [
       row.date, row.issued, row.verified, getSuccessRate(row),
     ]);
-    // \ufeff(BOM): 엑셀에서 한글 헤더가 깨지지 않게
-    const csv = '\ufeff' + [header, ...rows].map((cols) => cols.join(',')).join('\n');
+    // ﻿(BOM): 엑셀에서 한글 헤더가 깨지지 않게
+    const csv = '﻿' + [header, ...rows].map((cols) => cols.join(',')).join('\n');
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -967,6 +967,7 @@ const STATUS_STYLE = {
   '대기':   { background: 'var(--peach)', color: 'var(--orange-2)' },
 };
 
+/* ── 결제 수단 로고 ── */
 const PAY_BADGE_LOGO = {
   kakao: kakaopayLogo,
   toss: tossLogo,
@@ -1057,7 +1058,7 @@ function BillingTab({ closePage, profile }) {
       <h2 className="pg-h2" style={{ marginBottom: 20 }}>결제 내역</h2>
 
       {/* 현재 구독 요약 */}
-      <div className="pg-card" style={{ maxWidth: 560, marginBottom: 20 }}>
+      <div className="pg-card" style={{ maxWidth: 720, marginBottom: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
           <div>
             <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 4 }}>현재 구독 중</div>
@@ -1507,6 +1508,12 @@ export default function MypagePage({ openPage, closePage, initialTab = 'info', u
 
   return (
     <div className="mp-wrap">
+      <style>{`
+        .mp-wrap .pg-table th,
+        .mp-wrap .pg-table td {
+          text-align: center !important;
+        }
+      `}</style>
       <div className="mp-sidebar">
         {tabs.map(t => (
           <button key={t.id}
