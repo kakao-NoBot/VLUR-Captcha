@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import api from '../api/axios';
 
 const FAQ_TREE = [
   {
@@ -64,31 +65,32 @@ const QUICK_STARTS = [
   '요금제 종류가 궁금해요',
 ];
 
-function matchFaq(rawInput) {
-  const q = rawInput.trim().toLowerCase();
-  if (!q) return null;
-
-  let best = null;
-  let bestScore = 0;
-
-  for (const item of FAQ_TREE) {
-    let score = 0;
-
-    if (item.q.toLowerCase().includes(q) || q.includes(item.q.toLowerCase())) {
-      score += 5;
-    }
-
-    for (const kw of item.keywords || []) {
-      if (q.includes(kw.toLowerCase())) score += 2;
-    }
-
-    if (score > bestScore) {
-      bestScore = score;
-      best = item;
-    }
-  }
-
-  return bestScore > 0 ? best : null;
+function TypingBubble() {
+  return (
+    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+      <div style={{
+        width: 28, height: 28, borderRadius: '50%', background: 'var(--orange)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2,
+      }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round">
+          <path d="M21 11.5a8.4 8.4 0 0 1-12 7.6L3 21l1.9-6A8.5 8.5 0 1 1 21 11.5Z"/>
+        </svg>
+      </div>
+      <div style={{
+        background: 'var(--card)', border: '1px solid var(--line)', borderRadius: '4px 14px 14px 14px',
+        padding: '12px 16px', display: 'flex', gap: 4, alignItems: 'center',
+        boxShadow: '0 1px 4px rgba(36,27,21,.07)',
+      }}>
+        {[0, 1, 2].map(i => (
+          <span key={i} style={{
+            width: 6, height: 6, borderRadius: '50%', background: 'var(--ink-soft)',
+            opacity: 0.5, animation: `chatbot-blink 1.2s ${i * 0.2}s infinite`,
+          }}/>
+        ))}
+        <style>{'@keyframes chatbot-blink { 0%, 60%, 100% { opacity: .25 } 30% { opacity: .9 } }'}</style>
+      </div>
+    </div>
+  );
 }
 
 function BotBubble({ text }) {
@@ -136,11 +138,12 @@ export default function ChatbotWidget() {
   ]);
   const [follows, setFollows] = useState(QUICK_STARTS);
   const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
   const bottomRef = useRef(null);
 
   useEffect(() => {
     if (open) bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, open]);
+  }, [messages, open, loading]);
 
   const handleSelect = (question) => {
     const item = FAQ_TREE.find(f => f.q === question);
@@ -153,23 +156,36 @@ export default function ChatbotWidget() {
     setFollows(item?.follow || QUICK_STARTS);
   };
 
-  const handleSend = () => {
+  const handleSend = async () => {
     const q = input.trim();
-    if (!q) return;
+    if (!q || loading) return;
     setInput('');
-    const item = matchFaq(q);
-    const newMsgs = [
-      ...messages,
-      { type: 'user', text: q },
-      {
-        type: 'bot',
-        text: item
-          ? item.a
-          : '죄송해요, 해당 내용을 정확히 찾지 못했어요. 아래 자주 묻는 질문을 선택하거나 이메일로 문의해 주세요.',
-      },
-    ];
-    setMessages(newMsgs);
-    setFollows(item?.follow || QUICK_STARTS);
+
+    const withUser = [...messages, { type: 'user', text: q }];
+    setMessages(withUser);
+    setFollows([]);
+    setLoading(true);
+
+    try {
+      const history = withUser.map(m => ({
+        role: m.type === 'user' ? 'user' : 'assistant',
+        content: m.text,
+      }));
+      const { data } = await api.post('/chatbot', { messages: history });
+      setMessages([...withUser, { type: 'bot', text: data.answer }]);
+    } catch (err) {
+      setMessages([
+        ...withUser,
+        {
+          type: 'bot',
+          text: err.response?.data?.detail
+            || '죄송해요, 지금은 답변을 드리기 어려워요. 잠시 후 다시 시도하거나 아래 자주 묻는 질문을 이용해 주세요.',
+        },
+      ]);
+    } finally {
+      setLoading(false);
+      setFollows(QUICK_STARTS);
+    }
   };
 
   return (
@@ -239,6 +255,8 @@ export default function ChatbotWidget() {
                 : <UserBubble key={i} text={m.text} />
             )}
 
+            {loading && <TypingBubble />}
+
             {/* Follow-up suggestions */}
             {follows.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
@@ -268,12 +286,13 @@ export default function ChatbotWidget() {
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleSend()}
+              disabled={loading}
               style={{ flex: 1, padding: '9px 12px', fontSize: 13, borderRadius: 10 }}
             />
-            <button onClick={handleSend} style={{
+            <button onClick={handleSend} disabled={loading} style={{
               background: 'var(--orange)', border: 'none', borderRadius: 10,
               width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', flexShrink: 0,
+              cursor: loading ? 'default' : 'pointer', flexShrink: 0, opacity: loading ? 0.5 : 1,
             }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M22 2 11 13M22 2 15 22l-4-9-9-4 20-7Z"/>

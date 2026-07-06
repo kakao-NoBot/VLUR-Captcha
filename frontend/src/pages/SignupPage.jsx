@@ -194,7 +194,7 @@ export default function SignupPage({ openPage, onLogin }) {
           {(attempted || attemptedFields.id) && !loginId.trim() && (
             <p style={{ margin: 0, fontSize: 12.5, color: '#c0392b' }}>아이디를 입력해주세요.</p>
           )}
-          {(attempted || attemptedFields.id) && loginId.trim() && !isIdAvailable && idCheck !== 'taken' && idCheck !== 'checking' && (
+          {(attempted || attemptedFields.id) && loginId.trim() && !hasInvalidIdChar && !isIdAvailable && idCheck !== 'taken' && idCheck !== 'checking' && (
             <p style={{ margin: 0, fontSize: 12.5, color: '#c0392b' }}>아이디 중복 확인이 필요합니다.</p>
           )}
         </div>
