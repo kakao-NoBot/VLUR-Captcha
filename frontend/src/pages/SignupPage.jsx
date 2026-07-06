@@ -16,6 +16,15 @@ const EMAIL_DOMAIN_OPTIONS = [
   { value: 'custom', label: '직접 입력' },
 ];
 
+// 이메일 인증코드 유효시간(초): 3분
+const EMAIL_CODE_TTL = 180;
+
+function formatCountdown(totalSeconds) {
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
 export default function SignupPage({ openPage, onLogin }) {
   const [name, setName] = useState('');
   const [loginId, setLoginId] = useState('');
@@ -24,6 +33,15 @@ export default function SignupPage({ openPage, onLogin }) {
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [finalEmail, setFinalEmail] = useState('');
+
+  // 이메일 인증 관련 상태
+  const [emailSent, setEmailSent] = useState(false);
+  const [emailCode, setEmailCode] = useState('');
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [emailCodeAttempted, setEmailCodeAttempted] = useState(false);
+  const [emailTimeLeft, setEmailTimeLeft] = useState(EMAIL_CODE_TTL);
+  const [emailResendKey, setEmailResendKey] = useState(0);
+
   const [phone, setPhone] = useState('');
   const [agreed, setAgreed] = useState(false);
 
@@ -43,6 +61,7 @@ export default function SignupPage({ openPage, onLogin }) {
   const isIdAvailable = idCheck === 'available' && checkedId === loginId.trim();
   const isPasswordValid = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_\-+=\[\]{};':"\\|,.<>/?`~]).{8,16}$/.test(password);
   const isPasswordMatch = password === passwordConfirm;
+  const isEmailCodeValid = /^\d{6}$/.test(emailCode.trim()) && emailTimeLeft > 0;
 
   const markAttempted = (field) => {
     setAttemptedFields((f) => ({ ...f, [field]: true }));
@@ -72,9 +91,45 @@ export default function SignupPage({ openPage, onLogin }) {
     }
   };
 
+  // 이메일이 바뀌면 이전에 발송/인증했던 상태는 초기화 (다른 이메일로 재인증해야 함)
+  useEffect(() => {
+    setEmailSent(false);
+    setEmailVerified(false);
+    setEmailCode('');
+    setEmailCodeAttempted(false);
+    setEmailTimeLeft(EMAIL_CODE_TTL);
+  }, [finalEmail]);
+
+  // 인증코드 발송 후, 인증 완료 전까지 1초마다 남은 시간 감소 (재발송 시 emailResendKey로 타이머 재시작)
+  useEffect(() => {
+    if (!emailSent || emailVerified) return undefined;
+    const timer = setInterval(() => {
+      setEmailTimeLeft((t) => (t > 0 ? t - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [emailSent, emailVerified, emailResendKey]);
+
+  const handleSendEmailCode = () => {
+    if (!isEmailValid) { markAttempted('email'); return; }
+    // 재발송은 타이머 상태와 무관하게 언제든 가능
+    setEmailSent(true);
+    setEmailVerified(false);
+    setEmailCode('');
+    setEmailCodeAttempted(false);
+    setEmailTimeLeft(EMAIL_CODE_TTL);
+    setEmailResendKey((k) => k + 1);
+    // TODO: 실제 이메일 인증코드 발송 API 연동
+  };
+
+  const handleVerifyEmailCode = () => {
+    if (!isEmailCodeValid) { setEmailCodeAttempted(true); return; }
+    setEmailVerified(true);
+    // TODO: 실제 인증코드 검증 API 연동
+  };
+
   const isValid =
     name.trim() && loginId.trim() && isIdFormatValid && isIdAvailable &&
-    isPasswordValid && isPasswordMatch && isEmailValid && phone.trim() && agreed;
+    isPasswordValid && isPasswordMatch && isEmailValid && emailVerified && phone.trim() && agreed;
 
   useEffect(() => {
     if (!isPrivacyHelpOpen) return undefined;
@@ -93,16 +148,15 @@ export default function SignupPage({ openPage, onLogin }) {
     setApiError('');
     setPhoneError('');
     try {
-      const { data } = await api.post('/auth/signup', {
-        user_id: loginId.trim(),
-        user_name: name.trim(),
-        password,
-        email: finalEmail,
-        phone: phone.trim() || null,
-      });
-      localStorage.setItem('access_token', data.access_token);
-      localStorage.setItem('user', JSON.stringify(data.user));
-      if (onLogin) onLogin(data.user);
+      await api.post('/auth/signup', {
+      user_id: loginId.trim(),
+      user_name: name.trim(),
+      password,
+      email: finalEmail,
+      phone: phone.trim() || null,
+    });
+    sessionStorage.setItem('signup_success', '1');
+    openPage('login');
     } catch (err) {
       const detail = err.response?.data?.detail || '회원가입 중 오류가 발생했습니다.';
       if (detail.includes('전화번호')) {
@@ -232,17 +286,126 @@ export default function SignupPage({ openPage, onLogin }) {
             <p style={{ margin: 0, fontSize: 12.5, color: '#c0392b' }}>비밀번호가 일치하지 않습니다.</p>
           )}
         </div>
-        <div>
-          <EmailInput
-            onChange={setFinalEmail}
-            error={showEmailError}
-            onKeyDown={e => {
-              if (e.key === 'Tab' && !e.shiftKey && !isEmailValid) {
-                e.preventDefault();
-                markAttempted('email');
-              }
-            }}
-          />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
+            <div style={{ flex: 1 }}>
+              <EmailInput
+                onChange={setFinalEmail}
+                error={showEmailError}
+                onKeyDown={e => {
+                  if (e.key === 'Tab' && !e.shiftKey && !isEmailValid) {
+                    e.preventDefault();
+                    markAttempted('email');
+                  }
+                }}
+              />
+            </div>
+            <button
+              type="button"
+              disabled={!isEmailValid || emailVerified}
+              style={{
+                whiteSpace: 'nowrap',
+                boxSizing: 'border-box',
+                height: 'auto',
+                minWidth: 74,
+                padding: '0 14px',
+                fontSize: 13,
+                fontWeight: 600,
+                borderRadius: 12,
+                border: '1.5px solid var(--line)',
+                background: 'var(--card)',
+                color: 'var(--orange-2)',
+                opacity: (!isEmailValid || emailVerified) ? 0.5 : 1,
+                cursor: (!isEmailValid || emailVerified) ? 'not-allowed' : 'pointer',
+              }}
+              onClick={handleSendEmailCode}
+            >{emailSent ? '재발송' : '인증코드'}</button>
+          </div>
+
+          {emailSent && !emailVerified && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <div
+                  style={{
+                    position: 'relative',
+                    flex: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    height: 48,
+                    border: `1.5px solid ${emailCodeAttempted && !isEmailCodeValid ? '#c0392b' : 'var(--line)'}`,
+                    borderRadius: 12,
+                    background: 'var(--card)',
+                  }}
+                >
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    placeholder={emailTimeLeft > 0 ? '인증코드 6자리' : '인증코드가 만료되었습니다'}
+                    value={emailCode}
+                    disabled={emailTimeLeft <= 0}
+                    onChange={e => setEmailCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
+                    style={{
+                      width: '100%',
+                      border: 'none',
+                      outline: 'none',
+                      background: 'transparent',
+                      padding: '0 14px',
+                      paddingRight: emailTimeLeft > 0 ? 56 : 14,
+                      fontSize: 15,
+                      color: emailTimeLeft > 0 ? 'var(--ink)' : 'var(--muted)',
+                    }}
+                  />
+                  {emailTimeLeft > 0 && (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        right: 14,
+                        fontSize: 13,
+                        fontWeight: 700,
+                        color: '#c0392b',
+                        pointerEvents: 'none',
+                      }}
+                    >
+                      {formatCountdown(emailTimeLeft)}
+                    </span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  disabled={!isEmailCodeValid}
+                  onClick={handleVerifyEmailCode}
+                  style={{
+                    whiteSpace: 'nowrap',
+                    boxSizing: 'border-box',
+                    height: 48,
+                    minWidth: 74,
+                    padding: '0 14px',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    borderRadius: 12,
+                    border: '1.5px solid var(--line)',
+                    background: 'var(--card)',
+                    color: 'var(--orange-2)',
+                    opacity: isEmailCodeValid ? 1 : 0.5,
+                    cursor: isEmailCodeValid ? 'pointer' : 'not-allowed',
+                  }}
+                >확인</button>
+              </div>
+              {emailCodeAttempted && !isEmailCodeValid && (
+                <p style={{ margin: 0, fontSize: 12.5, color: '#c0392b' }}>
+                  {emailTimeLeft > 0 ? '인증코드 6자리 숫자를 입력해주세요.' : '인증코드가 만료되었습니다. 재발송해주세요.'}
+                </p>
+              )}
+            </div>
+          )}
+
+          {emailVerified && (
+            <p style={{ margin: 0, fontSize: 12.5, color: 'var(--orange)', fontWeight: 600 }}>이메일 인증이 완료되었습니다.</p>
+          )}
+          {attempted && !emailVerified && isEmailValid && (
+            <p style={{ margin: 0, fontSize: 12.5, color: '#c0392b' }}>이메일 인증을 완료해주세요.</p>
+          )}
         </div>
         <div>
           <ClearableInput
