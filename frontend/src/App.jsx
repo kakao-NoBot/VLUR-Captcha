@@ -25,6 +25,7 @@ import BoardPage from './pages/BoardPage';
 import PlanPayPage from './pages/PlanPayPage';
 import EnterprisePage from './pages/EnterprisePage';
 import KakaoCallbackPage from './pages/KakaoCallbackPage';
+import AdminPage from './pages/AdminPage';
 import NaverCallbackPage from './pages/NaverCallbackPage';
 import GoogleCallbackPage from './pages/GoogleCallbackPage';
 import KakaoPayCallbackPage from './pages/KakaoPayCallbackPage';
@@ -68,6 +69,29 @@ function readCancelledPayment() {
   }
 }
 
+const DEV_FORCE_LOGOUT_ON_LOAD = import.meta.env.DEV;
+const DEV_AUTH_STORAGE_KEYS = [
+  'access_token',
+  'refresh_token',
+  'user',
+  'auto_login',
+  'aicaptcha_auto_login_enabled',
+];
+
+function clearDevAuthState() {
+  if (!DEV_FORCE_LOGOUT_ON_LOAD) return;
+  try {
+    DEV_AUTH_STORAGE_KEYS.forEach((key) => {
+      localStorage.removeItem(key);
+      sessionStorage.removeItem(key);
+    });
+  } catch {
+    // 개발 편의용 초기화이므로 storage 접근 실패가 앱 렌더링을 막지 않게 한다.
+  }
+}
+
+clearDevAuthState();
+
 export default function App() {
   const currentPath = window.location.pathname;
   const isOAuthCallback = currentPath.startsWith('/auth/') && currentPath.endsWith('/callback');
@@ -101,6 +125,10 @@ export default function App() {
   }, [cancelledPayment]);
 
   const openPage = (id) => {
+    if (id === 'admin' && currentUser?.role !== 'admin') {
+      setPage('login');
+      return;
+    }
     if (id === 'mypage') {
       setMypageTab('info');
       setMypageKey(k => k + 1);
@@ -276,6 +304,11 @@ export default function App() {
       {/* Enterprise Inquiry */}
       <PageOverlay id="enterprise" activePage={page} onBack={closePage} openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} user={currentUser}>
         <EnterprisePage closePage={closePage} />
+      </PageOverlay>
+
+      {/* Admin */}
+      <PageOverlay id="admin" activePage={page} onBack={closePage} openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} user={currentUser}>
+        <AdminPage />
       </PageOverlay>
 
       {/* Plan Payment */}

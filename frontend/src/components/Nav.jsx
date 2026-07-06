@@ -39,6 +39,7 @@ export default function Nav({ openPage, isLoggedIn, onLogout, onHome, embedded =
   const [mobileOpen, setMobileOpen] = useState(false);
   const [dark, applyTheme] = useTheme();
   const mobileMenuId = useId();
+  const isAdmin = user?.role === 'admin';
   const mobileMenuRef = useRef(null);
 
   useEffect(() => {
@@ -136,7 +137,17 @@ export default function Nav({ openPage, isLoggedIn, onLogout, onHome, embedded =
             </button>
             {isLoggedIn ? (
               <>
-              <a className="btn btn-ghost" href="#" onClick={e => { e.preventDefault(); openPage('mypage'); }} style={{ textDecoration: 'underline', color: 'var(--ink-soft)' }}>{user?.user_name || ''}님</a>
+              <a
+                className="btn btn-ghost"
+                href="#"
+                onClick={e => {
+                  e.preventDefault();
+                  openPage(isAdmin ? 'admin' : 'mypage');
+                }}
+                style={{ textDecoration: 'underline', color: 'var(--ink-soft)' }}
+              >
+                {isAdmin ? '관리자 페이지' : `${user?.user_name || ''}님`}
+              </a>
               <a className="btn btn-outline" href="#" onClick={e => { e.preventDefault(); onLogout(); }} style={{ padding: '7px 13px', fontSize: 13.5 }}>로그아웃</a>
               </>
             ) : (
@@ -166,7 +177,9 @@ export default function Nav({ openPage, isLoggedIn, onLogout, onHome, embedded =
         <a href="#faq" onClick={handleNoticeClick}>공지사항</a>
         {isLoggedIn ? (
           <>
-            <a href="#mypage" onClick={(event) => handleMobilePageClick(event, 'mypage')}>마이페이지</a>
+            <a href={isAdmin ? '#admin' : '#mypage'} onClick={(event) => handleMobilePageClick(event, isAdmin ? 'admin' : 'mypage')}>
+              {isAdmin ? '관리자 페이지' : '마이페이지'}
+            </a>
             <a href="#logout" onClick={(event) => { event.preventDefault(); closeMobileMenu(); onLogout(); }}>로그아웃</a>
           </>
         ) : (

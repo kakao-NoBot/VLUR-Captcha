@@ -3,13 +3,26 @@ import EmailInput from './EmailInput';
 import api from '../api/axios';
 
 const CONTACT_EMAIL = 'vlur@vlur.site';
+const GENERAL_INQUIRY_TYPES = [
+  '사용 문의',
+  '계정 문의',
+  'API Key 문의',
+  '결제/요금제 문의',
+  '기술 문의',
+  '오류 신고',
+  '기타',
+];
 
 export default function ContactModal({ open, onClose }) {
+  const [requester, setRequester] = useState('');
   const [email, setEmail] = useState('');
+  const [inquiryCategory, setInquiryCategory] = useState('');
   const [message, setMessage] = useState('');
   const [sent, setSent] = useState(false);
   const [validationError, setValidationError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const requesterInputRef = useRef(null);
+  const inquiryTypeRef = useRef(null);
   const messageInputRef = useRef(null);
 
   useEffect(() => {
@@ -31,7 +44,9 @@ export default function ContactModal({ open, onClose }) {
 
   useEffect(() => {
     if (!open) {
+      setRequester('');
       setEmail('');
+      setInquiryCategory('');
       setMessage('');
       setSent(false);
       setValidationError(null);
@@ -43,11 +58,25 @@ export default function ContactModal({ open, onClose }) {
   const handleSubmit = async (event) => {
     event.preventDefault();
 
+    const trimmedRequester = requester.trim();
     const trimmedEmail = email.trim();
+    const trimmedInquiryCategory = inquiryCategory.trim();
     const trimmedMessage = message.trim();
+
+    if (!trimmedRequester) {
+      setValidationError({ field: 'requester', message: '이름을 입력해 주세요.' });
+      requesterInputRef.current?.focus();
+      return;
+    }
 
     if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
       setValidationError({ field: 'email', message: '올바른 이메일 주소를 입력해 주세요.' });
+      return;
+    }
+
+    if (!trimmedInquiryCategory) {
+      setValidationError({ field: 'inquiryType', message: '문의 유형을 선택해 주세요.' });
+      inquiryTypeRef.current?.focus();
       return;
     }
 
@@ -60,7 +89,13 @@ export default function ContactModal({ open, onClose }) {
     setValidationError(null);
     setSubmitting(true);
     try {
-      await api.post('/contact', { email: trimmedEmail, message: trimmedMessage, inquiry_type: 'general' });
+      await api.post('/contact', {
+        email: trimmedEmail,
+        message: trimmedMessage,
+        inquiry_type: 'general',
+        contact_name: trimmedRequester,
+        plan_interest: trimmedInquiryCategory,
+      });
       setSent(true);
     } catch (err) {
       setValidationError({
@@ -119,12 +154,48 @@ export default function ContactModal({ open, onClose }) {
             <div className="contact-modal-content">
               <p className="contact-modal-guide">문의 내용을 남겨주시면 확인 후 입력하신 이메일로 답변드리겠습니다.</p>
 
+              <label className={validationError?.field === 'requester' ? 'has-error' : ''}>
+                <span>이름</span>
+                <input
+                  ref={requesterInputRef}
+                  value={requester}
+                  placeholder="이름을 입력해 주세요."
+                  aria-invalid={validationError?.field === 'requester'}
+                  aria-describedby={validationError?.field === 'requester' ? 'contact-requester-error' : undefined}
+                  onChange={(event) => {
+                    setRequester(event.target.value);
+                    if (validationError?.field === 'requester') setValidationError(null);
+                  }}
+                />
+                {renderValidationAlert('requester')}
+              </label>
+
               <label className={validationError?.field === 'email' ? 'has-error' : ''}>
                 <span>회신 이메일</span>
                 <EmailInput
                   onChange={(val) => { setEmail(val); if (validationError?.field === 'email') setValidationError(null); }}
                   error={validationError?.field === 'email'}
                 />
+              </label>
+
+              <label className={validationError?.field === 'inquiryType' ? 'has-error' : ''}>
+                <span>문의 유형</span>
+                <select
+                  ref={inquiryTypeRef}
+                  value={inquiryCategory}
+                  aria-invalid={validationError?.field === 'inquiryType'}
+                  aria-describedby={validationError?.field === 'inquiryType' ? 'contact-inquiryType-error' : undefined}
+                  onChange={(event) => {
+                    setInquiryCategory(event.target.value);
+                    if (validationError?.field === 'inquiryType') setValidationError(null);
+                  }}
+                >
+                  <option value="">문의 유형을 선택해 주세요.</option>
+                  {GENERAL_INQUIRY_TYPES.map((type) => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+                {renderValidationAlert('inquiryType')}
               </label>
 
               <label className={validationError?.field === 'message' ? 'has-error' : ''}>
