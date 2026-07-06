@@ -634,6 +634,58 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
 .contact-modal-success p { margin: 0; color: var(--ink-soft); font-size: 13.5px; }
 .contact-modal-success b { color: var(--orange-2); }
 
+/* PAYMENT CANCEL MODAL */
+.payment-cancel-backdrop { backdrop-filter: blur(3px); }
+.payment-cancel-modal {
+  max-width: 420px; border: 1px solid var(--line-soft);
+  animation: paymentCancelModalIn .2s ease-out both;
+}
+.payment-cancel-content {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 42px 32px 30px; text-align: center;
+}
+.payment-cancel-icon {
+  display: flex; align-items: center; justify-content: center; width: 86px; height: 86px;
+  margin-bottom: 24px; color: #fff;
+  background: linear-gradient(145deg, #f26a58, #d93618); border-radius: 50%;
+  box-shadow: 0 16px 30px -18px rgba(217,54,24,.8);
+}
+.payment-cancel-icon svg { width: 42px; height: 42px; }
+.payment-cancel-icon path {
+  stroke: currentColor; stroke-width: 3.2; stroke-linecap: round;
+}
+.payment-cancel-content h2 {
+  margin: 0 0 12px; color: var(--ink); font-family: var(--disp);
+  font-size: 25px; font-weight: 800; letter-spacing: -.03em;
+}
+.payment-cancel-content p {
+  margin: 0; color: var(--muted); font-size: 14px; line-height: 1.75;
+}
+.payment-cancel-footer {
+  justify-content: center; padding: 0 24px 30px; border-top: 0;
+}
+.payment-cancel-retry {
+  min-width: 132px; padding: 10px 22px; color: var(--orange-2);
+  background: var(--card); border: 2px solid var(--orange); border-radius: 999px;
+  overflow: hidden; appearance: none;
+  -webkit-appearance: none; background-clip: border-box; font-family: var(--body);
+  font-size: 15px; font-weight: 800; cursor: pointer;
+  transition: color .18s, background .18s, transform .18s, box-shadow .18s;
+  box-shadow: none;
+}
+.payment-cancel-retry:hover {
+  color: #fff; background: var(--orange);
+  transform: translateY(-1px); box-shadow: 0 10px 22px -12px rgba(240,105,30,.7);
+}
+.payment-cancel-retry:focus-visible {
+  outline: 3px solid rgba(240,105,30,.2); outline-offset: 3px;
+}
+
+@keyframes paymentCancelModalIn {
+  from { opacity: 0; transform: translateY(8px) scale(.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 @media (max-width: 600px) {
   .terms-modal-backdrop { padding: 14px; }
   .terms-modal { max-height: calc(100vh - 28px); }
@@ -643,6 +695,9 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
   .contact-modal-content { padding: 20px; }
   .contact-modal-content textarea { min-height: 170px; }
   .contact-modal-success { min-height: 280px; padding: 40px 20px; }
+  .payment-cancel-content { padding: 36px 24px 26px; }
+  .payment-cancel-icon { width: 78px; height: 78px; }
+  .payment-cancel-footer { padding: 0 20px 26px; }
 }
 
 /* FAB */

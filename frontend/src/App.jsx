@@ -13,6 +13,7 @@ import Cases from './components/Cases';
 import Pricing from './components/Pricing';
 import Footer from './components/Footer';
 import ChatbotWidget from './components/ChatbotWidget';
+import PaymentCancelModal from './components/PaymentCancelModal';
 
 // Pages (overlays)
 import LoginPage from './pages/LoginPage';
@@ -57,13 +58,25 @@ function readCompletedPayment() {
   }
 }
 
+function readCancelledPayment() {
+  try {
+    const stored = sessionStorage.getItem('cancelled_payment');
+    if (!stored) return null;
+    return JSON.parse(stored);
+  } catch {
+    return null;
+  }
+}
+
 export default function App() {
   const currentPath = window.location.pathname;
   const isOAuthCallback = currentPath.startsWith('/auth/') && currentPath.endsWith('/callback');
   const [completedPayment] = useState(readCompletedPayment);
-  const [page, setPage] = useState(completedPayment ? 'plan-pay' : null);
+  const [cancelledPayment] = useState(readCancelledPayment);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(Boolean(cancelledPayment));
+  const [page, setPage] = useState(completedPayment || cancelledPayment ? 'plan-pay' : null);
   const [planPayArgs, setPlanPayArgs] = useState({
-    plan: completedPayment?.plan_name || 'Pro',
+    plan: completedPayment?.plan_name || cancelledPayment?.plan_name || 'Pro',
     completed: Boolean(completedPayment),
   });
   const [mypageTab, setMypageTab] = useState('info');
@@ -82,6 +95,10 @@ export default function App() {
       sessionStorage.removeItem('completed_payment');
     }
   }, [completedPayment]);
+
+  useEffect(() => {
+    if (cancelledPayment) sessionStorage.removeItem('cancelled_payment');
+  }, [cancelledPayment]);
 
   const openPage = (id) => {
     if (id === 'mypage') {
@@ -265,6 +282,12 @@ export default function App() {
       <PageOverlay id="plan-pay" activePage={page} onBack={closePage} openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} user={currentUser}>
         <PlanPayPage planName={planPayArgs.plan} initialSuccess={planPayArgs.completed} closePage={closePage} openPage={openPage} openMypageOnApiKey={openMypageOnApiKey} user={currentUser} />
       </PageOverlay>
+
+      <PaymentCancelModal
+        open={isCancelModalOpen}
+        message={cancelledPayment?.message}
+        onClose={() => setIsCancelModalOpen(false)}
+      />
     </>
   );
 }
