@@ -49,12 +49,12 @@ export default function TossPayCallbackPage() {
           if (data.status !== 'paid') {
             throw new Error('결제 승인 상태를 확인할 수 없습니다.');
           }
-          localStorage.setItem('tosspay_order_id', orderId);
-          window.history.replaceState({}, '', `/payments/toss/success/${orderId}`);
-          setState({
-            status: 'success',
-            message: `${data.plan_name} 결제가 완료되었습니다. (${Number(data.amount).toLocaleString()}원)`,
-          });
+          localStorage.removeItem('tosspay_order_id');
+          sessionStorage.setItem('completed_payment', JSON.stringify({
+            plan_name: data.plan_name,
+            amount: data.amount,
+          }));
+          window.location.replace('/');
         })
         .catch((err) => {
           if (!active) return;
@@ -66,6 +66,28 @@ export default function TossPayCallbackPage() {
     } else {
       const code = params.get('code');
       const tossMessage = params.get('message');
+
+      if (code === 'PAY_PROCESS_CANCELED') {
+        const returnToPayment = async () => {
+          if (orderId) {
+            await api.post('/payments/toss/close', {
+              order_id: orderId,
+              result: 'cancelled',
+            }).catch(() => {});
+          }
+          if (!active) return;
+          localStorage.removeItem('tosspay_order_id');
+          sessionStorage.setItem('cancelled_payment', JSON.stringify({
+            plan_name: 'Pro',
+            message: '결제를 취소하였습니다.',
+          }));
+          window.location.replace('/');
+        };
+
+        returnToPayment();
+        return () => { active = false; };
+      }
+
       if (orderId) {
         api.post('/payments/toss/close', {
           order_id: orderId,
