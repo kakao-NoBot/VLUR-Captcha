@@ -2467,6 +2467,7 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
 }
 .usage-calendar-day {
   position: relative;
+  z-index: 0;
   min-width: 0;
   height: 38px;
   border: 0;
@@ -2492,9 +2493,22 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
   box-shadow: inset 0 0 0 1.5px rgba(240,105,30,.46);
 }
 .usage-calendar-day.in-range {
-  background: rgba(240,105,30,.12);
   color: var(--orange-2);
 }
+/* 범위 배경은 셀 사이 간격(4px)까지 덮는 하나의 연속 띠로 그린다 */
+.usage-calendar-day.in-range::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: 0;
+  bottom: 0;
+  left: -2px;
+  right: -2px;
+  background: rgba(240,105,30,.12);
+}
+.usage-calendar-day.range-start::before { left: 0; border-radius: 12px 0 0 12px; }
+.usage-calendar-day.range-end::before { right: 0; border-radius: 0 12px 12px 0; }
+.usage-calendar-day.range-start.range-end::before { border-radius: 12px; }
 .usage-calendar-day.selected {
   background: var(--orange);
   color: #fff;
@@ -2509,14 +2523,28 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
 .usage-date-buttons { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 14px; }
 .usage-date-action-group { display: flex; justify-content: flex-end; gap: 8px; }
 .usage-date-buttons .pg-btn { padding: 8px 14px; font-size: 13px; }
-.usage-chart-bars { flex: 1; display: flex; align-items: flex-end; gap: 3px; padding-top: 8px; min-height: 96px; }
-.usage-chart-bar {
-  flex: 1;
-  min-height: 3px;
-  border-radius: 3px 3px 0 0;
-  background: linear-gradient(180deg,var(--orange),var(--gold));
-  opacity: .85;
+.usage-chart-line { position: relative; flex: 1; min-height: 96px; padding-top: 8px; }
+.usage-chart-line svg { position: absolute; inset: 8px 0 0; width: 100%; height: calc(100% - 8px); display: block; }
+.usage-chart-line-hover { position: absolute; inset: 0; display: flex; }
+.usage-chart-line-slot { flex: 1; min-width: 0; }
+.usage-chart-line-guide {
+  position: absolute; top: 8px; bottom: 0; width: 1px;
+  background: rgba(240,105,30,.35); pointer-events: none;
 }
+.usage-chart-line-dot {
+  position: absolute; width: 9px; height: 9px; border-radius: 50%;
+  background: var(--orange); border: 2px solid var(--card);
+  transform: translate(-50%, -50%); pointer-events: none;
+  box-shadow: 0 1px 4px rgba(36,27,21,.25);
+}
+.usage-chart-line-tooltip {
+  position: absolute; top: 0; pointer-events: none; z-index: 5;
+  display: flex; flex-direction: column; gap: 1px; white-space: nowrap;
+  background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+  padding: 6px 10px; box-shadow: 0 8px 20px -10px rgba(36,27,21,.4);
+}
+.usage-chart-line-tooltip b { font-size: 11.5px; color: var(--muted); font-weight: 600; }
+.usage-chart-line-tooltip span { font-size: 13px; color: var(--ink); font-weight: 700; }
 .usage-empty-state {
   flex: 1;
   min-height: 96px;

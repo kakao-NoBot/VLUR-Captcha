@@ -556,27 +556,87 @@ function getSuccessRate(row) {
   return `${((row.verified / row.issued) * 100).toFixed(1)}%`;
 }
 
-function UsageBarChart({ data, labelKey, valueKey = 'issued', emptyMessage }) {
+function UsageLineChart({ data, labelKey, valueKey = 'issued', emptyMessage }) {
   const max = Math.max(0, ...data.map((row) => row[valueKey]));
+
+  const [hoverIndex, setHoverIndex] = useState(null);
 
   if (!data.length || max === 0) {
     return <div className="usage-empty-state">{emptyMessage}</div>;
   }
 
+  // viewBox 좌표계 (preserveAspectRatio="none"으로 컨테이너에 맞춰 늘어남)
+  const W = 300;
+  const H = 120;
+  const TOP_PAD = 8;
+  const points = data.map((row, i) => {
+    const x = data.length === 1 ? W / 2 : (i / (data.length - 1)) * W;
+    const y = H - ((row[valueKey] / max) * (H - TOP_PAD));
+    return [x, y];
+  });
+  const linePath = points.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+  const areaPath = `${linePath} L${W},${H} L0,${H} Z`;
+
   return (
-    <div className="usage-chart-bars">
-      {data.map((row) => {
-        const value = row[valueKey];
-        const height = Math.max(3, Math.round((value / max) * 100));
+    <div className="usage-chart-line">
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden="true">
+        <path d={areaPath} fill="url(#usage-line-fill)" stroke="none" />
+        <path
+          d={linePath}
+          fill="none"
+          stroke="var(--orange)"
+          strokeWidth="2"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          vectorEffect="non-scaling-stroke"
+        />
+        <defs>
+          <linearGradient id="usage-line-fill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="var(--orange)" stopOpacity="0.22" />
+            <stop offset="100%" stopColor="var(--orange)" stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
+      </svg>
+      {/* 호버: 가이드선 + 선 위의 점 + 값 말풍선 */}
+      {hoverIndex !== null && (() => {
+        const [px, py] = points[hoverIndex];
+        const leftPct = (px / W) * 100;
+        // svg는 컨테이너에서 top 8px, height (100%-8px)를 차지하므로 그에 맞춰 환산
+        const yRatio = py / H;
+        const topCss = `calc(${(yRatio * 100).toFixed(2)}% + ${(8 - yRatio * 8).toFixed(2)}px)`;
+        const row = data[hoverIndex];
+        const nearLeft = leftPct < 15;
+        const nearRight = leftPct > 85;
         return (
-          <div
-            className="usage-chart-bar"
-            key={row[labelKey]}
-            title={`${row[labelKey]} · ${formatNumber(value)}회`}
-            style={{ height: `${height}%` }}
-          />
+          <>
+            <div className="usage-chart-line-guide" style={{ left: `${leftPct}%` }} />
+            <div className="usage-chart-line-dot" style={{ left: `${leftPct}%`, top: topCss }} />
+            <div
+              className="usage-chart-line-tooltip"
+              style={{
+                left: `${leftPct}%`,
+                transform: nearLeft
+                  ? 'translate(-12px, -100%)'
+                  : nearRight
+                    ? 'translate(calc(-100% + 12px), -100%)'
+                    : 'translate(-50%, -100%)',
+              }}
+            >
+              <b>{row[labelKey]}</b>
+              <span>{formatNumber(row[valueKey])}회</span>
+            </div>
+          </>
         );
-      })}
+      })()}
+      <div className="usage-chart-line-hover" onMouseLeave={() => setHoverIndex(null)}>
+        {data.map((row, i) => (
+          <div
+            key={row[labelKey]}
+            className="usage-chart-line-slot"
+            onMouseEnter={() => setHoverIndex(i)}
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -634,6 +694,13 @@ function UsageTab() {
 
   const calendarDays = useMemo(() => getCalendarDays(calendarMonth), [calendarMonth]);
 
+  // 조회 기간 최대 1개월 제한
+  const isWithinOneMonth = (start, end) => {
+    const limit = new Date(start);
+    limit.setMonth(limit.getMonth() + 1);
+    return new Date(end) <= limit;
+  };
+
   const selectCalendarDate = (dateString) => {
     setDateError('');
 
@@ -644,12 +711,17 @@ function UsageTab() {
       return;
     }
 
-    if (dateString < startDate) {
-      setStartDate(dateString);
-      setEndDate(startDate);
-    } else {
-      setEndDate(dateString);
+    const [nextStart, nextEnd] = dateString < startDate
+      ? [dateString, startDate]
+      : [startDate, dateString];
+
+    if (!isWithinOneMonth(nextStart, nextEnd)) {
+      setDateError('조회 기간은 최대 1개월까지 선택할 수 있습니다.');
+      return;
     }
+
+    setStartDate(nextStart);
+    setEndDate(nextEnd);
     setCalendarMonth(dateString.slice(0, 7));
   };
 
@@ -682,6 +754,10 @@ function UsageTab() {
       setDateError('시작일은 종료일보다 늦을 수 없습니다.');
       return;
     }
+    if (!isWithinOneMonth(normalizedStart, normalizedEnd)) {
+      setDateError('조회 기간은 최대 1개월까지 선택할 수 있습니다.');
+      return;
+    }
 
     setAppliedRange({ start: normalizedStart, end: normalizedEnd });
     setDateError('');
@@ -694,6 +770,25 @@ function UsageTab() {
     setCalendarMonth(DEFAULT_USAGE_END_DATE.slice(0, 7));
     setAppliedRange(null);
     setDateError('');
+  };
+
+  const downloadCsv = () => {
+    const header = ['날짜', 'CAPTCHA 발급', 'CAPTCHA 검증', '성공률'];
+    const rows = usageTableRows.map((row) => [
+      row.date, row.issued, row.verified, getSuccessRate(row),
+    ]);
+    // \ufeff(BOM): 엑셀에서 한글 헤더가 깨지지 않게
+    const csv = '\ufeff' + [header, ...rows].map((cols) => cols.join(',')).join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `usage_${activeRange.start}_${activeRange.end}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -777,7 +872,13 @@ function UsageTab() {
               </div>
             )}
           </div>
-          <button className="pg-btn" style={{ fontSize: 13, padding: '8px 14px' }}>CSV 다운로드</button>
+          <button
+            className="pg-btn"
+            type="button"
+            style={{ fontSize: 13, padding: '8px 14px', opacity: usageTableRows.length ? 1 : 0.5, cursor: usageTableRows.length ? 'pointer' : 'not-allowed' }}
+            disabled={!usageTableRows.length}
+            onClick={downloadCsv}
+          >CSV 다운로드</button>
         </div>
       </div>
       <div className="pg-card" style={{ marginBottom: 16 }}>
@@ -790,7 +891,7 @@ function UsageTab() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
         <div className="pg-card" style={{ minHeight: 160, display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div className="pg-label" style={{ margin: 0 }}>일별 호출량 ({appliedRange ? '선택 기간' : '최근 30일'})</div>
-          <UsageBarChart
+          <UsageLineChart
             data={filteredDailyUsageData}
             labelKey="date"
             emptyMessage="선택한 기간의 사용량 데이터가 없습니다."
@@ -798,7 +899,7 @@ function UsageTab() {
         </div>
         <div className="pg-card" style={{ minHeight: 160, display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div className="pg-label" style={{ margin: 0 }}>월별 호출량 (최근 12개월)</div>
-          <UsageBarChart
+          <UsageLineChart
             data={MONTHLY_USAGE_DATA}
             labelKey="month"
             emptyMessage="월별 사용량 데이터가 없습니다."
