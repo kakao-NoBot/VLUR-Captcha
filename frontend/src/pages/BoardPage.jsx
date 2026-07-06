@@ -89,7 +89,7 @@ function BoardDetail({ post, previousPost, nextPost, onBack, onSelectPost, onEdi
   );
 }
 
-function DeletePostModal({ deleting, onConfirm, onClose }) {
+function DeletePostModal({ deleting, error, onConfirm, onClose }) {
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (event.key === 'Escape' && !deleting) onClose();
@@ -123,11 +123,64 @@ function DeletePostModal({ deleting, onConfirm, onClose }) {
           <p id="board-delete-description">
             삭제한 게시글은 다시 복구할 수 없습니다.
           </p>
+          {error && (
+            <p style={{ margin: '10px 0 0', fontSize: 12.5, color: '#c0392b' }} role="alert">{error}</p>
+          )}
         </div>
         <div className="board-delete-actions">
           <button type="button" className="pg-btn" onClick={onClose} disabled={deleting}>취소</button>
           <button type="button" className="pg-btn danger" onClick={onConfirm} disabled={deleting}>
             {deleting ? '삭제 중...' : '삭제'}
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function SaveConfirmModal({ edited, saving, error, onConfirm, onClose }) {
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape' && !saving) onClose();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [saving, onClose]);
+
+  return (
+    <div
+      className="terms-modal-backdrop board-delete-backdrop"
+      role="presentation"
+      onClick={(event) => {
+        if (event.target === event.currentTarget && !saving) onClose();
+      }}
+    >
+      <section
+        className="terms-modal board-delete-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="board-save-title"
+      >
+        <div className="board-delete-content">
+          <div
+            className="board-delete-icon"
+            style={{ color: 'var(--orange-2)', background: 'rgba(240,105,30,.1)', border: '1px solid rgba(240,105,30,.25)' }}
+            aria-hidden="true"
+          >
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M4 20h4.2L19 9.2a2.1 2.1 0 0 0 0-3L17.8 5a2.1 2.1 0 0 0-3 0L4 15.8V20Z" />
+              <path d="m13.7 6.1 4.2 4.2" />
+            </svg>
+          </div>
+          <h2 id="board-save-title">{edited ? '변경된 내용을 저장하시겠습니까?' : '게시글을 등록하시겠습니까?'}</h2>
+          {error && (
+            <p style={{ margin: '10px 0 0', fontSize: 12.5, color: '#c0392b' }} role="alert">{error}</p>
+          )}
+        </div>
+        <div className="board-delete-actions">
+          <button type="button" className="pg-btn" onClick={onClose} disabled={saving}>취소</button>
+          <button type="button" className="pg-btn primary" onClick={onConfirm} disabled={saving}>
+            {saving ? '저장 중...' : edited ? '저장' : '등록'}
           </button>
         </div>
       </section>
@@ -285,10 +338,9 @@ function BoardWrite({ boardType = 'notice', initialPost, onCancel, onSubmit, onS
       {validationErrors.content && (
         <p className="board-write-below-error" role="alert">내용을 입력하세요</p>
       )}
-
       <div className="board-write-actions">
         <button type="button" className="pg-btn" onClick={onCancel}>취소</button>
-        <button type="submit" className="pg-btn primary">{isEditing ? '수정 완료' : '등록'}</button>
+        <button type="submit" className="pg-btn primary">{isEditing ? '수정' : '등록'}</button>
       </div>
     </form>
   );
@@ -324,6 +376,10 @@ export default function BoardPage({ user = null }) {
   const [editingPost, setEditingPost] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+  const [submitError, setSubmitError] = useState('');
+  const [pendingSave, setPendingSave] = useState(null); // 저장 확인 대기 중인 글 데이터
+  const [saving, setSaving] = useState(false);
 
   // DB에서 게시글 전체 로드 (공지/일반/FAQ/연구)
   const loadNotices = async () => {
@@ -377,27 +433,46 @@ export default function BoardPage({ user = null }) {
     setSelectedPost(null);
     setIsWriting(false);
     setEditingPost(null);
+    setSubmitError('');
   };
 
-  const submitPost = async ({ title, content, board_type }) => {
+  // 폼 제출 → 바로 저장하지 않고 확인 모달을 띄움
+  const requestSave = (payload) => {
+    setSubmitError('');
+    setPendingSave(payload);
+  };
+
+  const confirmSave = async () => {
+    if (!pendingSave || saving) return;
+    setSaving(true);
+    setSubmitError('');
     try {
       if (editingPost) {
-        await api.put(`/boards/${editingPost.id}`, { title, content, board_type });
+        await api.put(`/boards/${editingPost.id}`, pendingSave);
       } else {
-        await api.post('/boards', { title, content, board_type });
+        await api.post('/boards', pendingSave);
       }
       await loadNotices();
+      setPendingSave(null);
       setEditingPost(null);
       setIsWriting(false);
       setSelectedPost(null);
       setNoticePage(1);
     } catch (err) {
-      alert(err.response?.data?.detail || '저장 중 오류가 발생했습니다.');
+      setSubmitError(err.response?.data?.detail || '저장 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+    } finally {
+      setSaving(false);
     }
+  };
+
+  const closeSaveModal = () => {
+    setPendingSave(null);
+    setSubmitError('');
   };
 
   const deletePost = async (post) => {
     setDeleting(true);
+    setDeleteError('');
     try {
       await api.delete(`/boards/${post.id}`);
       await loadNotices();
@@ -405,10 +480,20 @@ export default function BoardPage({ user = null }) {
       setDeleteTarget(null);
       setNoticePage(1);
     } catch (err) {
-      alert(err.response?.data?.detail || '삭제 중 오류가 발생했습니다.');
+      setDeleteError(err.response?.data?.detail || '삭제 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
     } finally {
       setDeleting(false);
     }
+  };
+
+  const openDeleteModal = (post) => {
+    setDeleteError('');
+    setDeleteTarget(post);
+  };
+
+  const closeDeleteModal = () => {
+    setDeleteTarget(null);
+    setDeleteError('');
   };
 
   if (selectedPost || isWriting) {
@@ -430,8 +515,8 @@ export default function BoardPage({ user = null }) {
                 <BoardWrite
                   boardType={tab}
                   initialPost={editingPost}
-                  onCancel={() => { setIsWriting(false); setEditingPost(null); }}
-                  onSubmit={submitPost}
+                  onCancel={() => { setIsWriting(false); setEditingPost(null); setSubmitError(''); }}
+                  onSubmit={requestSave}
                   onSectionChange={(section) => { setTab(section); setNoticePage(1); }}
                 />
               ) : (
@@ -442,7 +527,7 @@ export default function BoardPage({ user = null }) {
                   onBack={() => setSelectedPost(null)}
                   onSelectPost={setSelectedPost}
                   onEdit={() => { setEditingPost(selectedPost); setIsWriting(true); }}
-                  onDelete={() => setDeleteTarget(selectedPost)}
+                  onDelete={() => openDeleteModal(selectedPost)}
                   canEdit={isAdmin}
                 />
               )}
@@ -453,8 +538,18 @@ export default function BoardPage({ user = null }) {
         {deleteTarget && (
           <DeletePostModal
             deleting={deleting}
+            error={deleteError}
             onConfirm={() => deletePost(deleteTarget)}
-            onClose={() => setDeleteTarget(null)}
+            onClose={closeDeleteModal}
+          />
+        )}
+        {pendingSave && (
+          <SaveConfirmModal
+            edited={Boolean(editingPost)}
+            saving={saving}
+            error={submitError}
+            onConfirm={confirmSave}
+            onClose={closeSaveModal}
           />
         )}
       </>
@@ -548,7 +643,7 @@ export default function BoardPage({ user = null }) {
                       type="button"
                       className="pg-btn"
                       style={{ padding: '6px 12px', fontSize: 12.5, color: '#c0392b' }}
-                      onClick={(e) => { e.preventDefault(); deletePost(p); }}
+                      onClick={(e) => { e.preventDefault(); openDeleteModal(p); }}
                     >
                       삭제
                     </button>
@@ -615,6 +710,25 @@ export default function BoardPage({ user = null }) {
             )}
           </div>
         </>
+      )}
+
+      {/* 목록 화면(FAQ 탭 등)에서의 삭제 확인 모달 */}
+      {deleteTarget && (
+        <DeletePostModal
+          deleting={deleting}
+          error={deleteError}
+          onConfirm={() => deletePost(deleteTarget)}
+          onClose={closeDeleteModal}
+        />
+      )}
+      {pendingSave && (
+        <SaveConfirmModal
+          edited={Boolean(editingPost)}
+          saving={saving}
+          error={submitError}
+          onConfirm={confirmSave}
+          onClose={closeSaveModal}
+        />
       )}
     </div>
   );

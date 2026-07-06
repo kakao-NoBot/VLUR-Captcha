@@ -62,19 +62,25 @@ def create_notice(body: BoardRequest, admin: dict = Depends(get_current_admin)):
 @router.put("/{board_id}")
 def update_notice(board_id: int, body: BoardRequest, admin: dict = Depends(get_current_admin)):
     """공지사항 수정 (관리자 전용)"""
+    board_type = _validate_board_type(body.board_type)
     conn = get_conn()
     with conn:
         with conn.cursor() as cur:
+            # 존재 여부를 먼저 확인 — UPDATE rowcount는 내용이 그대로면 0이라 404 판단에 쓸 수 없음
             cur.execute(
-                f"""UPDATE boards SET title = %s, content = %s, board_type = %s
-                   WHERE board_id = %s AND board_type IN ({','.join(['%s'] * len(BOARD_TYPES))})""",
-                (body.title, body.content, _validate_board_type(body.board_type), board_id, *BOARD_TYPES),
+                f"SELECT 1 FROM boards WHERE board_id = %s AND board_type IN ({','.join(['%s'] * len(BOARD_TYPES))})",
+                (board_id, *BOARD_TYPES),
             )
-            if cur.rowcount == 0:
+            if not cur.fetchone():
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="해당 게시글을 찾을 수 없습니다.",
                 )
+            cur.execute(
+                """UPDATE boards SET title = %s, content = %s, board_type = %s
+                   WHERE board_id = %s""",
+                (body.title, body.content, board_type, board_id),
+            )
         conn.commit()
     return {"message": "게시글이 수정되었습니다."}
 

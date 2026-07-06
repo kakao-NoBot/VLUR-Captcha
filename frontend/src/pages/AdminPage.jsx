@@ -235,6 +235,7 @@ function StatusDropdown({ status, options, isOpen, onToggle, onSelect, resolveTo
 
 /* ── 봇 차단 추이 꺾은선 그래프 (순수 SVG, 외부 라이브러리 불필요) ── */
 function BotTrendChart({ data }) {
+  const [hoverIndex, setHoverIndex] = useState(null);
   const width = 640;
   const height = 160;
   const paddingX = 24;
@@ -251,10 +252,17 @@ function BotTrendChart({ data }) {
 
   const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
   const areaPath = `${linePath} L${points[points.length - 1].x},${height - paddingY} L${points[0].x},${height - paddingY} Z`;
+  const slotWidth = (width - paddingX * 2) / (data.length - 1 || 1);
+  const hovered = hoverIndex !== null ? points[hoverIndex] : null;
 
   return (
     <div style={{ width: '100%', overflowX: 'auto' }}>
-      <svg viewBox={`0 0 ${width} ${height + 22}`} width="100%" style={{ display: 'block', minWidth: 480 }}>
+      <svg
+        viewBox={`0 0 ${width} ${height + 22}`}
+        width="100%"
+        style={{ display: 'block', minWidth: 480 }}
+        onMouseLeave={() => setHoverIndex(null)}
+      >
         <defs>
           <linearGradient id="botTrendFill" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="var(--orange)" stopOpacity="0.22" />
@@ -263,18 +271,45 @@ function BotTrendChart({ data }) {
         </defs>
         <path d={areaPath} fill="url(#botTrendFill)" stroke="none" />
         <path d={linePath} fill="none" stroke="var(--orange)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-        {points.map((p) => (
-          <circle key={`${p.label}-dot`} cx={p.x} cy={p.y} r="4" fill="var(--card)" stroke="var(--orange)" strokeWidth="2.5" />
+        {hovered && (
+          <line
+            x1={hovered.x} y1={paddingY - 8} x2={hovered.x} y2={height - paddingY}
+            stroke="var(--orange)" strokeWidth="1" strokeOpacity="0.35"
+          />
+        )}
+        {points.map((p, i) => (
+          <circle
+            key={`${p.label}-dot`}
+            cx={p.x} cy={p.y}
+            r={hoverIndex === i ? 5.5 : 4}
+            fill="var(--card)" stroke="var(--orange)" strokeWidth="2.5"
+          />
         ))}
-        {points.map((p) => (
-          <text key={`${p.label}-val`} x={p.x} y={p.y - 12} textAnchor="middle" fontSize="12" fontWeight="700" fill="var(--ink)">
-            {p.value}%
+        {/* 값 라벨은 커서를 올린 지점만 표시 */}
+        {hovered && (
+          <text x={hovered.x} y={hovered.y - 14} textAnchor="middle" fontSize="13" fontWeight="700" fill="var(--ink)">
+            {hovered.value}%
           </text>
-        ))}
-        {points.map((p) => (
-          <text key={`${p.label}-lab`} x={p.x} y={height + 14} textAnchor="middle" fontSize="11" fill="var(--muted)">
+        )}
+        {points.map((p, i) => (
+          <text
+            key={`${p.label}-lab`}
+            x={p.x} y={height + 14} textAnchor="middle" fontSize="11"
+            fontWeight={hoverIndex === i ? 700 : 400}
+            fill={hoverIndex === i ? 'var(--ink)' : 'var(--muted)'}
+          >
             {p.label}
           </text>
+        ))}
+        {/* 호버 감지용 투명 슬롯 */}
+        {points.map((p, i) => (
+          <rect
+            key={`${p.label}-hit`}
+            x={p.x - slotWidth / 2} y={0}
+            width={slotWidth} height={height + 22}
+            fill="transparent"
+            onMouseEnter={() => setHoverIndex(i)}
+          />
         ))}
       </svg>
     </div>
