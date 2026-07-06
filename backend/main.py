@@ -6,6 +6,7 @@ from routers import auth as auth_router
 from routers import contact as contact_router
 from routers import payments as payments_router
 from routers import boards as boards_router
+from routers import chatbot as chatbot_router
 
 load_dotenv()
 
@@ -23,6 +24,7 @@ app.include_router(auth_router.router)
 app.include_router(contact_router.router)
 app.include_router(payments_router.router)
 app.include_router(boards_router.router)
+app.include_router(chatbot_router.router)
 
 
 @app.get("/health")
