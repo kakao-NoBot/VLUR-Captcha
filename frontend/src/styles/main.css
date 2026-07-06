@@ -2676,8 +2676,65 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
 .board-write-field small {
   position: absolute; right: 20px; bottom: 18px; color: var(--muted); font-size: 11px;
 }
+.board-write-field.has-error input,
+.board-write-field.has-error textarea {
+  background: var(--card);
+  box-shadow: inset 0 0 0 1.5px rgba(216,73,47,.72);
+}
+.board-write-below-error {
+  margin: 8px 0 0 4px; color: var(--bad); font-size: 12px; font-weight: 600; line-height: 1.4;
+}
 .board-write-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 .board-write-actions .pg-btn { min-width: 72px; padding: 9px 16px; border-radius: 9px; font-size: 13px; }
+
+/* board delete confirmation */
+.board-delete-backdrop { backdrop-filter: blur(3px); }
+.board-delete-modal {
+  max-width: 390px; border: 1px solid var(--line-soft);
+  animation: paymentCancelModalIn .2s ease-out both;
+}
+.board-delete-content {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 34px 28px 26px; text-align: center;
+}
+.board-delete-icon {
+  display: flex; align-items: center; justify-content: center; width: 54px; height: 54px;
+  margin-bottom: 18px; color: var(--bad); background: rgba(216,73,47,.1);
+  border: 1px solid rgba(216,73,47,.2); border-radius: 50%;
+}
+.board-delete-icon svg { width: 26px; height: 26px; }
+.board-delete-icon path {
+  stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+}
+.board-delete-content h2 {
+  margin: 0 0 10px; color: var(--ink); font-family: var(--disp);
+  font-size: 20px; font-weight: 800; letter-spacing: -.025em;
+}
+.board-delete-content p {
+  margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.7;
+}
+.board-delete-actions {
+  display: flex; justify-content: center; gap: 8px; padding: 0 24px 26px;
+}
+.board-delete-actions .pg-btn { min-width: 104px; padding: 11px 20px; }
+.board-delete-actions .pg-btn:disabled { cursor: wait; opacity: .65; }
+
+/* account deactivation modal icons */
+.deactivate-status-icon {
+  display: flex; align-items: center; justify-content: center; width: 54px; height: 54px;
+  border-radius: 50%;
+}
+.deactivate-status-icon.danger {
+  color: var(--bad); background: rgba(216,73,47,.08); border: 1px solid rgba(216,73,47,.28);
+}
+.deactivate-status-icon.success {
+  color: #fff; background: linear-gradient(135deg, var(--gold), var(--orange)); border: 0;
+  box-shadow: 0 12px 26px -16px rgba(240,105,30,.75);
+}
+.deactivate-status-icon svg { width: 26px; height: 26px; }
+.deactivate-status-icon path {
+  stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round;
+}
 
 /* board detail */
 .board-detail { max-width: 860px; margin: 0 auto; padding-top: 16px; }
