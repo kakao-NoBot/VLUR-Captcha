@@ -6,6 +6,7 @@ from auth.hash import hash_password, verify_password
 from auth.jwt import create_access_token
 from auth.deps import get_current_user
 from db import get_conn
+from services import email_verify
 from services.kakao_oauth import (
     KakaoConfigurationError,
     KakaoOAuthError,
@@ -347,6 +348,11 @@ def check_id(user_id: str):
 
 @router.post("/signup", status_code=201)
 def signup(body: SignupRequest):
+    if not email_verify.is_verified(body.email):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="이메일 인증이 필요합니다.",
+        )
     conn = get_conn()
     with conn:
         with conn.cursor() as cur:
@@ -381,6 +387,8 @@ def signup(body: SignupRequest):
             cur.execute("SELECT created_at FROM users WHERE user_id = %s", (body.user_id,))
             created = cur.fetchone()
         conn.commit()
+
+    email_verify.consume_verified(body.email)
 
     token = create_access_token({
         "sub": body.user_id,

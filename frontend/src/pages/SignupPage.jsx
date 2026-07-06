@@ -41,6 +41,8 @@ export default function SignupPage({ openPage, onLogin }) {
   const [emailCodeAttempted, setEmailCodeAttempted] = useState(false);
   const [emailTimeLeft, setEmailTimeLeft] = useState(EMAIL_CODE_TTL);
   const [emailResendKey, setEmailResendKey] = useState(0);
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailApiError, setEmailApiError] = useState('');
 
   const [phone, setPhone] = useState('');
   const [agreed, setAgreed] = useState(false);
@@ -98,6 +100,7 @@ export default function SignupPage({ openPage, onLogin }) {
     setEmailCode('');
     setEmailCodeAttempted(false);
     setEmailTimeLeft(EMAIL_CODE_TTL);
+    setEmailApiError('');
   }, [finalEmail]);
 
   // 인증코드 발송 후, 인증 완료 전까지 1초마다 남은 시간 감소 (재발송 시 emailResendKey로 타이머 재시작)
@@ -109,22 +112,37 @@ export default function SignupPage({ openPage, onLogin }) {
     return () => clearInterval(timer);
   }, [emailSent, emailVerified, emailResendKey]);
 
-  const handleSendEmailCode = () => {
+  const handleSendEmailCode = async () => {
     if (!isEmailValid) { markAttempted('email'); return; }
-    // 재발송은 타이머 상태와 무관하게 언제든 가능
-    setEmailSent(true);
-    setEmailVerified(false);
-    setEmailCode('');
-    setEmailCodeAttempted(false);
-    setEmailTimeLeft(EMAIL_CODE_TTL);
-    setEmailResendKey((k) => k + 1);
-    // TODO: 실제 이메일 인증코드 발송 API 연동
+    if (emailSending) return;
+    // 재발송은 타이머 상태와 무관하게 언제든 가능 (서버에서 30초 쿨다운 적용)
+    setEmailSending(true);
+    setEmailApiError('');
+    try {
+      const { data } = await api.post('/auth/email/send-code', { email: finalEmail });
+      setEmailSent(true);
+      setEmailVerified(false);
+      setEmailCode('');
+      setEmailCodeAttempted(false);
+      setEmailTimeLeft(data.ttl || EMAIL_CODE_TTL);
+      setEmailResendKey((k) => k + 1);
+    } catch (err) {
+      setEmailApiError(err.response?.data?.detail || '인증 메일 발송에 실패했습니다. 잠시 후 다시 시도해주세요.');
+    } finally {
+      setEmailSending(false);
+    }
   };
 
-  const handleVerifyEmailCode = () => {
+  const handleVerifyEmailCode = async () => {
     if (!isEmailCodeValid) { setEmailCodeAttempted(true); return; }
-    setEmailVerified(true);
-    // TODO: 실제 인증코드 검증 API 연동
+    setEmailApiError('');
+    try {
+      await api.post('/auth/email/verify-code', { email: finalEmail, code: emailCode.trim() });
+      setEmailVerified(true);
+    } catch (err) {
+      setEmailCodeAttempted(true);
+      setEmailApiError(err.response?.data?.detail || '인증에 실패했습니다. 다시 시도해주세요.');
+    }
   };
 
   const isValid =
@@ -302,7 +320,7 @@ export default function SignupPage({ openPage, onLogin }) {
             </div>
             <button
               type="button"
-              disabled={!isEmailValid || emailVerified}
+              disabled={!isEmailValid || emailVerified || emailSending}
               style={{
                 whiteSpace: 'nowrap',
                 boxSizing: 'border-box',
@@ -315,11 +333,11 @@ export default function SignupPage({ openPage, onLogin }) {
                 border: '1.5px solid var(--line)',
                 background: 'var(--card)',
                 color: 'var(--orange-2)',
-                opacity: (!isEmailValid || emailVerified) ? 0.5 : 1,
-                cursor: (!isEmailValid || emailVerified) ? 'not-allowed' : 'pointer',
+                opacity: (!isEmailValid || emailVerified || emailSending) ? 0.5 : 1,
+                cursor: (!isEmailValid || emailVerified || emailSending) ? 'not-allowed' : 'pointer',
               }}
               onClick={handleSendEmailCode}
-            >{emailSent ? '재발송' : '인증코드'}</button>
+            >{emailSending ? '발송 중...' : emailSent ? '재발송' : '인증코드'}</button>
           </div>
 
           {emailSent && !emailVerified && (
@@ -400,10 +418,13 @@ export default function SignupPage({ openPage, onLogin }) {
             </div>
           )}
 
+          {emailApiError && (
+            <p style={{ margin: 0, fontSize: 12.5, color: '#c0392b' }}>{emailApiError}</p>
+          )}
           {emailVerified && (
             <p style={{ margin: 0, fontSize: 12.5, color: 'var(--orange)', fontWeight: 600 }}>이메일 인증이 완료되었습니다.</p>
           )}
-          {attempted && !emailVerified && isEmailValid && (
+          {attempted && !emailVerified && isEmailValid && !emailApiError && !(emailCodeAttempted && !isEmailCodeValid) && (
             <p style={{ margin: 0, fontSize: 12.5, color: '#c0392b' }}>이메일 인증을 완료해주세요.</p>
           )}
         </div>
