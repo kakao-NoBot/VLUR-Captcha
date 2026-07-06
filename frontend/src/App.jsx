@@ -27,6 +27,7 @@ import KakaoCallbackPage from './pages/KakaoCallbackPage';
 import NaverCallbackPage from './pages/NaverCallbackPage';
 import GoogleCallbackPage from './pages/GoogleCallbackPage';
 import KakaoPayCallbackPage from './pages/KakaoPayCallbackPage';
+import TossPayCallbackPage from './pages/TossPayCallbackPage';
 
 // Page overlay wrapper
 function PageOverlay({ id, activePage, onBack, openPage, isLoggedIn, onLogout, user, children }) {
@@ -184,6 +185,9 @@ export default function App() {
   }
   if (currentPath.startsWith('/payments/kakao/')) {
     return <KakaoPayCallbackPage />;
+  }
+  if (currentPath.startsWith('/payments/toss/')) {
+    return <TossPayCallbackPage />;
   }
 
   return (

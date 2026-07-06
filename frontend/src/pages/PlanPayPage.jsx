@@ -87,10 +87,10 @@ export default function PlanPayPage({ planName = 'Pro', closePage, openPage, ope
     '결제 승인 완료 · Pro 요금제 활성화',
   ];
   const tossSteps = [
-    'TossPayments SDK 초기화 — widgets.setAmount()',
-    '결제위젯 열기 — widgets.requestPayment() 호출',
+    '주문 생성 — POST /api/payments/toss/ready',
+    '표준 결제창 SDK v2 — payment.requestPayment()',
     'successUrl 수신 · paymentKey/amount 검증 · Confirm API',
-    '결제 승인 완료 · API Key 발급됨',
+    '결제 승인 완료 · Pro 요금제 활성화',
   ];
   const stepLabels = method === 'kakao' ? kakaoSteps : tossSteps;
 
@@ -99,25 +99,52 @@ export default function PlanPayPage({ planName = 'Pro', closePage, openPage, ope
       openPage('login');
       return;
     }
-    if (method !== 'kakao') {
-      setPaymentError('토스페이먼츠는 아직 준비 중입니다.');
-      return;
-    }
-
     const initial = stepLabels.map((label, i) => ({ label, state: i === 0 ? 'active' : 'pending' }));
     setSteps(initial);
     setPaymentError('');
     try {
-      const { data } = await api.post('/payments/kakao/ready', { plan_name: planName });
+      if (method === 'kakao') {
+        const { data } = await api.post('/payments/kakao/ready', { plan_name: planName });
+        setSteps(stepLabels.map((label, index) => ({
+          label,
+          state: index === 0 ? 'done' : index === 1 ? 'active' : 'pending',
+        })));
+        localStorage.setItem('kakaopay_order_id', data.order_id);
+        window.location.assign(data.redirect_url);
+        return;
+      }
+
+      if (typeof window.TossPayments !== 'function') {
+        throw new Error('토스페이먼츠 SDK를 불러오지 못했습니다.');
+      }
+
+      const { data } = await api.post('/payments/toss/ready', { plan_name: planName });
+      localStorage.setItem('tosspay_order_id', data.order_id);
       setSteps(stepLabels.map((label, index) => ({
         label,
         state: index === 0 ? 'done' : index === 1 ? 'active' : 'pending',
       })));
-      localStorage.setItem('kakaopay_order_id', data.order_id);
-      window.location.assign(data.redirect_url);
+
+      const tossPayments = window.TossPayments(data.client_key);
+      const payment = tossPayments.payment({ customerKey: data.customer_key });
+      await payment.requestPayment({
+        method: 'CARD',
+        amount: { currency: 'KRW', value: data.amount },
+        orderId: data.order_id,
+        orderName: data.order_name,
+        successUrl: data.success_url,
+        failUrl: data.fail_url,
+        customerEmail: buyerEmail.trim(),
+        ...(buyerName.trim() ? { customerName: buyerName.trim() } : {}),
+        windowTarget: 'self',
+      });
     } catch (err) {
       setSteps(null);
-      setPaymentError(err.response?.data?.detail || '카카오페이 결제를 시작하지 못했습니다.');
+      setPaymentError(
+        err.response?.data?.detail
+          || err.message
+          || `${method === 'kakao' ? '카카오페이' : '토스페이먼츠'} 결제를 시작하지 못했습니다.`
+      );
     }
   };
 
@@ -192,7 +219,7 @@ export default function PlanPayPage({ planName = 'Pro', closePage, openPage, ope
                 { id: 'kakao', label: '카카오페이', sub: '카카오페이 머니 / 카드 단건 결제 · Server-to-Server API', logoClass: 'kakao', logoText: 'kakao pay' },
                 { id: 'toss',  label: '토스페이먼츠', sub: '카드 · 간편결제 · 계좌이체 통합 위젯 v2 · SDK', logoClass: 'toss', logoText: 'toss pay' },
               ].map(m => (
-                <div key={m.id} className={`pp-method${method === m.id ? ' sel' : ''}`} onClick={() => setMethod(m.id)}>
+                <div key={m.id} className={`pp-method${method === m.id ? ' sel' : ''}`} onClick={() => { setMethod(m.id); setPaymentError(''); }}>
                   <div className={`pp-logo ${m.logoClass}`}>{m.logoText}</div>
                   <div className="pp-meta"><b>{m.label}</b><span>{m.sub}</span></div>
                   <div className="pp-radio"/>
