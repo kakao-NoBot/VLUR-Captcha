@@ -36,6 +36,8 @@ def build_authorize_url(state: str) -> str:
         "redirect_uri": redirect_uri,
         "response_type": "code",
         "state": state,
+        # 카카오 세션이 남아 있어도 계정 선택 창을 항상 노출 (탈퇴 후 자동 재로그인 방지)
+        "prompt": "select_account",
     })
     return f"{KAKAO_AUTHORIZE_URL}?{query}"
 

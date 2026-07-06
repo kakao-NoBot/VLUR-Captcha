@@ -23,8 +23,10 @@ export default function KakaoCallbackPage({ onLogin }) {
     const expectedState = sessionStorage.getItem('kakao_oauth_state');
 
     if (kakaoError) {
+      // 사용자가 카카오 화면에서 취소한 경우 — 에러 화면 없이 로그인 창으로 복귀
       sessionStorage.removeItem('kakao_oauth_state');
-      setError(`카카오 로그인이 취소되었습니다. (${kakaoError})`);
+      sessionStorage.setItem('reopen_login', '1');
+      window.location.replace('/');
       return;
     }
     if (!code || !state || !expectedState || state !== expectedState) {

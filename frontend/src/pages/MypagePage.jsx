@@ -1158,7 +1158,6 @@ function DeactivateTab({ closePage, onLogout }) {
   const [showAgreeWarn, setShowAgreeWarn] = useState(false);
   const [showPwWarn, setShowPwWarn] = useState(false);
   const [apiError, setApiError] = useState('');
-  const [busy, setBusy] = useState(false);
 
   const confirm_ = () => {
     if (!password.trim()) { setShowPwWarn(true); return; }
@@ -1168,8 +1167,6 @@ function DeactivateTab({ closePage, onLogout }) {
   };
 
   const doDeactivate = async () => {
-    if (busy) return;
-    setBusy(true);
     try {
       await api.post('/auth/deactivate', { password });
       setShowConfirm(false);
@@ -1177,15 +1174,12 @@ function DeactivateTab({ closePage, onLogout }) {
     } catch (err) {
       setShowConfirm(false);
       setApiError(err.response?.data?.detail || '탈퇴 처리 중 오류가 발생했습니다.');
-    } finally {
-      setBusy(false);
     }
   };
 
   const finishClose = () => {
     setShowDone(false);
-    // 탈퇴된 계정의 토큰/세션 정리 후 홈으로
-    if (onLogout) onLogout();
+    if (onLogout) onLogout();   // 토큰·유저 정보 삭제 후 메인으로
     else closePage();
   };
 
@@ -1204,8 +1198,12 @@ function DeactivateTab({ closePage, onLogout }) {
         <PasswordInput
           placeholder="비밀번호 확인"
           value={password}
-          onChange={e => setPassword(e.target.value)}
+          onChange={e => { setPassword(e.target.value); setApiError(''); }}
+          style={apiError ? { border: '1.5px solid #c0392b' } : {}}
         />
+        {apiError && (
+          <p style={{ margin: '-6px 0 0', fontSize: 12.5, color: '#c0392b' }}>{apiError}</p>
+        )}
         <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: 'var(--ink-soft)', cursor: 'pointer' }}>
           <input type="checkbox" checked={agreed} onChange={e => setAgreed(e.target.checked)} style={{ width: 17, height: 17, accentColor: '#c0392b' }}/>
           위 내용을 확인했으며 탈퇴에 동의합니다

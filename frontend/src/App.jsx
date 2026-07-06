@@ -70,11 +70,18 @@ function readCancelledPayment() {
   }
 }
 
-// 새로고침 시 강제 로그아웃(개발 편의 기능)은 기본 꺼짐.
-// 필요하면 frontend/.env에 VITE_DEV_FORCE_LOGOUT=true 를 넣어 다시 켤 수 있다.
-const DEV_FORCE_LOGOUT_ON_LOAD =
-  import.meta.env.DEV && import.meta.env.VITE_DEV_FORCE_LOGOUT === 'true';
-// 자동 로그인 정보(auto_login 등)는 지우지 않는다 — 로그인 폼 자동 채움 유지
+// 소셜 로그인 취소 후 돌아온 경우 — 로그인 창을 자동으로 다시 연다
+function readReopenLogin() {
+  try {
+    if (!sessionStorage.getItem('reopen_login')) return false;
+    sessionStorage.removeItem('reopen_login');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const DEV_FORCE_LOGOUT_ON_LOAD = import.meta.env.DEV;
 const DEV_AUTH_STORAGE_KEYS = [
   'access_token',
   'refresh_token',
@@ -115,7 +122,11 @@ export default function App() {
   const [completedPayment] = useState(readCompletedPayment);
   const [cancelledPayment] = useState(readCancelledPayment);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(Boolean(cancelledPayment));
-  const [page, setPage] = useState(completedPayment || cancelledPayment ? 'plan-pay' : null);
+  const [page, setPage] = useState(() => {
+    if (completedPayment || cancelledPayment) return 'plan-pay';
+    if (readReopenLogin()) return 'login';   // 소셜 로그인 취소 복귀
+    return null;
+  });
   const [planPayArgs, setPlanPayArgs] = useState({
     plan: completedPayment?.plan_name || cancelledPayment?.plan_name || 'Pro',
     completed: Boolean(completedPayment),

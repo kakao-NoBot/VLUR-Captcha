@@ -36,6 +36,8 @@ def build_naver_authorize_url(state: str) -> str:
         "client_id": client_id,
         "redirect_uri": redirect_uri,
         "state": state,
+        # 네이버 세션이 남아 있어도 동의 창을 항상 노출 (탈퇴 후 자동 재로그인 방지)
+        "auth_type": "reprompt",
     })
     return f"{NAVER_AUTHORIZE_URL}?{query}"
 

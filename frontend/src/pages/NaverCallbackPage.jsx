@@ -24,8 +24,10 @@ export default function NaverCallbackPage({ onLogin }) {
     const expectedState = sessionStorage.getItem('naver_oauth_state');
 
     if (naverError) {
+      // 사용자가 네이버 화면에서 취소한 경우 — 에러 화면 없이 로그인 창으로 복귀
       sessionStorage.removeItem('naver_oauth_state');
-      setError(`네이버 로그인이 취소되었습니다. (${naverError})`);
+      sessionStorage.setItem('reopen_login', '1');
+      window.location.replace('/');
       return;
     }
     if (!code || !state || !expectedState || state !== expectedState) {
