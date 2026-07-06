@@ -1,5 +1,6 @@
 import hashlib
 
+import pymysql
 from fastapi import APIRouter, HTTPException, status, Depends, Query
 from pydantic import BaseModel
 from auth.hash import hash_password, verify_password
@@ -520,3 +521,51 @@ def change_password(
         conn.commit()
 
     return {"message": "비밀번호가 변경되었습니다."}
+
+
+class DeactivateRequest(BaseModel):
+    password: str | None = None
+
+
+@router.post("/deactivate")
+def deactivate_account(
+    body: DeactivateRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    """계정 탈퇴 — users 행을 완전 삭제.
+    api_keys·payments·client_sites·social_accounts는 FK CASCADE로 함께 삭제되고,
+    boards 게시글은 작성자만 NULL 처리(SET NULL)되어 글은 유지된다."""
+    user_id = current_user["sub"]
+    conn = get_conn()
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT password_hash FROM users WHERE user_id = %s",
+                (user_id,),
+            )
+            user = cur.fetchone()
+
+            if not user:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="탈퇴할 수 있는 계정이 아닙니다.",
+                )
+            # 일반 계정은 비밀번호 재확인, 소셜 계정(password_hash NULL)은 토큰 인증만으로 진행
+            if user["password_hash"]:
+                if not body.password or not verify_password(body.password, user["password_hash"]):
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="비밀번호가 일치하지 않습니다.",
+                    )
+
+            try:
+                cur.execute("DELETE FROM users WHERE user_id = %s", (user_id,))
+            except pymysql.err.IntegrityError:
+                # board_answers.admin_id ON DELETE RESTRICT — 답변 이력이 있는 관리자 계정
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="답변 이력이 있는 관리자 계정은 탈퇴할 수 없습니다.",
+                )
+        conn.commit()
+
+    return {"message": "계정이 완전히 삭제되었습니다."}

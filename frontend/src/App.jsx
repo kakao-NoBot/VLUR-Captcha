@@ -70,6 +70,17 @@ function readCancelledPayment() {
   }
 }
 
+// 소셜 로그인 취소 후 돌아온 경우 — 로그인 창을 자동으로 다시 연다
+function readReopenLogin() {
+  try {
+    if (!sessionStorage.getItem('reopen_login')) return false;
+    sessionStorage.removeItem('reopen_login');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 const DEV_FORCE_LOGOUT_ON_LOAD = import.meta.env.DEV;
 const DEV_AUTH_STORAGE_KEYS = [
   'access_token',
@@ -113,7 +124,11 @@ export default function App() {
   const [completedPayment] = useState(readCompletedPayment);
   const [cancelledPayment] = useState(readCancelledPayment);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(Boolean(cancelledPayment));
-  const [page, setPage] = useState(completedPayment || cancelledPayment ? 'plan-pay' : null);
+  const [page, setPage] = useState(() => {
+    if (completedPayment || cancelledPayment) return 'plan-pay';
+    if (readReopenLogin()) return 'login';   // 소셜 로그인 취소 복귀
+    return null;
+  });
   const [planPayArgs, setPlanPayArgs] = useState({
     plan: completedPayment?.plan_name || cancelledPayment?.plan_name || 'Pro',
     completed: Boolean(completedPayment),
@@ -302,7 +317,7 @@ export default function App() {
       {/* Mypage */}
       <PageOverlay id="mypage" activePage={page} onBack={closePage} openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} user={currentUser}>
         <div className="po-body">
-          <MypagePage key={mypageKey} openPage={openPage} closePage={closePage} initialTab={mypageTab} user={currentUser} onUserUpdate={handleUserUpdate} />
+          <MypagePage key={mypageKey} openPage={openPage} closePage={closePage} initialTab={mypageTab} user={currentUser} onUserUpdate={handleUserUpdate} onLogout={handleLogout} />
         </div>
       </PageOverlay>
 

@@ -1161,28 +1161,37 @@ function DeactivateDoneModal({ onClose }) {
 }
 
 /* ── SC-17 계정 탈퇴 탭 (탈퇴사유 제거) ── */
-function DeactivateTab({ closePage }) {
+function DeactivateTab({ closePage, onLogout }) {
   const [password, setPassword] = useState('');
   const [agreed, setAgreed] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [showDone, setShowDone] = useState(false);
   const [showAgreeWarn, setShowAgreeWarn] = useState(false);
   const [showPwWarn, setShowPwWarn] = useState(false);
+  const [apiError, setApiError] = useState('');
 
   const confirm_ = () => {
     if (!password.trim()) { setShowPwWarn(true); return; }
     if (!agreed) { setShowAgreeWarn(true); return; }
+    setApiError('');
     setShowConfirm(true);
   };
 
-  const doDeactivate = () => {
-    setShowConfirm(false);
-    setShowDone(true);
+  const doDeactivate = async () => {
+    try {
+      await api.post('/auth/deactivate', { password });
+      setShowConfirm(false);
+      setShowDone(true);
+    } catch (err) {
+      setShowConfirm(false);
+      setApiError(err.response?.data?.detail || '탈퇴 처리 중 오류가 발생했습니다.');
+    }
   };
 
   const finishClose = () => {
     setShowDone(false);
-    closePage();
+    if (onLogout) onLogout();   // 토큰·유저 정보 삭제 후 메인으로
+    else closePage();
   };
 
   const isValid = password.trim() && agreed;
@@ -1200,8 +1209,12 @@ function DeactivateTab({ closePage }) {
         <PasswordInput
           placeholder="비밀번호 확인"
           value={password}
-          onChange={e => setPassword(e.target.value)}
+          onChange={e => { setPassword(e.target.value); setApiError(''); }}
+          style={apiError ? { border: '1.5px solid #c0392b' } : {}}
         />
+        {apiError && (
+          <p style={{ margin: '-6px 0 0', fontSize: 12.5, color: '#c0392b' }}>{apiError}</p>
+        )}
         <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: 'var(--ink-soft)', cursor: 'pointer' }}>
           <input type="checkbox" checked={agreed} onChange={e => setAgreed(e.target.checked)} style={{ width: 17, height: 17, accentColor: '#c0392b' }}/>
           위 내용을 확인했으며 탈퇴에 동의합니다
@@ -1345,7 +1358,7 @@ const TABS = [
 
 const ADMIN_TAB = { id: 'inquiries', label: '문의 내역' };
 
-export default function MypagePage({ openPage, closePage, initialTab = 'info', user = null, onUserUpdate }) {
+export default function MypagePage({ openPage, closePage, initialTab = 'info', user = null, onUserUpdate, onLogout }) {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [profile, setProfile] = useState(null);
   const isAdmin = user?.role === 'admin';
@@ -1384,7 +1397,7 @@ export default function MypagePage({ openPage, closePage, initialTab = 'info', u
         {activeTab === 'apikey'     && <ApiKeyTab openPage={openPage} closePage={closePage} profile={profile} />}
         {activeTab === 'usage'      && <UsageTab />}
         {activeTab === 'billing'    && <BillingTab closePage={closePage} profile={profile} />}
-        {activeTab === 'deactivate' && <DeactivateTab closePage={closePage} />}
+        {activeTab === 'deactivate' && <DeactivateTab closePage={closePage} onLogout={onLogout} />}
         {activeTab === 'inquiries' && isAdmin && <InquiriesTab />}
       </div>
     </div>
