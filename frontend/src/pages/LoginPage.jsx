@@ -7,6 +7,15 @@ import api from '../api/axios';
 import PasswordInput from '../components/PasswordInput';
 import EmailInput from '../components/EmailInput';
 
+/* ── 인증코드 재발송 타이머 (3분) ── */
+const PASSWORD_RESET_CODE_TTL = 180; // 초 단위 (3분)
+
+function formatCountdown(totalSeconds) {
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
 /* ── 공통 모달 래퍼 ── */
 function Modal({ title, onClose, children }) {
   return (
@@ -85,6 +94,8 @@ function FindPwModal({ onClose }) {
   // step 2
   const [code, setCode] = useState('');
   const [attempted2, setAttempted2] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(PASSWORD_RESET_CODE_TTL);
+  const [resendKey, setResendKey] = useState(0);
 
   // step 3
   const [newPw, setNewPw] = useState('');
@@ -97,12 +108,31 @@ function FindPwModal({ onClose }) {
   const isStep1Valid = loginId.trim() && isEmailValid;
   const isStep3Valid = newPw.trim() && newPwConfirm.trim();
 
+  // step 2에 진입해 있는 동안 1초마다 남은 시간을 감소시킴 (재발송 시 resendKey가 바뀌며 타이머 재시작)
+  useEffect(() => {
+    if (step !== 2) return undefined;
+    const timer = setInterval(() => {
+      setTimeLeft((t) => (t > 0 ? t - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [step, resendKey]);
+
   const handleSend = () => {
     if (!isStep1Valid) { setAttempted1(true); return; }
+    setTimeLeft(PASSWORD_RESET_CODE_TTL);
     setStep(2);
   };
 
-  const isCodeValid = /^\d{6}$/.test(code.trim());
+  const handleResend = () => {
+    // 재발송은 타이머 상태와 무관하게 언제든 가능
+    setCode('');
+    setAttempted2(false);
+    setTimeLeft(PASSWORD_RESET_CODE_TTL);
+    setResendKey((k) => k + 1);
+    // TODO: 실제 인증코드 재발송 API 연동
+  };
+
+  const isCodeValid = /^\d{6}$/.test(code.trim()) && timeLeft > 0;
 
   const handleVerify = () => {
     if (!isCodeValid) { setAttempted2(true); return; }
@@ -138,19 +168,63 @@ function FindPwModal({ onClose }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <p style={{ margin: 0, fontSize: 14, color: 'var(--ink-soft)' }}>이메일로 발송된 6자리 인증코드를 입력하세요.</p>
           <div style={{ display: 'flex', gap: 8 }}>
-            <ClearableInput
-              placeholder="인증코드 6자리"
-              value={code}
-              inputMode="numeric"
-              maxLength={6}
-              onChange={e => setCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
-              containerStyle={{ flex: 1 }}
-              style={attempted2 && !isCodeValid ? errorStyle : {}}
-            />
-            <button type="button" className="pg-btn" style={{ whiteSpace: 'nowrap', padding: '0 14px', fontSize: 13 }} onClick={() => setStep(2)}>재발송</button>
+            <div
+              style={{
+                position: 'relative',
+                flex: 1,
+                display: 'flex',
+                alignItems: 'center',
+                height: 48,
+                border: attempted2 && !isCodeValid ? '1.5px solid #c0392b' : '1.5px solid var(--line)',
+                borderRadius: 12,
+                background: 'var(--card)',
+              }}
+            >
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={6}
+                placeholder={timeLeft > 0 ? '인증코드 6자리' : '인증코드가 만료되었습니다'}
+                value={code}
+                disabled={timeLeft <= 0}
+                onChange={e => setCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
+                style={{
+                  width: '100%',
+                  border: 'none',
+                  outline: 'none',
+                  background: 'transparent',
+                  padding: '0 14px',
+                  paddingRight: timeLeft > 0 ? 56 : 14,
+                  fontSize: 15,
+                  color: timeLeft > 0 ? 'var(--ink)' : 'var(--muted)',
+                }}
+              />
+              {timeLeft > 0 && (
+                <span
+                  style={{
+                    position: 'absolute',
+                    right: 14,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    color: '#c0392b',
+                    pointerEvents: 'none',
+                  }}
+                >
+                  {formatCountdown(timeLeft)}
+                </span>
+              )}
+            </div>
+            <button
+              type="button"
+              className="pg-btn"
+              style={{ whiteSpace: 'nowrap', padding: '0 14px', fontSize: 13 }}
+              onClick={handleResend}
+            >재발송</button>
           </div>
           {attempted2 && !isCodeValid && (
-            <p style={{ margin: 0, fontSize: 12.5, color: '#c0392b' }}>인증코드 6자리 숫자를 입력해주세요.</p>
+            <p style={{ margin: 0, fontSize: 12.5, color: '#c0392b' }}>
+              {timeLeft > 0 ? '인증코드 6자리 숫자를 입력해주세요.' : '인증코드가 만료되었습니다. 재발송해주세요.'}
+            </p>
           )}
           <button
             type="button"
