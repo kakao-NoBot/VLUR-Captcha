@@ -190,7 +190,6 @@ export default function Nav({ openPage, isLoggedIn, onLogout, onHome, embedded =
         )}
 
         {/* 모바일 테마 전환 */}
-        <div style={{ height: 1, background: 'var(--line)', margin: '6px 0' }} />
         <button type="button" className="mobile-theme-row" onClick={() => applyTheme(!dark)}>
           {dark ? <MoonIcon /> : <SunIcon />}
           {dark ? '라이트 모드' : '다크 모드'}
