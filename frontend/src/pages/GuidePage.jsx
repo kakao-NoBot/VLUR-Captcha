@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
 const WIDGET_CODE = '<div class="vlur-captcha" data-sitekey="YOUR_SITE_KEY"></div>\n'
   + '<script src="https://js.vlur.dev/v1/api.js" async defer><' + '/script>';
@@ -175,6 +175,13 @@ Content-Type: application/json
 function StepModal({ stepIndex, onClose, onMove }) {
   const step = STEPS[stepIndex];
   const total = STEPS.length;
+  const bodyRef = useRef(null);
+
+  useEffect(() => {
+    if (bodyRef.current) {
+      bodyRef.current.scrollTop = 0;
+    }
+  }, [stepIndex]);
 
   return (
     <div
@@ -211,7 +218,10 @@ function StepModal({ stepIndex, onClose, onMove }) {
         </div>
 
         {/* Body */}
-        <div style={{ overflowY: 'auto', padding: '20px 24px', flex: 1 }}>
+        <div
+          ref={bodyRef}
+          style={{ overflowY: 'auto', overflowAnchor: 'none', padding: '20px 24px', flex: 1 }}
+        >
           {step.body}
         </div>
 
