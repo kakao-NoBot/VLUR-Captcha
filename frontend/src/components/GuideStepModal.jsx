@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useLayoutEffect, useRef } from 'react';
 
 export const GUIDE_STEPS = [
   {
@@ -155,6 +155,13 @@ Content-Type: application/json
 export default function GuideStepModal({ stepIndex, onClose, onMove }) {
   const step = GUIDE_STEPS[stepIndex];
   const total = GUIDE_STEPS.length;
+  const bodyRef = useRef(null);
+
+  useLayoutEffect(() => {
+    if (bodyRef.current) {
+      bodyRef.current.scrollTop = 0;
+    }
+  }, [stepIndex]);
 
   return (
     <div
@@ -189,7 +196,7 @@ export default function GuideStepModal({ stepIndex, onClose, onMove }) {
         </div>
 
         {/* Body */}
-        <div style={{ overflowY: 'auto', padding: '20px 24px', flex: 1 }}>
+        <div ref={bodyRef} style={{ overflowY: 'auto', padding: '20px 24px', flex: 1 }}>
           {step.body}
         </div>
 

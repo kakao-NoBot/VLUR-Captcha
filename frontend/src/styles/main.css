@@ -2866,16 +2866,17 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
     display: flex;
     align-items: center;
     height: 64px;
-    overflow-x: scroll;
+    overflow-x: auto;
+    overflow-y: hidden;
     padding: 12px;
     border-right: none;
     border-bottom: 1px solid var(--line);
-    scrollbar-width: none;
-    -ms-overflow-style: none;
   }
-  .mp-sidebar::-webkit-scrollbar { display: none; }
+  .mp-sidebar::-webkit-scrollbar { height: 6px; }
+  .mp-sidebar::-webkit-scrollbar-thumb { background: var(--line); border-radius: 999px; }
   .mp-nav-item {
     width: auto;
+    padding: 8px 14px;
     white-space: nowrap;
     border-right: none;
     border-bottom: 3px solid transparent;

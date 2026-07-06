@@ -1,11 +1,12 @@
-import React, { useEffect, useMemo, useState } from 'react';
+// AdminPage.jsx
+
+import React, { useEffect, useMemo, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 
 const ADMIN_TABS = [
   { id: 'dashboard', label: '대시보드' },
   { id: 'users', label: '사용자 관리' },
   { id: 'sites', label: '사이트 관리' },
-  { id: 'apiKeys', label: 'API Key 관리' },
-  { id: 'captchas', label: 'CAPTCHA 문제 관리' },
   { id: 'inquiries', label: '문의 관리' },
   { id: 'logs', label: '인증 로그' },
 ];
@@ -20,7 +21,14 @@ const INQUIRY_TYPE_TABS = [
   { id: 'business', label: '기업/회사 도입 문의' },
 ];
 
-const INQUIRY_STATUS_OPTIONS = ['접수', '검토 중', '답변 완료'];
+const INQUIRY_STATUS_OPTIONS = ['접수', '검토', '답변'];
+const MANAGE_STATUS_OPTIONS = ['활성', '점검', '비활성'];
+
+const INQUIRY_STATUS_TONE = {
+  '접수': 'neutral',
+  '검토': 'warning',
+  '답변': 'success',
+};
 
 const DASHBOARD_STATS = [
   { label: '전체 사용자 수', value: '1,284', note: '일반/기업 계정 합산' },
@@ -32,7 +40,7 @@ const DASHBOARD_STATS = [
 
 const MOCK_PERSONAL_USERS = [
   { name: '김민준', userId: 'minjun01', email: 'minjun@example.com', plan: 'Pro', joinedAt: '2026-06-02', status: '활성' },
-  { name: '이지아', userId: 'jia-lab', email: 'jia@demo.co.kr', plan: 'Starter', joinedAt: '2026-06-10', status: '활성' },
+  { name: '이지아', userId: 'jia-lab', email: 'jia@demo.co.kr', plan: 'Free', joinedAt: '2026-06-10', status: '활성' },
   { name: '박서준', userId: 'seo-admin', email: 'seo@vlur.test', plan: 'Enterprise', joinedAt: '2026-06-18', status: '점검' },
   { name: '최하린', userId: 'harin77', email: 'harin@example.com', plan: 'Free', joinedAt: '2026-06-24', status: '비활성' },
 ];
@@ -40,49 +48,24 @@ const MOCK_PERSONAL_USERS = [
 const MOCK_BUSINESS_USERS = [
   { company: 'VLUR Commerce', manager: '정다은', userId: 'vlur-commerce', email: 'ops@vlur-commerce.kr', plan: 'Enterprise', siteCount: 6, monthlyLimit: 500000, status: '활성' },
   { company: 'AI Study Lab', manager: '윤태오', userId: 'study-lab', email: 'admin@study.example.io', plan: 'Pro', siteCount: 3, monthlyLimit: 100000, status: '활성' },
-  { company: 'Secure Board Inc.', manager: '한서연', userId: 'secure-board', email: 'contact@secureboard.kr', plan: 'Starter', siteCount: 1, monthlyLimit: 50000, status: '비활성' },
+  { company: 'Secure Board Inc.', manager: '한서연', userId: 'secure-board', email: 'contact@secureboard.kr', plan: 'Free', siteCount: 1, monthlyLimit: 50000, status: '비활성' },
 ];
 
 const MOCK_SITES = [
   { name: 'VLUR Demo Shop', domain: 'shop.vlur-demo.kr', owner: 'VLUR Commerce', plan: 'Enterprise', monthlyLimit: 500000, monthlyUsage: 312000, status: '활성', createdAt: '2026-06-03' },
   { name: 'AI Study Portal', domain: 'study.example.io', owner: 'AI Study Lab', plan: 'Pro', monthlyLimit: 100000, monthlyUsage: 68400, status: '활성', createdAt: '2026-06-12' },
-  { name: 'Secure Board', domain: 'board.sample.kr', owner: 'Secure Board Inc.', plan: 'Starter', monthlyLimit: 50000, monthlyUsage: 12850, status: '비활성', createdAt: '2026-06-21' },
-];
-
-const MOCK_API_KEYS = [
-  { keyName: 'Production Key', maskedKey: 'sk_live_••••••••1234', owner: '김민준', site: 'VLUR Demo Shop', permission: '발급/검증', createdAt: '2026-06-04', status: '활성' },
-  { keyName: 'Test Sandbox', maskedKey: 'sk_test_••••••••5678', owner: '이지아', site: 'AI Study Portal', permission: '테스트', createdAt: '2026-06-13', status: '활성' },
-  { keyName: 'Legacy Key', maskedKey: 'sk_live_••••••••9012', owner: '박서준', site: 'Secure Board', permission: '검증 전용', createdAt: '2026-06-19', status: '비활성' },
-];
-
-const MOCK_CAPTCHAS = [
-  {
-    id: 'CAP-DRAG-001',
-    captchaType: 'type1_drag',
-    label: '드래그형',
-    description: '아스키 아트 이미지를 목표 영역으로 드래그',
-    status: '유형 1',
-    updatedAt: '2026-07-01',
-  },
-  {
-    id: 'CAP-ID-001',
-    captchaType: 'type2_identify',
-    label: '식별형',
-    description: '드래그형 실패 또는 시간초과 시 추가로 사용하는 식별 인증',
-    status: '유형 2',
-    updatedAt: '2026-06-29',
-  },
+  { name: 'Secure Board', domain: 'board.sample.kr', owner: 'Secure Board Inc.', plan: 'Free', monthlyLimit: 50000, monthlyUsage: 12850, status: '비활성', createdAt: '2026-06-21' },
 ];
 
 const MOCK_GENERAL_INQUIRIES = [
-  { id: 'GEN-001', requester: '이지아', email: 'jia@demo.co.kr', type: 'API Key 문의', message: '마이페이지에서 API Key를 어디서 확인하는지 궁금합니다.', receivedAt: '2026-07-03', status: '답변 완료' },
+  { id: 'GEN-001', requester: '이지아', email: 'jia@demo.co.kr', type: 'API Key 문의', message: '마이페이지에서 API Key를 어디서 확인하는지 궁금합니다.', receivedAt: '2026-07-03', status: '답변' },
   { id: 'GEN-002', requester: '최하린', email: 'harin@example.com', type: '결제/요금제 문의', message: 'Basic에서 Pro 요금제로 변경 가능한지 문의드립니다.', receivedAt: '2026-07-02', status: '접수' },
-  { id: 'GEN-003', requester: '김민준', email: 'minjun@example.com', type: '기술 문의', message: 'CAPTCHA 검증 로그를 기간별로 확인할 수 있는지 궁금합니다.', receivedAt: '2026-07-01', status: '검토 중' },
+  { id: 'GEN-003', requester: '김민준', email: 'minjun@example.com', type: '기술 문의', message: 'CAPTCHA 검증 로그를 기간별로 확인할 수 있는지 궁금합니다.', receivedAt: '2026-07-01', status: '검토' },
 ];
 
 const MOCK_BUSINESS_INQUIRIES = [
-  { id: 'ENT-001', company: '준수커머스', manager: '김준수', phone: '010-2931-1335', email: 'contact@junsucommerce.kr', estimatedCalls: '1,000,000회 이상', message: '대량 CAPTCHA 호출 한도와 전용 지원 문의', receivedAt: '2026-07-03', status: '검토 중' },
-  { id: 'ENT-002', company: 'VLUR Commerce', manager: '정다은', phone: '010-1234-5678', email: 'ops@vlur-commerce.kr', estimatedCalls: '3,000,000회 이상', message: '월 호출량 증설과 SLA 적용 가능 여부 문의', receivedAt: '2026-07-02', status: '답변 완료' },
+  { id: 'ENT-001', company: '준수커머스', manager: '김준수', phone: '010-2931-1335', email: 'contact@junsucommerce.kr', estimatedCalls: '1,000,000회 이상', message: '대량 CAPTCHA 호출 한도와 전용 지원 문의', receivedAt: '2026-07-03', status: '검토' },
+  { id: 'ENT-002', company: 'VLUR Commerce', manager: '정다은', phone: '010-1234-5678', email: 'ops@vlur-commerce.kr', estimatedCalls: '3,000,000회 이상', message: '월 호출량 증설과 SLA 적용 가능 여부 문의', receivedAt: '2026-07-02', status: '답변' },
   { id: 'ENT-003', company: 'AI Study Lab', manager: '윤태오', phone: '010-9876-5432', email: 'admin@aistudy.io', estimatedCalls: '500,000회', message: '교육 포털 연동 테스트 환경 문의', receivedAt: '2026-06-30', status: '접수' },
 ];
 
@@ -96,12 +79,12 @@ const SCORE_BREAKDOWN = [
 ];
 
 const MOCK_LOGS = [
-  { time: '2026-07-03 09:42', site: 'VLUR Demo Shop', captchaType: 'type1_drag', result: '성공', duration: '1.8초', botScore: 8, verdict: '정상' },
-  { time: '2026-07-03 09:38', site: 'AI Study Portal', captchaType: 'type2_identify', result: '성공', duration: '2.7초', botScore: 21, verdict: '정상' },
-  { time: '2026-07-03 09:34', site: 'VLUR Demo Shop', captchaType: 'type1_drag', result: '의심', duration: '0.9초', botScore: 72, verdict: '의심' },
-  { time: '2026-07-03 09:29', site: 'Secure Board', captchaType: 'type1_drag', result: '실패', duration: '4.2초', botScore: 58, verdict: '실패' },
-  { time: '2026-07-03 09:21', site: 'AI Study Portal', captchaType: 'type2_identify', result: '실패', duration: '3.4초', botScore: 43, verdict: '실패' },
-];
+  { time: '2026-07-03 09:42', site: 'VLUR Demo Shop', captchaType: 'type1_drag', result: '성공', duration: '1.8초', botScore: 8 },
+  { time: '2026-07-03 09:38', site: 'AI Study Portal', captchaType: 'type2_identify', result: '성공', duration: '2.7초', botScore: 21 },
+  { time: '2026-07-03 09:34', site: 'VLUR Demo Shop', captchaType: 'type1_drag', result: '의심', duration: '0.9초', botScore: 72 },
+  { time: '2026-07-03 09:29', site: 'Secure Board', captchaType: 'type1_drag', result: '실패', duration: '4.2초', botScore: 58 },
+  { time: '2026-07-03 09:21', site: 'AI Study Portal', captchaType: 'type2_identify', result: '실패', duration: '3.4초', botScore: 43 },
+ ];
 
 const PLAN_USAGE = [
   { plan: 'Free', accounts: 812, used: 182000, limit: 300000 },
@@ -119,35 +102,11 @@ const BOT_BLOCK_TREND = [
   { label: '7/3', value: 8.7 },
 ];
 
-const LOG_FILTERS = [
-  { id: 'all', label: '전체' },
-  { id: 'success', label: '성공' },
-  { id: 'failed', label: '실패' },
-  { id: 'suspicious', label: '의심' },
-];
-
-function StatusBadge({ children, tone = 'neutral' }) {
-  return <span className={`admin-badge ${tone}`}>{children}</span>;
-}
-
-function getInquiryStatusClass(status) {
-  if (status === '답변 완료') return 'status-done';
-  if (status === '검토 중') return 'status-review';
-  return 'status-received';
-}
-
 function getStatusTone(status) {
-  if (status === '활성' || status === '성공' || status === '유형 1' || status === '정상' || status === '답변 완료') return 'success';
-  if (status === '의심' || status === '점검' || status === '유형 2' || status === '검토 중') return 'warning';
+  if (status === '활성' || status === '성공' || status === '정상' || status === '답변') return 'success';
+  if (status === '의심' || status === '점검' || status === '검토') return 'warning';
   if (status === '실패' || status === '비활성') return 'danger';
   return 'neutral';
-}
-
-function getLogFilterId(result) {
-  if (result === '성공') return 'success';
-  if (result === '실패') return 'failed';
-  if (result === '의심') return 'suspicious';
-  return 'all';
 }
 
 function formatNumber(value) {
@@ -163,10 +122,212 @@ function getPercent(used, limit) {
   return Math.min(100, Math.round((used / limit) * 100));
 }
 
-function AdminTable({ columns, rows, emptyMessage, wrapperClassName = '', tableClassName = '' }) {
+/* ── 상태 뱃지 (읽기 전용: 모달, 인증 로그 결과 등) ── */
+const STATUS_TONE_STYLE = {
+  success: { color: '#1f8a54', background: 'rgba(46,163,107,0.14)', dot: '#2ea36b' },
+  warning: { color: '#a5720f', background: 'rgba(224,165,44,0.16)', dot: '#e0a52c' },
+  danger:  { color: '#c0392b', background: 'rgba(192,57,43,0.13)', dot: '#c0392b' },
+  neutral: { color: 'var(--ink-soft)', background: 'rgba(60,45,32,0.06)', dot: 'var(--muted)' },
+};
+
+function StatusBadge({ children, tone = 'neutral', style }) {
+  const s = STATUS_TONE_STYLE[tone] || STATUS_TONE_STYLE.neutral;
   return (
-    <div className={`admin-table-wrap${wrapperClassName ? ` ${wrapperClassName}` : ''}`}>
-      <table className={`admin-table${tableClassName ? ` ${tableClassName}` : ''}`}>
+    <span
+      style={{
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        minWidth: 46, width: 'fit-content', padding: '4px 10px', borderRadius: 999,
+        fontSize: 12, fontWeight: 700, color: s.color, background: s.background,
+        whiteSpace: 'nowrap',
+        ...style,
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
+/* ── 상태 변경 드롭다운 (문의/로그/사용자/사이트 공용, Portal 렌더링) ── */
+function StatusDropdown({ status, options, isOpen, onToggle, onSelect, resolveTone = getStatusTone, minWidth = 46 }) {
+  const triggerRef = useRef(null);
+  const [menuPos, setMenuPos] = useState(null);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setMenuPos(null);
+      return;
+    }
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setMenuPos({ top: rect.bottom + 6, left: Math.max(8, rect.right - 130) });
+    }
+  }, [isOpen]);
+
+  const tone = resolveTone(status);
+  const s = STATUS_TONE_STYLE[tone] || STATUS_TONE_STYLE.neutral;
+
+  return (
+    <div style={{ position: 'relative', display: 'inline-block' }} onClick={(event) => event.stopPropagation()}>
+      <button
+        ref={triggerRef}
+        type="button"
+        aria-label="상태 변경"
+        aria-haspopup="menu"
+        aria-expanded={isOpen}
+        onClick={(event) => { event.stopPropagation(); onToggle(); }}
+        style={{
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          minWidth, padding: '4px 10px', borderRadius: 999,
+          border: isOpen ? `1px solid ${s.dot}` : '1px solid transparent',
+          fontSize: 12, fontWeight: 700, color: s.color, background: s.background,
+          cursor: 'pointer', whiteSpace: 'nowrap',
+        }}
+      >
+        <span style={{ fontSize: 9 }}>{isOpen ? '▲' : '▼'}</span>
+        {status}
+      </button>
+
+      {isOpen && menuPos && createPortal(
+        <div
+          role="menu"
+          aria-label="상태 선택"
+          onClick={(event) => event.stopPropagation()}
+          style={{
+            position: 'fixed', top: menuPos.top, left: menuPos.left, zIndex: 1000,
+            background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 10,
+            boxShadow: '0 12px 28px rgba(36,27,21,.14)', padding: 6, minWidth: 120,
+            display: 'flex', flexDirection: 'column', gap: 2,
+          }}
+        >
+          {options.map((option) => {
+            const selected = status === option;
+            return (
+              <button
+                key={option}
+                type="button"
+                role="menuitemradio"
+                aria-checked={selected}
+                onClick={(event) => { event.stopPropagation(); onSelect(option); }}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+                  width: '100%', padding: '8px 12px', border: 'none', borderRadius: 8,
+                  background: selected ? 'var(--peach)' : 'transparent',
+                  cursor: 'pointer', fontSize: 13, fontWeight: selected ? 700 : 500, color: 'var(--ink)',
+                }}
+              >
+                <span>{option}</span>
+                {selected && (
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                    style={{ color: 'var(--orange)' }}>
+                    <path d="M20 6L9 17l-5-5" />
+                  </svg>
+                )}
+              </button>
+            );
+          })}
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+}
+
+/* ── 봇 차단 추이 꺾은선 그래프 (순수 SVG, 외부 라이브러리 불필요) ── */
+function BotTrendChart({ data }) {
+  const width = 640;
+  const height = 160;
+  const paddingX = 24;
+  const paddingY = 28;
+  const max = Math.max(...data.map((d) => d.value));
+  const min = Math.min(...data.map((d) => d.value));
+  const range = max - min || 1;
+
+  const points = data.map((d, i) => {
+    const x = paddingX + (i * (width - paddingX * 2)) / (data.length - 1);
+    const y = paddingY + (height - paddingY * 2) * (1 - (d.value - min) / range);
+    return { ...d, x, y };
+  });
+
+  const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
+  const areaPath = `${linePath} L${points[points.length - 1].x},${height - paddingY} L${points[0].x},${height - paddingY} Z`;
+
+  return (
+    <div style={{ width: '100%', overflowX: 'auto' }}>
+      <svg viewBox={`0 0 ${width} ${height + 22}`} width="100%" style={{ display: 'block', minWidth: 480 }}>
+        <defs>
+          <linearGradient id="botTrendFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="var(--orange)" stopOpacity="0.22" />
+            <stop offset="100%" stopColor="var(--orange)" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path d={areaPath} fill="url(#botTrendFill)" stroke="none" />
+        <path d={linePath} fill="none" stroke="var(--orange)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        {points.map((p) => (
+          <circle key={`${p.label}-dot`} cx={p.x} cy={p.y} r="4" fill="var(--card)" stroke="var(--orange)" strokeWidth="2.5" />
+        ))}
+        {points.map((p) => (
+          <text key={`${p.label}-val`} x={p.x} y={p.y - 12} textAnchor="middle" fontSize="12" fontWeight="700" fill="var(--ink)">
+            {p.value}%
+          </text>
+        ))}
+        {points.map((p) => (
+          <text key={`${p.label}-lab`} x={p.x} y={height + 14} textAnchor="middle" fontSize="11" fill="var(--muted)">
+            {p.label}
+          </text>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+/* ── 검색창 (아이콘 + 알약형, 축소 버전) ── */
+function AdminSearchInput({ value, onChange, placeholder, ariaLabel }) {
+  return (
+    <div style={{ position: 'relative', minWidth: 190, maxWidth: 220 }}>
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 24 24"
+        width={13}
+        height={13}
+        style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)', pointerEvents: 'none' }}
+      >
+        <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" fill="none" />
+        <line x1="16.5" y1="16.5" x2="21" y2="21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      </svg>
+      <input
+        className="pg-input"
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        aria-label={ariaLabel}
+        style={{
+          paddingLeft: 30,
+          paddingTop: 6,
+          paddingBottom: 6,
+          paddingRight: 10,
+          fontSize: 13,
+          borderRadius: 999,
+          border: '1px solid var(--line)',
+          background: 'var(--card)',
+          boxShadow: '0 1px 2px rgba(36,27,21,.05)',
+          width: '100%',
+        }}
+      />
+    </div>
+  );
+}
+
+function AdminTable({ columns, rows, emptyMessage, wrapperClassName = '', tableClassName = '', tableStyle, wrapperStyle }) {
+return (
+    <div
+      className={`admin-table-wrap admin-scroll-x${wrapperClassName ? ` ${wrapperClassName}` : ''}`}
+      style={{ marginTop: 0, ...wrapperStyle }}
+    >
+      <table
+        className={`admin-table${tableClassName ? ` ${tableClassName}` : ''}`}
+        style={tableStyle}
+      >
         <thead>
           <tr>
             {columns.map((column) => (
@@ -201,12 +362,110 @@ function UsageMeter({ used, limit }) {
   );
 }
 
+function ScoreGauge({ score, max = 100 }) {
+  const percent = Math.min(100, Math.max(0, (score / max) * 100));
+  const radius = 52;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference * (1 - percent / 100);
+  const color = percent >= 60 ? '#c0392b' : percent >= 30 ? '#e0a52c' : '#2ea36b';
+
+  return (
+    <div style={{ position: 'relative', width: 120, height: 120, flexShrink: 0 }}>
+      <svg viewBox="0 0 120 120" width="120" height="120">
+        <circle cx="60" cy="60" r={radius} fill="none" stroke="var(--line)" strokeWidth="10" />
+        <circle
+          cx="60" cy="60" r={radius} fill="none" stroke={color} strokeWidth="10"
+          strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={offset}
+          transform="rotate(-90 60 60)"
+        />
+      </svg>
+      <div style={{
+        position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+      }}>
+        <strong style={{ fontSize: 28, fontWeight: 800, color: 'var(--ink)', lineHeight: 1 }}>{score}</strong>
+        <span style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>/ 100점</span>
+      </div>
+    </div>
+  );
+}
+
+/* ── AdminModalShell: PrivacyModal.jsx와 완전히 동일한 셸 디자인 ── */
+function AdminModalShell({ eyebrow, title, onClose, children, footer, labelledBy }) {
+  return (
+    <div
+      role="presentation"
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 9000,
+        background: 'rgba(0,0,0,.45)', display: 'flex',
+        alignItems: 'center', justifyContent: 'center', padding: 20,
+      }}
+    >
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={labelledBy}
+        onClick={(event) => event.stopPropagation()}
+        style={{
+          background: 'var(--card)', borderRadius: 20, width: '100%', maxWidth: 640,
+          maxHeight: '85vh', display: 'flex', flexDirection: 'column',
+          boxShadow: '0 24px 60px -12px rgba(0,0,0,.35)',
+        }}
+      >
+        {/* Header */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '22px 28px 18px', borderBottom: '1px solid var(--line-soft)', flexShrink: 0,
+        }}>
+          <div>
+            {eyebrow && (
+              <p style={{
+                fontSize: 11, fontWeight: 700, letterSpacing: '.14em', color: 'var(--muted)',
+                textTransform: 'uppercase', margin: '0 0 4px',
+              }}>{eyebrow}</p>
+            )}
+            <h2 id={labelledBy} style={{
+              margin: 0, fontSize: 18, fontWeight: 800, fontFamily: 'var(--disp)', letterSpacing: '-.01em',
+            }}>{title}</h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="닫기"
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              width: 32, height: 32, borderRadius: 8,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: 'var(--muted)', fontSize: 20, lineHeight: 1,
+            }}
+          >×</button>
+        </div>
+
+        {/* Body */}
+        <div className="admin-modal-scroll" style={{ overflowY: 'auto', padding: '24px 28px', flex: 1 }}>
+          {children}
+        </div>
+
+        {/* Footer */}
+        {footer && (
+          <div style={{
+            padding: '16px 28px', borderTop: '1px solid var(--line-soft)',
+            display: 'flex', justifyContent: 'flex-end', flexShrink: 0,
+          }}>
+            {footer}
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
 function ScoreDetailModal({ log, onClose }) {
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (event.key === 'Escape') onClose();
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
@@ -214,60 +473,58 @@ function ScoreDetailModal({ log, onClose }) {
   if (!log) return null;
 
   return (
-    <div className="admin-score-overlay" role="presentation" onClick={onClose}>
-      <section
-        className="admin-score-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="admin-score-title"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="admin-score-header">
-          <div>
-            <p className="pg-eyebrow">BOT SCORE DETAIL</p>
-            <h2 id="admin-score-title">봇 점수 채점표</h2>
+    <AdminModalShell
+      eyebrow="BOT SCORE DETAIL"
+      title="봇 점수 채점표"
+      onClose={onClose}
+      labelledBy="admin-score-title"
+      footer={<button type="button" className="btn btn-primary" onClick={onClose} style={{ fontSize: 14, padding: '9px 22px' }}>확인</button>}
+    >
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 20,
+        background: 'var(--paper)', borderRadius: 16, padding: '20px 22px', marginBottom: 22,
+      }}>
+        <ScoreGauge score={log.botScore} />
+        <div>
+          <span style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>판정 결과</span>
+          <div style={{ marginTop: 6 }}>
+            <StatusBadge tone={getStatusTone(log.result)}>{log.result}</StatusBadge>
           </div>
-          <button type="button" className="admin-score-close" aria-label="채점표 닫기" onClick={onClose}>×</button>
+          <p style={{ margin: '10px 0 0', fontSize: 12.5, color: 'var(--ink-soft)', lineHeight: 1.5 }}>
+            점수가 높을수록 봇 의심 가능성이 높습니다.
+          </p>
         </div>
+      </div>
 
-        <div className="admin-score-summary">
-          <div>
-            <span>최종 봇 점수</span>
-            <strong>{log.botScore}점</strong>
-          </div>
-          <div>
-            <span>판정 결과</span>
-            <StatusBadge tone={getStatusTone(log.verdict)}>{log.verdict}</StatusBadge>
-          </div>
-        </div>
-
-        <p className="admin-score-help">점수가 높을수록 봇 의심 가능성이 높습니다.</p>
-
-        <div className="admin-score-list" aria-label="봇 점수 평가 항목">
-          {SCORE_BREAKDOWN.map((item) => (
-            <div className="admin-score-item" key={item.label}>
-              <div className="admin-score-item-head">
-                <span>{item.label}</span>
-                <b>{item.score} / {item.max}</b>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
+        {SCORE_BREAKDOWN.map((item) => {
+          const percent = getPercent(item.score, item.max);
+          return (
+            <div key={item.label} style={{ border: '1px solid var(--line)', borderRadius: 12, padding: '12px 14px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 13 }}>
+                <span style={{ color: 'var(--ink)', fontWeight: 600 }}>{item.label}</span>
+                <b style={{ color: 'var(--orange-2)' }}>{item.score} / {item.max}</b>
               </div>
-              <div className="admin-progress" aria-hidden="true">
-                <span style={{ width: `${getPercent(item.score, item.max)}%` }} />
+              <div style={{ height: 6, borderRadius: 999, background: 'var(--line)', overflow: 'hidden' }}>
+                <div style={{
+                  width: `${percent}%`, height: '100%',
+                  background: 'linear-gradient(90deg, var(--gold), var(--orange))',
+                  borderRadius: 999,
+                }} />
               </div>
             </div>
-          ))}
-        </div>
+          );
+        })}
+      </div>
 
-        <div className="admin-score-meta">
-          <span>{log.time}</span>
-          <span>{log.site}</span>
-          <span>{log.captchaType}</span>
-        </div>
-
-        <div className="admin-score-actions">
-          <button type="button" className="pg-btn primary" onClick={onClose}>확인</button>
-        </div>
-      </section>
-    </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, fontSize: 12, color: 'var(--muted)' }}>
+        <span>{log.time}</span>
+        <span>·</span>
+        <span>{log.site}</span>
+        <span>·</span>
+        <span>{log.captchaType}</span>
+      </div>
+    </AdminModalShell>
   );
 }
 
@@ -276,7 +533,6 @@ function InquiryDetailModal({ detail, onClose }) {
     const handleKeyDown = (event) => {
       if (event.key === 'Escape') onClose();
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
@@ -307,45 +563,39 @@ function InquiryDetailModal({ detail, onClose }) {
     ];
 
   return (
-    <div className="admin-score-overlay" role="presentation" onClick={onClose}>
-      <section
-        className="admin-score-modal admin-inquiry-detail-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="admin-inquiry-detail-title"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="admin-score-header">
-          <div>
-            <p className="pg-eyebrow">INQUIRY DETAIL</p>
-            <h2 id="admin-inquiry-detail-title">{title}</h2>
+    <AdminModalShell
+      eyebrow="INQUIRY DETAIL"
+      title={title}
+      onClose={onClose}
+      labelledBy="admin-inquiry-detail-title"
+      footer={<button type="button" className="btn btn-primary" onClick={onClose} style={{ fontSize: 14, padding: '9px 22px' }}>확인</button>}
+    >
+      <dl style={{ display: 'flex', flexDirection: 'column', gap: 0, marginBottom: 20 }}>
+        {rows.map(([label, value]) => (
+          <div key={label} style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            gap: 12, padding: '12px 0', borderBottom: '1px solid var(--line)',
+          }}>
+            <dt style={{ margin: 0, fontSize: 13, color: 'var(--muted)', fontWeight: 600 }}>{label}</dt>
+            <dd style={{ margin: 0, fontSize: 14, color: 'var(--ink)', fontWeight: 600, textAlign: 'right' }}>
+              {label === '상태' ? (
+                <StatusBadge tone={getStatusTone(value)}>{value}</StatusBadge>
+              ) : value}
+            </dd>
           </div>
-          <button type="button" className="admin-score-close" aria-label="문의 상세 닫기" onClick={onClose}>×</button>
-        </div>
+        ))}
+      </dl>
 
-        <dl className="admin-inquiry-detail-list">
-          {rows.map(([label, value]) => (
-            <div key={label}>
-              <dt>{label}</dt>
-              <dd>
-                {label === '상태' ? (
-                  <StatusBadge tone={getStatusTone(value)}>{value}</StatusBadge>
-                ) : value}
-              </dd>
-            </div>
-          ))}
-        </dl>
-
-        <div className="admin-inquiry-detail-message">
-          <span>문의 내용</span>
-          <p>{inquiry.message}</p>
-        </div>
-
-        <div className="admin-score-actions">
-          <button type="button" className="pg-btn primary" onClick={onClose}>확인</button>
-        </div>
-      </section>
-    </div>
+      <div>
+        <span style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600 }}>문의 내용</span>
+        <p style={{
+          margin: '8px 0 0', fontSize: 14, color: 'var(--ink)', lineHeight: 1.6,
+          background: 'var(--paper)', borderRadius: 12, padding: '14px 16px',
+        }}>
+          {inquiry.message}
+        </p>
+      </div>
+    </AdminModalShell>
   );
 }
 
@@ -355,14 +605,19 @@ export default function AdminPage() {
   const [userSearch, setUserSearch] = useState('');
   const [activeInquiryType, setActiveInquiryType] = useState('general');
   const [inquirySearch, setInquirySearch] = useState('');
+  const [siteSearch, setSiteSearch] = useState('');
+  const [logSearch, setLogSearch] = useState('');
   const [generalInquiries, setGeneralInquiries] = useState(MOCK_GENERAL_INQUIRIES);
   const [businessInquiries, setBusinessInquiries] = useState(MOCK_BUSINESS_INQUIRIES);
-  const [logFilter, setLogFilter] = useState('all');
+  const [personalUsers, setPersonalUsers] = useState(MOCK_PERSONAL_USERS);
+  const [businessUsers, setBusinessUsers] = useState(MOCK_BUSINESS_USERS);
+  const [sites, setSites] = useState(MOCK_SITES);
+  const [logs, setLogs] = useState(MOCK_LOGS);
   const [selectedScoreLog, setSelectedScoreLog] = useState(null);
   const [selectedInquiryDetail, setSelectedInquiryDetail] = useState(null);
-  const [openInquiryStatusMenu, setOpenInquiryStatusMenu] = useState(null);
+  const [openStatusMenu, setOpenStatusMenu] = useState(null);
 
-  const activeUsers = activeUserType === 'personal' ? MOCK_PERSONAL_USERS : MOCK_BUSINESS_USERS;
+  const activeUsers = activeUserType === 'personal' ? personalUsers : businessUsers;
   const activeInquiries = activeInquiryType === 'general' ? generalInquiries : businessInquiries;
 
   const filteredUsers = useMemo(() => {
@@ -372,11 +627,6 @@ export default function AdminPage() {
       Object.values(user).some((value) => String(value).toLowerCase().includes(query))
     ));
   }, [activeUsers, userSearch]);
-
-  const filteredLogs = useMemo(() => {
-    if (logFilter === 'all') return MOCK_LOGS;
-    return MOCK_LOGS.filter((log) => getLogFilterId(log.result) === logFilter);
-  }, [logFilter]);
 
   const filteredInquiries = useMemo(() => {
     const query = inquirySearch.trim().toLowerCase();
@@ -391,31 +641,43 @@ export default function AdminPage() {
     ));
   }, [activeInquiries, activeInquiryType, inquirySearch]);
 
-  useEffect(() => {
-    if (!openInquiryStatusMenu) return undefined;
+  const filteredSites = useMemo(() => {
+    const query = siteSearch.trim().toLowerCase();
+    if (!query) return sites;
+    return sites.filter((site) => (
+      Object.values(site).some((value) => String(value).toLowerCase().includes(query))
+    ));
+  }, [sites, siteSearch]);
 
-    const closeInquiryStatusMenu = () => setOpenInquiryStatusMenu(null);
+  const filteredLogs = useMemo(() => {
+    const query = logSearch.trim().toLowerCase();
+    if (!query) return logs;
+    return logs.filter((log) => (
+      Object.values(log).some((value) => String(value).toLowerCase().includes(query))
+    ));
+  }, [logs, logSearch]);
+
+  useEffect(() => {
+    if (!openStatusMenu) return undefined;
+
+    const closeStatusMenu = () => setOpenStatusMenu(null);
     const handleKeyDown = (event) => {
-      if (event.key === 'Escape') closeInquiryStatusMenu();
+      if (event.key === 'Escape') closeStatusMenu();
     };
 
-    document.addEventListener('click', closeInquiryStatusMenu);
+    document.addEventListener('click', closeStatusMenu);
     window.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      document.removeEventListener('click', closeInquiryStatusMenu);
+      document.removeEventListener('click', closeStatusMenu);
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [openInquiryStatusMenu]);
-
-  const notifyUiOnly = (label) => {
-    window.alert(`${label} 기능은 관리자 프로토타입 UI입니다.`);
-  };
+  }, [openStatusMenu]);
 
   const updateInquiryStatus = (type, key, nextStatus) => {
-    const updater = (inquiries) => inquiries.map((inquiry) => {
-      return inquiry.id === key ? { ...inquiry, status: nextStatus } : inquiry;
-    });
+    const updater = (inquiries) => inquiries.map((inquiry) => (
+      inquiry.id === key ? { ...inquiry, status: nextStatus } : inquiry
+    ));
 
     if (type === 'general') {
       setGeneralInquiries(updater);
@@ -425,111 +687,156 @@ export default function AdminPage() {
     setBusinessInquiries(updater);
   };
 
-  const renderInquiryStatusTrigger = (status, menuKey) => {
-    const isOpen = openInquiryStatusMenu === menuKey;
+  const updateUserStatus = (type, userId, nextStatus) => {
+    const updater = (users) => users.map((user) => (
+      user.userId === userId ? { ...user, status: nextStatus } : user
+    ));
 
-    return (
-      <button
-        type="button"
-        className={`admin-inquiry-status-trigger ${getInquiryStatusClass(status)}${isOpen ? ' open' : ''}`}
-        aria-label="문의 상태 변경"
-        aria-haspopup="menu"
-        aria-expanded={isOpen}
-        onClick={(event) => {
-          event.stopPropagation();
-          setOpenInquiryStatusMenu(isOpen ? null : menuKey);
-        }}
-      >
-        <span>{status}</span>
-        <span className="admin-inquiry-status-trigger-arrow" aria-hidden="true">
-          {isOpen ? '⌃' : '⌄'}
-        </span>
-      </button>
-    );
+    if (type === 'personal') {
+      setPersonalUsers(updater);
+      return;
+    }
+
+    setBusinessUsers(updater);
   };
 
-  const renderInquiryStatusOption = (type, id, currentStatus, option) => {
-    const selected = currentStatus === option;
-
-    return (
-      <button
-        key={option}
-        type="button"
-        role="menuitemradio"
-        aria-checked={selected}
-        className={`admin-inquiry-status-option ${getInquiryStatusClass(option)}${selected ? ' is-selected' : ''}`}
-        onClick={(event) => {
-          event.stopPropagation();
-          updateInquiryStatus(type, id, option);
-          setOpenInquiryStatusMenu(null);
-        }}
-      >
-        <span>{option}</span>
-        {selected && <span className="admin-inquiry-status-check" aria-hidden="true">✓</span>}
-      </button>
-    );
-  };
-
-  const renderInquiryStatusControl = (type, id, status) => {
-    const menuKey = `${type}-${id}`;
-    const isOpen = openInquiryStatusMenu === menuKey;
-
-    return (
-      <div
-        className={`admin-inquiry-status-wrap${isOpen ? ' is-open' : ''}`}
-        onClick={(event) => event.stopPropagation()}
-      >
-        {renderInquiryStatusTrigger(status, menuKey)}
-
-        {isOpen && (
-          <div
-            className="admin-inquiry-status-menu"
-            role="menu"
-            aria-label="문의 상태 선택"
-            onClick={(event) => event.stopPropagation()}
-          >
-            {INQUIRY_STATUS_OPTIONS.map((option) => (
-              renderInquiryStatusOption(type, id, status, option)
-            ))}
-          </div>
-        )}
-      </div>
-    );
+  const updateSiteStatus = (domain, nextStatus) => {
+    setSites((prev) => prev.map((site) => (
+      site.domain === domain ? { ...site, status: nextStatus } : site
+    )));
   };
 
   return (
     <main className="po-body admin-page">
+      <style>{`
+        .admin-scroll-x {
+          overflow-x: auto;
+          scrollbar-width: thin;
+          scrollbar-color: var(--line) transparent;
+        }
+        .admin-scroll-x::-webkit-scrollbar { height: 6px; }
+        .admin-scroll-x::-webkit-scrollbar-track { background: transparent; }
+        .admin-scroll-x::-webkit-scrollbar-thumb { background: var(--line); border-radius: 999px; }
+        .admin-scroll-x::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+        .admin-table th,
+        .admin-table td {
+          text-align: center;
+        }
+        .admin-table th:first-child,
+        .admin-table td:first-child {
+          text-align: left;
+        }
+        .admin-readable-table {
+          table-layout: auto;
+          width: max-content;
+          min-width: 100%;
+        }
+         .admin-readable-table th,
+         .admin-readable-table td {
+           white-space: nowrap;
+           padding-left: 16px;
+           padding-right: 16px;
+         }
+        .admin-modal-scroll {
+          scrollbar-width: thin;
+          scrollbar-color: var(--line) transparent;
+        }
+        .admin-modal-scroll::-webkit-scrollbar { width: 6px; }
+        .admin-modal-scroll::-webkit-scrollbar-track { background: transparent; }
+        .admin-modal-scroll::-webkit-scrollbar-thumb { background: var(--line); border-radius: 999px; }
+        .admin-modal-scroll::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+        /* ── 다크모드: admin-* 전용 클래스는 기존 CSS가 색을 하드코딩하고 있어서
+           라이트/다크 전환에 반응하지 않던 것들을 --card/--ink/--line 등 테마 변수로 강제 적용 ── */
+        [data-theme="dark"] .admin-page {
+          background: var(--bg, var(--paper)) !important;
+          color: var(--ink) !important;
+        }
+        [data-theme="dark"] .admin-stat-card,
+        [data-theme="dark"] .admin-overview-card,
+        [data-theme="dark"] .admin-table-wrap,
+        [data-theme="dark"] .admin-table,
+        [data-theme="dark"] .admin-compact-log-row,
+        [data-theme="dark"] .admin-plan-usage-row,
+        [data-theme="dark"] .pg-card {
+          background: var(--card) !important;
+          border-color: var(--line) !important;
+          color: var(--ink) !important;
+        }
+        [data-theme="dark"] .admin-stat-card span,
+        [data-theme="dark"] .admin-stat-card small,
+        [data-theme="dark"] .admin-card-head span,
+        [data-theme="dark"] .admin-plan-usage-row span,
+        [data-theme="dark"] .admin-usage-meter-text span,
+        [data-theme="dark"] .admin-empty-cell {
+          color: var(--muted) !important;
+        }
+        [data-theme="dark"] .admin-table thead th {
+          background: var(--paper) !important;
+          color: var(--muted) !important;
+          border-color: var(--line) !important;
+        }
+        [data-theme="dark"] .admin-table tbody td {
+          background: var(--card) !important;
+          color: var(--ink) !important;
+          border-color: var(--line) !important;
+        }
+        [data-theme="dark"] .admin-table tbody tr:hover td {
+          background: var(--paper) !important;
+        }
+        [data-theme="dark"] .admin-segmented {
+          background: var(--paper) !important;
+          border-color: var(--line) !important;
+        }
+        [data-theme="dark"] .admin-segmented button {
+          color: var(--ink-soft) !important;
+          background: transparent !important;
+        }
+        [data-theme="dark"] .admin-segmented button.active {
+          background: var(--card) !important;
+          color: var(--orange) !important;
+        }
+        [data-theme="dark"] .admin-progress,
+        [data-theme="dark"] .usage-bar-wrap {
+          background: var(--line) !important;
+        }
+        [data-theme="dark"] .mp-sidebar {
+          background: var(--card) !important;
+          border-color: var(--line) !important;
+        }
+
+        /* 화면이 좁아져서 사이드바가 가로 탭바로 바뀔 때만 가운데 정렬 (넓은 화면은 그대로) */
+        @media (max-width: 940px) {
+          .admin-page .mp-sidebar {
+            justify-content: center;
+          }
+        }
+       `}</style>
+
       <section className="admin-hero">
-        <div>
-          <p className="pg-eyebrow">ADMIN CONSOLE</p>
-          <h1 className="pg-h1">관리자 페이지</h1>
-          <p className="pg-sub">AI CAPTCHA 운영 현황을 한눈에 확인하고 관리합니다.</p>
-        </div>
-        <div className="admin-hero-chip">AI CAPTCHA v1.4</div>
       </section>
 
-      <section className="admin-console" aria-label="관리자 기능">
-        <aside className="admin-sidebar" aria-label="관리자 메뉴">
+      <div className="mp-wrap" aria-label="관리자 기능">
+        <div className="mp-sidebar" aria-label="관리자 메뉴">
           {ADMIN_TABS.map((tab) => (
             <button
               key={tab.id}
               type="button"
-              className={`admin-nav-item${activeTab === tab.id ? ' active' : ''}`}
+              className={`mp-nav-item${activeTab === tab.id ? ' active' : ''}`}
               aria-current={activeTab === tab.id ? 'page' : undefined}
               onClick={() => setActiveTab(tab.id)}
             >
               {tab.label}
             </button>
           ))}
-        </aside>
+        </div>
 
         <div className="admin-content">
           {activeTab === 'dashboard' && (
             <section>
               <div className="admin-section-head">
                 <div>
-                  <h2 className="pg-h2">AI CAPTCHA 운영 현황</h2>
-                  <p className="admin-muted">오늘의 발급, 검증, 차단 지표와 최근 운영 흐름을 mock 데이터로 표시합니다.</p>
+                  <h2 className="pg-h2">대시보드</h2>
                 </div>
               </div>
 
@@ -537,35 +844,59 @@ export default function AdminPage() {
                 {DASHBOARD_STATS.map((stat) => (
                   <article className="admin-stat-card" key={stat.label}>
                     <span>{stat.label}</span>
-                    <strong>{stat.value}</strong>
+                    <strong style={{
+                      fontSize: 30, fontWeight: 800,
+                      letterSpacing: '-0.02em', color: 'var(--ink)', lineHeight: 1.15,
+                      fontVariantNumeric: 'tabular-nums',
+                    }}>{stat.value}</strong>
                     <small>{stat.note}</small>
                   </article>
                 ))}
               </div>
 
               <div className="admin-dashboard-grid">
-                <section className="admin-overview-card admin-overview-card-wide" aria-labelledby="admin-recent-log-title">
+                <div className="admin-overview-card admin-overview-card-wide" aria-labelledby="admin-recent-log-title">
                   <div className="admin-card-head">
-                    <h3 id="admin-recent-log-title">최근 인증 로그</h3>
+                    <h3 id="admin-recent-log-title" className="pg-h3">최근 인증 로그</h3>
                     <span>최근 5건</span>
                   </div>
                   <div className="admin-compact-log-list">
-                    {MOCK_LOGS.slice(0, 5).map((log) => (
-                      <div className="admin-compact-log-row" key={`${log.time}-${log.site}`}>
-                        <span>{log.time.slice(11)}</span>
-                        <b>{log.site}</b>
-                        <StatusBadge tone={getStatusTone(log.result)}>{log.result}</StatusBadge>
-                        <button type="button" className="admin-score-link" onClick={() => setSelectedScoreLog(log)}>
-                          {log.botScore}점
-                        </button>
-                      </div>
-                    ))}
+                    {logs.slice(0, 5).map((log) => {
+                      return (
+                        <div
+                          className="admin-compact-log-row"
+                          key={`${log.time}-${log.site}`}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => setSelectedScoreLog(log)}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault();
+                              setSelectedScoreLog(log);
+                            }
+                          }}
+                          style={{
+                            cursor: 'pointer',
+                            display: 'grid',
+                            gridTemplateColumns: '52px 1fr 100px 56px',
+                            alignItems: 'center',
+                            justifyItems: 'start',
+                            gap: 12,
+                          }}
+                        >
+                          <span>{log.time.slice(11)}</span>
+                          <b style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{log.site}</b>
+                          <StatusBadge tone={getStatusTone(log.result)} style={{ justifySelf: 'start' }}>{log.result}</StatusBadge>
+                          <span style={{ color: 'var(--orange-2)', fontWeight: 700, textAlign: 'right' }}>{log.botScore}점</span>
+                        </div>
+                      );
+                    })}
                   </div>
-                </section>
+                </div>
 
                 <section className="admin-overview-card" aria-labelledby="admin-plan-usage-title">
                   <div className="admin-card-head">
-                    <h3 id="admin-plan-usage-title">요금제별 사용량</h3>
+                    <h3 id="admin-plan-usage-title" className="pg-h3">요금제별 사용량</h3>
                     <span>월 호출량</span>
                   </div>
                   <div className="admin-plan-usage-list">
@@ -583,20 +914,10 @@ export default function AdminPage() {
 
                 <section className="admin-overview-card admin-overview-card-full" aria-labelledby="admin-bot-trend-title">
                   <div className="admin-card-head">
-                    <h3 id="admin-bot-trend-title">봇 차단 추이</h3>
+                    <h3 id="admin-bot-trend-title" className="pg-h3">봇 차단 추이</h3>
                     <span>최근 7일</span>
                   </div>
-                  <div className="admin-trend-chart" aria-label="최근 7일 봇 차단률 추이">
-                    {BOT_BLOCK_TREND.map((item) => (
-                      <div className="admin-trend-bar" key={item.label}>
-                        <div className="admin-trend-track">
-                          <span style={{ height: `${item.value * 8}%` }} />
-                        </div>
-                        <b>{item.value}%</b>
-                        <small>{item.label}</small>
-                      </div>
-                    ))}
-                  </div>
+                  <BotTrendChart data={BOT_BLOCK_TREND} />
                 </section>
               </div>
             </section>
@@ -607,28 +928,28 @@ export default function AdminPage() {
               <div className="admin-section-head">
                 <div>
                   <h2 className="pg-h2">사용자 관리</h2>
-                  <p className="admin-muted">일반 사용자와 기업/회사 사용자를 구분해 요금제 상태를 확인합니다.</p>
                 </div>
-                <input
-                  className="pg-input admin-search"
-                  value={userSearch}
-                  onChange={(event) => setUserSearch(event.target.value)}
-                  placeholder="이름/아이디/이메일 검색"
-                  aria-label="사용자 검색"
-                />
               </div>
 
-              <div className="admin-segmented" aria-label="사용자 유형">
-                {USER_TYPE_TABS.map((tab) => (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    className={activeUserType === tab.id ? 'active' : ''}
-                    onClick={() => setActiveUserType(tab.id)}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
+              <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, marginTop: 0, marginBottom: 13 }}>
+                <div className="admin-segmented" aria-label="사용자 유형" style={{ marginTop: 0, marginBottom: 0 }}>
+                  {USER_TYPE_TABS.map((tab) => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      className={activeUserType === tab.id ? 'active' : ''}
+                      onClick={() => setActiveUserType(tab.id)}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+                <AdminSearchInput
+                  value={userSearch}
+                  onChange={(event) => setUserSearch(event.target.value)}
+                  placeholder="검색"
+                  ariaLabel="사용자 검색"
+                />
               </div>
 
               {activeUserType === 'personal' ? (
@@ -642,16 +963,30 @@ export default function AdminPage() {
                     { key: 'status', label: '상태' },
                   ]}
                   emptyMessage="검색 결과가 없습니다."
-                  rows={filteredUsers.map((user) => (
-                    <tr key={user.userId}>
-                      <td>{user.name}</td>
-                      <td>{user.userId}</td>
-                      <td>{user.email}</td>
-                      <td>{user.plan}</td>
-                      <td>{user.joinedAt}</td>
-                      <td><StatusBadge tone={getStatusTone(user.status)}>{user.status}</StatusBadge></td>
-                    </tr>
-                  ))}
+                  rows={filteredUsers.map((user) => {
+                    const menuKey = `user-personal-${user.userId}`;
+                    return (
+                      <tr key={user.userId}>
+                        <td>{user.name}</td>
+                        <td>{user.userId}</td>
+                        <td>{user.email}</td>
+                        <td>{user.plan}</td>
+                        <td>{user.joinedAt}</td>
+                        <td>
+                          <StatusDropdown
+                            status={user.status}
+                            options={MANAGE_STATUS_OPTIONS}
+                            isOpen={openStatusMenu === menuKey}
+                            onToggle={() => setOpenStatusMenu(openStatusMenu === menuKey ? null : menuKey)}
+                            onSelect={(option) => {
+                              updateUserStatus('personal', user.userId, option);
+                              setOpenStatusMenu(null);
+                            }}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
                 />
               ) : (
                 <AdminTable
@@ -666,18 +1001,32 @@ export default function AdminPage() {
                     { key: 'status', label: '상태' },
                   ]}
                   emptyMessage="검색 결과가 없습니다."
-                  rows={filteredUsers.map((user) => (
-                    <tr key={user.userId}>
-                      <td>{user.company}</td>
-                      <td>{user.manager}</td>
-                      <td>{user.userId}</td>
-                      <td>{user.email}</td>
-                      <td>{user.plan}</td>
-                      <td>{user.siteCount}</td>
-                      <td>{formatNumber(user.monthlyLimit)}</td>
-                      <td><StatusBadge tone={getStatusTone(user.status)}>{user.status}</StatusBadge></td>
-                    </tr>
-                  ))}
+                  rows={filteredUsers.map((user) => {
+                    const menuKey = `user-business-${user.userId}`;
+                    return (
+                      <tr key={user.userId}>
+                        <td>{user.company}</td>
+                        <td>{user.manager}</td>
+                        <td>{user.userId}</td>
+                        <td>{user.email}</td>
+                        <td>{user.plan}</td>
+                        <td>{user.siteCount}</td>
+                        <td>{formatNumber(user.monthlyLimit)}</td>
+                        <td>
+                          <StatusDropdown
+                            status={user.status}
+                            options={MANAGE_STATUS_OPTIONS}
+                            isOpen={openStatusMenu === menuKey}
+                            onToggle={() => setOpenStatusMenu(openStatusMenu === menuKey ? null : menuKey)}
+                            onSelect={(option) => {
+                              updateUserStatus('business', user.userId, option);
+                              setOpenStatusMenu(null);
+                            }}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
                 />
               )}
             </section>
@@ -688,9 +1037,18 @@ export default function AdminPage() {
               <div className="admin-section-head">
                 <div>
                   <h2 className="pg-h2">사이트 관리</h2>
-                  <p className="admin-muted">등록된 클라이언트 사이트의 요금제, 호출 한도, 이번 달 사용량을 확인합니다.</p>
                 </div>
               </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 0, marginBottom: 13 }}>
+                <AdminSearchInput
+                  value={siteSearch}
+                  onChange={(event) => setSiteSearch(event.target.value)}
+                  placeholder="검색"
+                  ariaLabel="사이트 검색"
+                />
+              </div>
+
               <AdminTable
                 columns={[
                   { key: 'name', label: '사이트명' },
@@ -702,109 +1060,34 @@ export default function AdminPage() {
                   { key: 'status', label: '상태' },
                   { key: 'createdAt', label: '등록일' },
                 ]}
-                emptyMessage="등록된 사이트가 없습니다."
-                rows={MOCK_SITES.map((site) => (
-                  <tr key={site.domain}>
-                    <td>{site.name}</td>
-                    <td>{site.domain}</td>
-                    <td>{site.owner}</td>
-                    <td>{site.plan}</td>
-                    <td>{formatNumber(site.monthlyLimit)}</td>
-                    <td><UsageMeter used={site.monthlyUsage} limit={site.monthlyLimit} /></td>
-                    <td><StatusBadge tone={getStatusTone(site.status)}>{site.status}</StatusBadge></td>
-                    <td>{site.createdAt}</td>
-                  </tr>
-                ))}
+                emptyMessage="검색 결과가 없습니다."
+                rows={filteredSites.map((site) => {
+                  const menuKey = `site-${site.domain}`;
+                  return (
+                    <tr key={site.domain}>
+                      <td>{site.name}</td>
+                      <td>{site.domain}</td>
+                      <td>{site.owner}</td>
+                      <td>{site.plan}</td>
+                      <td>{formatNumber(site.monthlyLimit)}</td>
+                      <td><UsageMeter used={site.monthlyUsage} limit={site.monthlyLimit} /></td>
+                      <td>
+                        <StatusDropdown
+                          status={site.status}
+                          options={MANAGE_STATUS_OPTIONS}
+                          isOpen={openStatusMenu === menuKey}
+                          onToggle={() => setOpenStatusMenu(openStatusMenu === menuKey ? null : menuKey)}
+                          onSelect={(option) => {
+                            updateSiteStatus(site.domain, option);
+                            setOpenStatusMenu(null);
+                          }}
+                        />
+                      </td>
+                      <td>{site.createdAt}</td>
+                    </tr>
+                  );
+                })}
               />
-            </section>
-          )}
-
-          {activeTab === 'apiKeys' && (
-            <section>
-              <div className="admin-section-head">
-                <div>
-                  <h2 className="pg-h2">API Key 관리</h2>
-                  <p className="admin-muted">실제 secret 노출 없이 마스킹된 키만 표시합니다.</p>
-                </div>
-              </div>
-              <div className="admin-api-key-grid">
-                {MOCK_API_KEYS.map((apiKey) => (
-                  <article className="admin-api-key-card" key={`${apiKey.keyName}-${apiKey.owner}`}>
-                    <div className="admin-api-key-head">
-                      <div>
-                        <span>키 이름</span>
-                        <h3>{apiKey.keyName}</h3>
-                      </div>
-                      <StatusBadge tone={getStatusTone(apiKey.status)}>{apiKey.status}</StatusBadge>
-                    </div>
-
-                    <div className="admin-api-key-main">
-                      <code className="admin-key-mask admin-key-mask-pill">{apiKey.maskedKey}</code>
-
-                      <dl className="admin-api-key-meta">
-                        <div>
-                          <dt>소유자</dt>
-                          <dd>{apiKey.owner}</dd>
-                        </div>
-                        <div>
-                          <dt>연결 사이트</dt>
-                          <dd>{apiKey.site}</dd>
-                        </div>
-                        <div>
-                          <dt>권한</dt>
-                          <dd>{apiKey.permission}</dd>
-                        </div>
-                        <div>
-                          <dt>생성일</dt>
-                          <dd>{apiKey.createdAt}</dd>
-                        </div>
-                      </dl>
-                    </div>
-
-                    <div className="admin-api-key-actions">
-                      <button type="button" className="admin-mini-btn" onClick={() => notifyUiOnly('API Key 보기')}>보기</button>
-                      <button type="button" className="admin-mini-btn danger" onClick={() => notifyUiOnly('API Key 비활성화')}>비활성화</button>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {activeTab === 'captchas' && (
-            <section>
-              <div className="admin-section-head">
-                <div>
-                  <h2 className="pg-h2">CAPTCHA 문제 관리</h2>
-                  <p className="admin-muted">v1.4 규칙에 맞는 type1_drag, type2_identify 문제만 관리합니다.</p>
-                </div>
-              </div>
-              <div className="admin-problem-grid">
-                {MOCK_CAPTCHAS.map((captcha) => (
-                  <article className="admin-problem-card" key={captcha.id}>
-                    <div className="admin-problem-top">
-                      <span className="admin-captcha-id">{captcha.id}</span>
-                      <StatusBadge tone={getStatusTone(captcha.status)}>{captcha.status}</StatusBadge>
-                    </div>
-                    <h3>{captcha.label}</h3>
-                    <p>{captcha.description}</p>
-                    <dl>
-                      <div>
-                        <dt>captcha_type</dt>
-                        <dd>{captcha.captchaType}</dd>
-                      </div>
-                      <div>
-                        <dt>최근 수정일</dt>
-                        <dd>{captcha.updatedAt}</dd>
-                      </div>
-                    </dl>
-                    <div className="admin-card-actions">
-                      <button type="button" className="pg-btn" onClick={() => notifyUiOnly('CAPTCHA 미리보기')}>미리보기</button>
-                      <button type="button" className="pg-btn primary" onClick={() => notifyUiOnly('CAPTCHA 사용/중지')}>사용/중지</button>
-                    </div>
-                  </article>
-                ))}
-              </div>
             </section>
           )}
 
@@ -813,34 +1096,35 @@ export default function AdminPage() {
               <div className="admin-section-head">
                 <div>
                   <h2 className="pg-h2">문의 관리</h2>
-                  <p className="admin-muted">일반 문의와 Enterprise 도입 문의를 구분해 확인합니다.</p>
                 </div>
-                <input
-                  className="pg-input admin-search"
-                  value={inquirySearch}
-                  onChange={(event) => setInquirySearch(event.target.value)}
-                  placeholder="이름/회사명/이메일 검색"
-                  aria-label="문의 검색"
-                />
               </div>
 
-              <div className="admin-segmented" aria-label="문의 유형">
-                {INQUIRY_TYPE_TABS.map((tab) => (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    className={activeInquiryType === tab.id ? 'active' : ''}
-                    onClick={() => setActiveInquiryType(tab.id)}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
+              <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, marginTop: 0, marginBottom: 13 }}>
+                <div className="admin-segmented" aria-label="문의 유형" style={{ marginTop: 0, marginBottom: 0 }}>
+                  {INQUIRY_TYPE_TABS.map((tab) => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      className={activeInquiryType === tab.id ? 'active' : ''}
+                      onClick={() => setActiveInquiryType(tab.id)}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+                <AdminSearchInput
+                  value={inquirySearch}
+                  onChange={(event) => setInquirySearch(event.target.value)}
+                  placeholder="검색"
+                  ariaLabel="문의 검색"
+                />
               </div>
 
               {activeInquiryType === 'general' ? (
                 <AdminTable
                   wrapperClassName="admin-inquiry-table-wrap"
                   tableClassName="admin-readable-table admin-general-inquiry-table"
+                  tableStyle={{ tableLayout: 'auto', width: 'max-content', minWidth: '100%' }}
                   columns={[
                     { key: 'email', label: '회신 이메일' },
                     { key: 'requester', label: '이름' },
@@ -850,29 +1134,43 @@ export default function AdminPage() {
                     { key: 'status', label: '상태' },
                   ]}
                   emptyMessage="검색 결과가 없습니다."
-                  rows={filteredInquiries.map((inquiry) => (
-                    <tr
-                      key={inquiry.id}
-                      className="admin-inquiry-row"
-                      onClick={() => setSelectedInquiryDetail({ type: 'general', inquiry })}
-                    >
-                      <td className="admin-nowrap-cell" title={inquiry.email}>{inquiry.email}</td>
-                      <td className="admin-ellipsis-cell" title={inquiry.requester}>{inquiry.requester}</td>
-                      <td className="admin-nowrap-cell" title={inquiry.type}>{inquiry.type}</td>
-                      <td className="admin-message-cell" title={inquiry.message}>
-                        <span>{inquiry.message}</span>
-                      </td>
-                      <td className="admin-nowrap-cell">{inquiry.receivedAt}</td>
-                      <td onClick={(event) => event.stopPropagation()}>
-                        {renderInquiryStatusControl('general', inquiry.id, inquiry.status)}
-                      </td>
-                    </tr>
-                  ))}
+                  rows={filteredInquiries.map((inquiry) => {
+                    const menuKey = `general-${inquiry.id}`;
+                    return (
+                      <tr
+                        key={inquiry.id}
+                        className="admin-inquiry-row"
+                        onClick={() => setSelectedInquiryDetail({ type: 'general', inquiry })}
+                      >
+                        <td className="admin-nowrap-cell" title={inquiry.email}>{inquiry.email}</td>
+                        <td className="admin-ellipsis-cell" title={inquiry.requester}>{inquiry.requester}</td>
+                        <td className="admin-nowrap-cell" title={inquiry.type}>{inquiry.type}</td>
+                        <td className="admin-message-cell" title={inquiry.message}>
+                          <span>{inquiry.message}</span>
+                        </td>
+                        <td style={{ whiteSpace: 'nowrap' }}>{inquiry.receivedAt}</td>
+                        <td onClick={(event) => event.stopPropagation()}>
+                          <StatusDropdown
+                            status={inquiry.status}
+                            options={INQUIRY_STATUS_OPTIONS}
+                            resolveTone={(status) => INQUIRY_STATUS_TONE[status] || 'neutral'}
+                            isOpen={openStatusMenu === menuKey}
+                            onToggle={() => setOpenStatusMenu(openStatusMenu === menuKey ? null : menuKey)}
+                            onSelect={(option) => {
+                              updateInquiryStatus('general', inquiry.id, option);
+                              setOpenStatusMenu(null);
+                            }}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
                 />
               ) : (
                 <AdminTable
                   wrapperClassName="admin-inquiry-table-wrap"
                   tableClassName="admin-readable-table admin-business-inquiry-table"
+                  tableStyle={{ tableLayout: 'auto', width: 'max-content', minWidth: '100%' }}
                   columns={[
                     { key: 'company', label: '회사/서비스명' },
                     { key: 'manager', label: '담당자명' },
@@ -884,26 +1182,39 @@ export default function AdminPage() {
                     { key: 'status', label: '상태' },
                   ]}
                   emptyMessage="검색 결과가 없습니다."
-                  rows={filteredInquiries.map((inquiry) => (
-                    <tr
-                      key={inquiry.id}
-                      className="admin-inquiry-row"
-                      onClick={() => setSelectedInquiryDetail({ type: 'business', inquiry })}
-                    >
-                      <td className="admin-ellipsis-cell" title={inquiry.company}>{inquiry.company}</td>
-                      <td className="admin-ellipsis-cell" title={inquiry.manager}>{inquiry.manager}</td>
-                      <td className="admin-nowrap-cell" title={inquiry.phone}>{inquiry.phone}</td>
-                      <td className="admin-nowrap-cell" title={inquiry.email}>{inquiry.email}</td>
-                      <td className="admin-nowrap-cell" title={inquiry.estimatedCalls}>{inquiry.estimatedCalls}</td>
-                      <td className="admin-message-cell" title={inquiry.message}>
-                        <span>{inquiry.message}</span>
-                      </td>
-                      <td className="admin-nowrap-cell">{inquiry.receivedAt}</td>
-                      <td onClick={(event) => event.stopPropagation()}>
-                        {renderInquiryStatusControl('business', inquiry.id, inquiry.status)}
-                      </td>
-                    </tr>
-                  ))}
+                  rows={filteredInquiries.map((inquiry) => {
+                    const menuKey = `business-${inquiry.id}`;
+                    return (
+                      <tr
+                        key={inquiry.id}
+                        className="admin-inquiry-row"
+                        onClick={() => setSelectedInquiryDetail({ type: 'business', inquiry })}
+                      >
+                        <td className="admin-ellipsis-cell" title={inquiry.company}>{inquiry.company}</td>
+                        <td className="admin-ellipsis-cell" title={inquiry.manager}>{inquiry.manager}</td>
+                        <td className="admin-nowrap-cell" title={inquiry.phone}>{inquiry.phone}</td>
+                        <td className="admin-nowrap-cell" title={inquiry.email}>{inquiry.email}</td>
+                        <td className="admin-nowrap-cell" title={inquiry.estimatedCalls}>{inquiry.estimatedCalls}</td>
+                        <td className="admin-message-cell" title={inquiry.message}>
+                          <span>{inquiry.message}</span>
+                        </td>
+                        <td style={{ whiteSpace: 'nowrap' }}>{inquiry.receivedAt}</td>
+                        <td onClick={(event) => event.stopPropagation()}>
+                          <StatusDropdown
+                            status={inquiry.status}
+                            options={INQUIRY_STATUS_OPTIONS}
+                            resolveTone={(status) => INQUIRY_STATUS_TONE[status] || 'neutral'}
+                            isOpen={openStatusMenu === menuKey}
+                            onToggle={() => setOpenStatusMenu(openStatusMenu === menuKey ? null : menuKey)}
+                            onSelect={(option) => {
+                              updateInquiryStatus('business', inquiry.id, option);
+                              setOpenStatusMenu(null);
+                            }}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
                 />
               )}
             </section>
@@ -914,22 +1225,20 @@ export default function AdminPage() {
               <div className="admin-section-head">
                 <div>
                   <h2 className="pg-h2">인증 로그</h2>
-                  <p className="admin-muted">CAPTCHA 검증 결과와 봇 점수를 mock 로그로 표시합니다.</p>
-                </div>
-                <div className="admin-filter-row" aria-label="로그 필터">
-                  {LOG_FILTERS.map((filter) => (
-                    <button
-                      key={filter.id}
-                      type="button"
-                      className={`admin-filter-btn${logFilter === filter.id ? ' active' : ''}`}
-                      onClick={() => setLogFilter(filter.id)}
-                    >
-                      {filter.label}
-                    </button>
-                  ))}
                 </div>
               </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 0, marginBottom: 13 }}>
+                <AdminSearchInput
+                  value={logSearch}
+                  onChange={(event) => setLogSearch(event.target.value)}
+                  placeholder="검색"
+                  ariaLabel="인증 로그 검색"
+                />
+              </div>
+
               <AdminTable
+              tableClassName="admin-logs-table"
                 columns={[
                   { key: 'time', label: '시간' },
                   { key: 'site', label: '사이트' },
@@ -938,26 +1247,29 @@ export default function AdminPage() {
                   { key: 'duration', label: '소요시간' },
                   { key: 'botScore', label: '봇 점수' },
                 ]}
-                emptyMessage="선택한 조건의 인증 로그가 없습니다."
-                rows={filteredLogs.map((log) => (
-                  <tr key={`${log.time}-${log.site}-${log.result}`}>
-                    <td>{log.time}</td>
-                    <td>{log.site}</td>
-                    <td>{log.captchaType}</td>
-                    <td><StatusBadge tone={getStatusTone(log.result)}>{log.result}</StatusBadge></td>
-                    <td>{log.duration}</td>
-                    <td>
-                      <button type="button" className="admin-score-link" onClick={() => setSelectedScoreLog(log)}>
-                        {log.botScore}점
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                emptyMessage="검색 결과가 없습니다."
+                rows={filteredLogs.map((log) => {
+                  const rowKey = `${log.time}-${log.site}-${log.result}`;
+                  return (
+                    <tr
+                      key={rowKey}
+                      onClick={() => setSelectedScoreLog(log)}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <td>{log.time}</td>
+                      <td>{log.site}</td>
+                      <td>{log.captchaType}</td>
+                      <td><StatusBadge tone={getStatusTone(log.result)}>{log.result}</StatusBadge></td>
+                      <td>{log.duration}</td>
+                      <td style={{ color: 'var(--orange-2)', fontWeight: 700 }}>{log.botScore}점</td>
+                    </tr>
+                  );
+                })}
               />
             </section>
           )}
         </div>
-      </section>
+      </div>
 
       {selectedScoreLog && (
         <ScoreDetailModal log={selectedScoreLog} onClose={() => setSelectedScoreLog(null)} />
