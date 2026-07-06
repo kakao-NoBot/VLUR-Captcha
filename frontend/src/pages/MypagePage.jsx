@@ -407,7 +407,7 @@ function ApiKeyTab({ openPage, closePage, profile }) {
     (async () => {
       try {
         const { data } = await api.get('/payments/history');
-        const latestPaidPayment = (data.payments || []).find(payment => payment.status === 'paid') || null;
+        const latestPaidPayment = (data.payments || [])[0] || null;
         if (!ignore) setActiveSubscription(latestPaidPayment);
       } catch {
         if (!ignore) setActiveSubscription(null);
