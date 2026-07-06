@@ -24,6 +24,7 @@ import BoardPage from './pages/BoardPage';
 import PlanPayPage from './pages/PlanPayPage';
 import EnterprisePage from './pages/EnterprisePage';
 import KakaoCallbackPage from './pages/KakaoCallbackPage';
+import AdminPage from './pages/AdminPage';
 
 // Page overlay wrapper
 function PageOverlay({ id, activePage, onBack, openPage, isLoggedIn, onLogout, user, children }) {
@@ -55,6 +56,10 @@ export default function App() {
   const [signupKey, setSignupKey] = useState(0);
 
   const openPage = (id) => {
+    if (id === 'admin' && currentUser?.role !== 'admin') {
+      setPage('login');
+      return;
+    }
     if (id === 'mypage') {
       setMypageTab('info');
       setMypageKey(k => k + 1);
@@ -199,6 +204,11 @@ export default function App() {
       {/* Enterprise Inquiry */}
       <PageOverlay id="enterprise" activePage={page} onBack={closePage} openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} user={currentUser}>
         <EnterprisePage closePage={closePage} />
+      </PageOverlay>
+
+      {/* Admin */}
+      <PageOverlay id="admin" activePage={page} onBack={closePage} openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} user={currentUser}>
+        <AdminPage />
       </PageOverlay>
 
       {/* Plan Payment */}
