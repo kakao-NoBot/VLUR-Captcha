@@ -1,6 +1,7 @@
 // Pricing.jsx
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import api from '../api/axios';
 
 const plans = [
   {
@@ -41,7 +42,21 @@ const plans = [
   },
 ];
 
-export default function Pricing({ openPage, openPlanPayment }) {
+export default function Pricing({ openPage, openPlanPayment, isLoggedIn }) {
+  const [myPlan, setMyPlan] = useState(null);
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      setMyPlan(null);
+      return;
+    }
+    let ignore = false;
+    api.get('/auth/me')
+      .then(({ data }) => { if (!ignore) setMyPlan(data.plan_name || null); })
+      .catch(() => { if (!ignore) setMyPlan(null); });
+    return () => { ignore = true; };
+  }, [isLoggedIn]);
+
   return (
     <section className="band tint" id="pricing">
       <div className="wrap">
@@ -67,13 +82,14 @@ export default function Pricing({ openPage, openPlanPayment }) {
               <button
                 className={plan.btnClass}
                 style={{ width: '100%', padding: 14, marginTop: 'auto' }}
+                disabled={plan.tier === myPlan}
                 onClick={() => {
                   if (plan.tier === 'Pro') openPlanPayment('Pro');
                   else if (plan.tier === 'Basic') openPlanPayment('Basic');
                   else if (plan.tier === 'Enterprise') openPage('enterprise');
                 }}
               >
-                {plan.btnLabel}
+                {plan.tier === myPlan ? '이미 사용중인 요금제' : plan.btnLabel}
               </button>
             </div>
           ))}
