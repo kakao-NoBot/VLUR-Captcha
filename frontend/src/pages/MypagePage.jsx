@@ -784,8 +784,8 @@ function UsageLineChart({ data, labelKey, valueKey = 'issued', emptyMessage }) {
   const areaPath = `${linePath} L${W},${H} L0,${H} Z`;
 
   return (
-    <div className="usage-chart-line">
-      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden="true">
+    <div className="usage-chart-line" style={{ height: '100%' }}>
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden="true" style={{ width: '100%', height: '100%', display: 'block' }}>
         <path d={areaPath} fill="url(#usage-line-fill)" stroke="none" />
         <path
           d={linePath}
@@ -1094,22 +1094,57 @@ function UsageTab() {
         <div className="usage-bar-wrap"><div className="usage-bar" style={{ width: '62%' }}/></div>
         <p style={{ fontSize: 12, color: 'var(--muted)', margin: '8px 0 0' }}>한도의 62% 사용 중 (Pro 요금제 api_limit 기준)</p>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
-        <div className="pg-card" style={{ minHeight: 160, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div className="pg-label" style={{ margin: 0 }}>일별 호출량 ({appliedRange ? '선택 기간' : '최근 30일'})</div>
-          <UsageLineChart
-            data={filteredDailyUsageData}
-            labelKey="date"
-            emptyMessage="선택한 기간의 사용량 데이터가 없습니다."
-          />
+      <div
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'stretch',
+          gap: 16,
+          marginBottom: 20,
+          boxSizing: 'border-box',
+        }}
+      >
+        <div
+          className="pg-card"
+          style={{
+            flex: '1 1 300px',
+            boxSizing: 'border-box',
+            height: 220,
+            margin: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+          }}
+        >
+          <div className="pg-label" style={{ margin: 0, flex: '0 0 auto' }}>일별 호출량 ({appliedRange ? '선택 기간' : '최근 30일'})</div>
+          <div style={{ flex: '1 1 auto', minHeight: 0 }}>
+            <UsageLineChart
+              data={filteredDailyUsageData}
+              labelKey="date"
+              emptyMessage="선택한 기간의 사용량 데이터가 없습니다."
+            />
+          </div>
         </div>
-        <div className="pg-card" style={{ minHeight: 160, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div className="pg-label" style={{ margin: 0 }}>월별 호출량 (최근 12개월)</div>
-          <UsageLineChart
-            data={MONTHLY_USAGE_DATA}
-            labelKey="month"
-            emptyMessage="월별 사용량 데이터가 없습니다."
-          />
+        <div
+          className="pg-card"
+          style={{
+            flex: '1 1 300px',
+            boxSizing: 'border-box',
+            height: 220,
+            margin: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+          }}
+        >
+          <div className="pg-label" style={{ margin: 0, flex: '0 0 auto' }}>월별 호출량 (최근 12개월)</div>
+          <div style={{ flex: '1 1 auto', minHeight: 0 }}>
+            <UsageLineChart
+              data={MONTHLY_USAGE_DATA}
+              labelKey="month"
+              emptyMessage="월별 사용량 데이터가 없습니다."
+            />
+          </div>
         </div>
       </div>
       <table className="pg-table">
