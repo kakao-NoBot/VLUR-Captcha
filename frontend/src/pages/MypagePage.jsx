@@ -624,6 +624,7 @@ function ApiKeyTab({ closePage }) {
   const issuedAt = apiKey.created_at ? String(apiKey.created_at).slice(0, 10) : '-';
   const expiresAt = apiKey.created_at ? addMonths(issuedAt, 1) : '-';
   const displayedKey = visible && plainKey ? plainKey : apiKey.masked_key;
+  const isKeyActive = apiKey.is_active !== false;
 
   return (
     <>
@@ -631,7 +632,12 @@ function ApiKeyTab({ closePage }) {
       <div className="pg-card" style={{ maxWidth: 720 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <span className="pg-h3">현재 API Key</span>
-          <span className="pill" style={{ background: 'var(--ok)' }}>사용 중</span>
+          <span
+            className="pill"
+            style={{ background: isKeyActive ? 'var(--ok)' : 'var(--bad)' }}
+          >
+            {isKeyActive ? '사용 중' : '비활성화'}
+          </span>
         </div>
         <div className="key-box">
           <span style={{ fontFamily: 'monospace', fontSize: 13 }}>{displayedKey}</span>
@@ -650,6 +656,11 @@ function ApiKeyTab({ closePage }) {
         <div style={{ display: 'flex', gap: 20, margin: '14px 0', fontSize: 13, color: 'var(--ink-soft)' }}>
           <span>발급일: {issuedAt}</span><span>만료일: {expiresAt}</span><span>요금제: {plan.name}</span>
         </div>
+        {!isKeyActive && (
+          <p style={{ fontSize: 12.5, color: 'var(--bad)', margin: '0 0 12px' }}>
+            이 계정은 현재 비활성화 상태라 이 API Key로는 CAPTCHA 요청이 처리되지 않습니다.
+          </p>
+        )}
         <div style={{ display: 'flex', gap: 10 }}>
           <button className="pg-btn primary" onClick={() => setShowReissueConfirm(true)} disabled={actionPending}>
             {actionPending ? '처리 중...' : '재발급'}
