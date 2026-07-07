@@ -697,13 +697,21 @@ export default function AdminPage() {
     return () => { ignore = true; };
   }, []);
 
-  
   const filteredUsers = useMemo(() => {
     const query = userSearch.trim().toLowerCase();
     if (!query) return activeUsers;
-    return activeUsers.filter((user) => (
-      Object.values(user).some((value) => String(value).toLowerCase().includes(query))
-    ));
+
+    if (MANAGE_STATUS_OPTIONS.some((status) => status.toLowerCase() === query)) {
+      return activeUsers.filter(
+        (user) => user.status.toLowerCase() === query
+      );
+    }
+
+    return activeUsers.filter((user) =>
+      Object.values(user).some((value) =>
+        String(value).toLowerCase().includes(query)
+      )
+    );
   }, [activeUsers, userSearch]);
 
   const filteredInquiries = useMemo(() => {
