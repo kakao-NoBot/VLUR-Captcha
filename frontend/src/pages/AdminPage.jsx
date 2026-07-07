@@ -42,21 +42,21 @@ const DASHBOARD_STATS = [
 
 const MOCK_PERSONAL_USERS = [
   { name: '김민준', userId: 'minjun01', email: 'minjun@example.com', plan: 'Pro', joinedAt: '2026-06-02', status: '활성' },
-  { name: '이지아', userId: 'jia-lab', email: 'jia@demo.co.kr', plan: 'Free', joinedAt: '2026-06-10', status: '활성' },
+  { name: '이지아', userId: 'jia-lab', email: 'jia@demo.co.kr', plan: 'Basic', joinedAt: '2026-06-10', status: '활성' },
   { name: '박서준', userId: 'seo-admin', email: 'seo@vlur.test', plan: 'Enterprise', joinedAt: '2026-06-18', status: '점검' },
-  { name: '최하린', userId: 'harin77', email: 'harin@example.com', plan: 'Free', joinedAt: '2026-06-24', status: '비활성' },
+  { name: '최하린', userId: 'harin77', email: 'harin@example.com', plan: 'Basic', joinedAt: '2026-06-24', status: '비활성' },
 ];
 
 const MOCK_BUSINESS_USERS = [
   { company: 'VLUR Commerce', manager: '정다은', userId: 'vlur-commerce', email: 'ops@vlur-commerce.kr', plan: 'Enterprise', siteCount: 6, monthlyLimit: 500000, status: '활성' },
   { company: 'AI Study Lab', manager: '윤태오', userId: 'study-lab', email: 'admin@study.example.io', plan: 'Pro', siteCount: 3, monthlyLimit: 100000, status: '활성' },
-  { company: 'Secure Board Inc.', manager: '한서연', userId: 'secure-board', email: 'contact@secureboard.kr', plan: 'Free', siteCount: 1, monthlyLimit: 50000, status: '비활성' },
+  { company: 'Secure Board Inc.', manager: '한서연', userId: 'secure-board', email: 'contact@secureboard.kr', plan: 'Basic', siteCount: 1, monthlyLimit: 50000, status: '비활성' },
 ];
 
 const MOCK_SITES = [
   { name: 'VLUR Demo Shop', domain: 'shop.vlur-demo.kr', owner: 'VLUR Commerce', plan: 'Enterprise', monthlyLimit: 500000, monthlyUsage: 312000, status: '활성', createdAt: '2026-06-03' },
   { name: 'AI Study Portal', domain: 'study.example.io', owner: 'AI Study Lab', plan: 'Pro', monthlyLimit: 100000, monthlyUsage: 68400, status: '활성', createdAt: '2026-06-12' },
-  { name: 'Secure Board', domain: 'board.sample.kr', owner: 'Secure Board Inc.', plan: 'Free', monthlyLimit: 50000, monthlyUsage: 12850, status: '비활성', createdAt: '2026-06-21' },
+  { name: 'Secure Board', domain: 'board.sample.kr', owner: 'Secure Board Inc.', plan: 'Basic', monthlyLimit: 50000, monthlyUsage: 12850, status: '비활성', createdAt: '2026-06-21' },
 ];
 
 const INQUIRY_STATUS_BACKEND_TO_LABEL = {
@@ -108,7 +108,7 @@ const MOCK_LOGS = [
  ];
 
 const PLAN_USAGE = [
-  { plan: 'Free', accounts: 812, used: 182000, limit: 300000 },
+  { plan: 'Basic', accounts: 812, used: 182000, limit: 300000 },
   { plan: 'Pro', accounts: 386, used: 684000, limit: 900000 },
   { plan: 'Enterprise', accounts: 86, used: 1120000, limit: 1500000 },
 ];
@@ -291,7 +291,7 @@ function BotTrendChart({ data }) {
           </linearGradient>
         </defs>
         <path d={areaPath} fill="url(#botTrendFill)" stroke="none" />
-        <path d={linePath} fill="none" stroke="var(--orange)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        <path d={linePath} fill="none" stroke="var(--orange)" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
         {hovered && (
           <line
             x1={hovered.x} y1={paddingY - 8} x2={hovered.x} y2={height - paddingY}
@@ -1113,14 +1113,14 @@ export default function AdminPage() {
           )}
 
           {activeTab === 'sites' && (
-            <section>
-              <div className="admin-section-head">
-                <div>
-                  <h2 className="pg-h2">사이트 관리</h2>
-                </div>
+          <section>
+            <div className="admin-section-head" style={{ marginBottom: 10 }}>
+              <div>
+                <h2 className="pg-h2">사이트 관리</h2>
               </div>
+            </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 0, marginBottom: 13 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 0, marginBottom: 13 }}>
                 <AdminSearchInput
                   value={siteSearch}
                   onChange={(event) => setSiteSearch(event.target.value)}
@@ -1301,12 +1301,12 @@ export default function AdminPage() {
           )}
 
           {activeTab === 'logs' && (
-            <section>
-              <div className="admin-section-head">
-                <div>
-                  <h2 className="pg-h2">인증 로그</h2>
-                </div>
+          <section>
+            <div className="admin-section-head" style={{ marginBottom: 10 }}>
+              <div>
+                <h2 className="pg-h2">인증 로그</h2>
               </div>
+            </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 0, marginBottom: 13 }}>
                 <AdminSearchInput
