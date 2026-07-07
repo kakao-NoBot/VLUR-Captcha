@@ -2581,7 +2581,7 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
 .board-list-pagination { grid-column: 2; }
 .board-list-pagination > div { margin-top: 0 !important; }
 .board-write-button {
-  grid-column: 3; justify-self: end; padding: 9px 16px; border-radius: 10px; font-size: 13px;
+  grid-column: 3; justify-self: end; margin-right: 14px; padding: 9px 16px; border-radius: 10px; font-size: 13px;
 }
 
 /* board layout */
@@ -2846,7 +2846,7 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
   .board-table tr:hover td { background: transparent; }
   .board-list-footer { grid-template-columns: 1fr auto; row-gap: 14px; }
   .board-list-pagination { grid-column: 1 / -1; grid-row: 1; }
-  .board-write-button { grid-column: 2; grid-row: 2; }
+  .board-write-button { grid-column: 2; grid-row: 2; margin-right: 0; }
 }
 
 @media (max-width: 760px) {
