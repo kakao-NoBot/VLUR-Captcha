@@ -2,6 +2,8 @@
 
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import api from '../api/axios';
+
 
 const ADMIN_TABS = [
   { id: 'dashboard', label: '대시보드' },
@@ -57,17 +59,36 @@ const MOCK_SITES = [
   { name: 'Secure Board', domain: 'board.sample.kr', owner: 'Secure Board Inc.', plan: 'Free', monthlyLimit: 50000, monthlyUsage: 12850, status: '비활성', createdAt: '2026-06-21' },
 ];
 
-const MOCK_GENERAL_INQUIRIES = [
-  { id: 'GEN-001', requester: '이지아', email: 'jia@demo.co.kr', type: 'API Key 문의', message: '마이페이지에서 API Key를 어디서 확인하는지 궁금합니다.', receivedAt: '2026-07-03', status: '답변' },
-  { id: 'GEN-002', requester: '최하린', email: 'harin@example.com', type: '결제/요금제 문의', message: 'Basic에서 Pro 요금제로 변경 가능한지 문의드립니다.', receivedAt: '2026-07-02', status: '접수' },
-  { id: 'GEN-003', requester: '김민준', email: 'minjun@example.com', type: '기술 문의', message: 'CAPTCHA 검증 로그를 기간별로 확인할 수 있는지 궁금합니다.', receivedAt: '2026-07-01', status: '검토' },
-];
+const INQUIRY_STATUS_BACKEND_TO_LABEL = {
+  new: '접수',
+  in_progress: '검토',
+  done: '답변',
+  spam: '접수',
+};
 
-const MOCK_BUSINESS_INQUIRIES = [
-  { id: 'ENT-001', company: '준수커머스', manager: '김준수', phone: '010-2931-1335', email: 'contact@junsucommerce.kr', estimatedCalls: '1,000,000회 이상', message: '대량 CAPTCHA 호출 한도와 전용 지원 문의', receivedAt: '2026-07-03', status: '검토' },
-  { id: 'ENT-002', company: 'VLUR Commerce', manager: '정다은', phone: '010-1234-5678', email: 'ops@vlur-commerce.kr', estimatedCalls: '3,000,000회 이상', message: '월 호출량 증설과 SLA 적용 가능 여부 문의', receivedAt: '2026-07-02', status: '답변' },
-  { id: 'ENT-003', company: 'AI Study Lab', manager: '윤태오', phone: '010-9876-5432', email: 'admin@aistudy.io', estimatedCalls: '500,000회', message: '교육 포털 연동 테스트 환경 문의', receivedAt: '2026-06-30', status: '접수' },
-];
+function mapInquiry(row) {
+  const shared = {
+    id: row.inquiry_id,
+    email: row.email,
+    message: row.message,
+    receivedAt: row.created_at ? String(row.created_at).slice(0, 10) : '',
+    status: INQUIRY_STATUS_BACKEND_TO_LABEL[row.inquiry_status] || '접수',
+  };
+  if (row.inquiry_type === 'enterprise') {
+    return {
+      ...shared,
+      company: row.company,
+      manager: row.contact_name,
+      phone: row.phone,
+      estimatedCalls: row.plan_interest,
+    };
+  }
+  return {
+    ...shared,
+    requester: row.contact_name,
+    type: row.plan_interest,
+  };
+}
 
 const SCORE_BREAKDOWN = [
   { label: '드래그 궤적 자연스러움', score: 18, max: 30 },
@@ -642,8 +663,8 @@ export default function AdminPage() {
   const [inquirySearch, setInquirySearch] = useState('');
   const [siteSearch, setSiteSearch] = useState('');
   const [logSearch, setLogSearch] = useState('');
-  const [generalInquiries, setGeneralInquiries] = useState(MOCK_GENERAL_INQUIRIES);
-  const [businessInquiries, setBusinessInquiries] = useState(MOCK_BUSINESS_INQUIRIES);
+  const [generalInquiries, setGeneralInquiries] = useState([]);
+  const [businessInquiries, setBusinessInquiries] = useState([]);
   const [personalUsers, setPersonalUsers] = useState(MOCK_PERSONAL_USERS);
   const [businessUsers, setBusinessUsers] = useState(MOCK_BUSINESS_USERS);
   const [sites, setSites] = useState(MOCK_SITES);
@@ -655,22 +676,43 @@ export default function AdminPage() {
   const activeUsers = activeUserType === 'personal' ? personalUsers : businessUsers;
   const activeInquiries = activeInquiryType === 'general' ? generalInquiries : businessInquiries;
 
-const filteredUsers = useMemo(() => {
-  const query = userSearch.trim().toLowerCase();
-  if (!query) return activeUsers;
+  useEffect(() => {
+    let ignore = false;
 
-  if (MANAGE_STATUS_OPTIONS.some((status) => status.toLowerCase() === query)) {
-    return activeUsers.filter(
-      (user) => user.status.toLowerCase() === query
+    (async () => {
+      try {
+        const { data } = await api.get('/admin/inquiries');
+        const inquiries = data.inquiries || [];
+        if (ignore) return;
+        setGeneralInquiries(inquiries.filter((row) => row.inquiry_type !== 'enterprise').map(mapInquiry));
+        setBusinessInquiries(inquiries.filter((row) => row.inquiry_type === 'enterprise').map(mapInquiry));
+      } catch {
+        if (!ignore) {
+          setGeneralInquiries([]);
+          setBusinessInquiries([]);
+        }
+      }
+    })();
+
+    return () => { ignore = true; };
+  }, []);
+
+  const filteredUsers = useMemo(() => {
+    const query = userSearch.trim().toLowerCase();
+    if (!query) return activeUsers;
+
+    if (MANAGE_STATUS_OPTIONS.some((status) => status.toLowerCase() === query)) {
+      return activeUsers.filter(
+        (user) => user.status.toLowerCase() === query
+      );
+    }
+
+    return activeUsers.filter((user) =>
+      Object.values(user).some((value) =>
+        String(value).toLowerCase().includes(query)
+      )
     );
-  }
-
-  return activeUsers.filter((user) =>
-    Object.values(user).some((value) =>
-      String(value).toLowerCase().includes(query)
-    )
-  );
-}, [activeUsers, userSearch]);
+  }, [activeUsers, userSearch]);
 
   const filteredInquiries = useMemo(() => {
     const query = inquirySearch.trim().toLowerCase();
