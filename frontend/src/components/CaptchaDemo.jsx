@@ -1,8 +1,12 @@
 // CaptchaDemo.jsx
 
 import React, { useState, useCallback, useRef } from 'react';
-import cap1Question from '../assets/cap1_Question.png';
+import bananaAsciiDocs from '../assets/banana_ascii_docs.png';
 import bananaAscii from '../assets/banana_ascii.jpg';
+import bearAsciiDocs from '../assets/bear_ascii_docs.png';
+import aircraftAsciiDocs from '../assets/Aircraft_ascii_docs.png';
+import bearAscii from '../assets/bear_ascii.png';
+import aircraftAscii from '../assets/Aircraft_ascii.png';
 
 /* ── SVG Glyphs ── */
 const GLYPHS = {
@@ -32,13 +36,101 @@ const GLYPHS = {
       <path d="M24 17c0-3 2-5 5-5" stroke="#7FB069" strokeWidth="2" strokeLinecap="round"/>
     </svg>
   ),
+  cat: (
+    <svg viewBox="0 0 48 48" fill="none">
+      <circle cx="24" cy="28" r="11" fill="#F4F0E8" stroke="#241B15" strokeWidth="2"/>
+      <path d="M15 20l2-8 6 6Zm18 0l-2-8-6 6Z" fill="#F4F0E8" stroke="#241B15" strokeWidth="2" strokeLinejoin="round"/>
+      <circle cx="20" cy="28" r="1.4" fill="#241B15"/>
+      <circle cx="28" cy="28" r="1.4" fill="#241B15"/>
+      <path d="M20 33c1.5 1.5 6.5 1.5 8 0" stroke="#241B15" strokeWidth="1.6" strokeLinecap="round"/>
+    </svg>
+  ),
+  dog: (
+    <svg viewBox="0 0 48 48" fill="none">
+      <circle cx="24" cy="28" r="11" fill="#F4F0E8" stroke="#241B15" strokeWidth="2"/>
+      <path d="M14 22c-3 2-4 8-1 11 1-4 2-7 4-9Z" fill="#C88B4A" stroke="#241B15" strokeWidth="2" strokeLinejoin="round"/>
+      <path d="M34 22c3 2 4 8 1 11-1-4-2-7-4-9Z" fill="#C88B4A" stroke="#241B15" strokeWidth="2" strokeLinejoin="round"/>
+      <circle cx="20" cy="28" r="1.4" fill="#241B15"/>
+      <circle cx="28" cy="28" r="1.4" fill="#241B15"/>
+      <ellipse cx="24" cy="33" rx="2" ry="1.4" fill="#241B15"/>
+    </svg>
+  ),
+  bear: (
+    <svg viewBox="0 0 48 48" fill="none">
+      <circle cx="15" cy="16" r="5" fill="#8B5E34" stroke="#241B15" strokeWidth="2"/>
+      <circle cx="33" cy="16" r="5" fill="#8B5E34" stroke="#241B15" strokeWidth="2"/>
+      <circle cx="24" cy="27" r="12" fill="#8B5E34" stroke="#241B15" strokeWidth="2"/>
+      <circle cx="24" cy="30" r="5" fill="#F4F0E8" stroke="#241B15" strokeWidth="1.6"/>
+      <circle cx="19" cy="25" r="1.4" fill="#241B15"/>
+      <circle cx="29" cy="25" r="1.4" fill="#241B15"/>
+      <circle cx="24" cy="30" r="1.6" fill="#241B15"/>
+    </svg>
+  ),
+  bicycle: (
+    <svg viewBox="0 0 48 48" fill="none">
+      <circle cx="13" cy="33" r="7" stroke="#241B15" strokeWidth="2"/>
+      <circle cx="35" cy="33" r="7" stroke="#241B15" strokeWidth="2"/>
+      <path d="M13 33 20 17h8l7 16M20 17l6 16M13 33h22" stroke="#241B15" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M28 17h4" stroke="#7FB069" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
+  ),
+  airplane: (
+    <svg viewBox="0 0 48 48" fill="none">
+      <path d="M24 8v16m0 0-13 8v3l13-4 13 4v-3l-13-8Zm0 16-2 8h4l-2-8Z" fill="#B7C4D6" stroke="#241B15" strokeWidth="2" strokeLinejoin="round"/>
+    </svg>
+  ),
+  car: (
+    <svg viewBox="0 0 48 48" fill="none">
+      <path d="M9 30v-4l4-8h22l4 8v4" fill="#E4573D" stroke="#241B15" strokeWidth="2" strokeLinejoin="round"/>
+      <path d="M9 30h30v3H9z" fill="#E4573D" stroke="#241B15" strokeWidth="2"/>
+      <circle cx="15" cy="33" r="3" fill="#241B15"/>
+      <circle cx="33" cy="33" r="3" fill="#241B15"/>
+      <path d="M15 18h18" stroke="#241B15" strokeWidth="1.6"/>
+    </svg>
+  ),
+  apple: (
+    <svg viewBox="0 0 48 48" fill="none">
+      <path d="M24 20c-5-4-13-1-13 8 0 8 6 13 9 13 2 0 3-1 4-1s2 1 4 1c3 0 9-5 9-13 0-9-8-12-13-8Z" fill="#E4573D" stroke="#241B15" strokeWidth="2" strokeLinejoin="round"/>
+      <path d="M24 20v-4" stroke="#241B15" strokeWidth="2" strokeLinecap="round"/>
+      <path d="M24 16c1-3 4-4 6-3" stroke="#7FB069" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
+  ),
 };
 
-const POOL = [
+/* ── 보기 세트 (재사용) ── */
+const BANANA_OPTIONS = [
   { key: 'radish',  name: '무',    correct: false },
   { key: 'banana',  name: '바나나', correct: true  },
   { key: 'carrot',  name: '당근',  correct: false },
   { key: 'pumpkin', name: '호박',  correct: false },
+];
+
+const BEAR_OPTIONS = [
+  { key: 'cat',     name: '고양이', correct: false },
+  { key: 'dog',     name: '강아지', correct: false },
+  { key: 'bear',    name: '곰',    correct: true  },
+  { key: 'bicycle', name: '자전거', correct: false },
+];
+
+const AIRCRAFT_OPTIONS = [
+  { key: 'airplane', name: '비행기', correct: true  },
+  { key: 'car',       name: '자동차', correct: false },
+  { key: 'apple',     name: '사과',  correct: false },
+  { key: 'dog',       name: '강아지', correct: false },
+];
+
+/* 유형 1: 드래그형 문제 세트 */
+const QUESTIONS_TYPE1 = [
+  { image: bananaAsciiDocs,   options: BANANA_OPTIONS },
+  { image: bearAsciiDocs,     options: BEAR_OPTIONS },
+  { image: aircraftAsciiDocs, options: AIRCRAFT_OPTIONS },
+];
+
+/* 유형 2: 클릭형 문제 세트 */
+const QUESTIONS_TYPE2 = [
+  { image: bananaAscii,   options: BANANA_OPTIONS },
+  { image: bearAscii,     options: BEAR_OPTIONS },
+  { image: aircraftAscii, options: AIRCRAFT_OPTIONS },
 ];
 
 function shuffle(arr) {
@@ -48,6 +140,14 @@ function shuffle(arr) {
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
+}
+
+// 문제 배열에서 이전과 다른 인덱스를 랜덤으로 뽑는다
+function pickIndex(len, exclude) {
+  if (len <= 1) return 0;
+  let idx;
+  do { idx = Math.floor(Math.random() * len); } while (idx === exclude);
+  return idx;
 }
 
 /* ══════════════════════════════════════
@@ -91,21 +191,25 @@ function FailScreen({ onReset }) {
    4지선다 클릭 CAPTCHA
 ══════════════════════════════════════ */
 function ClickCaptcha() {
-  const [tiles, setTiles] = useState(() => shuffle(POOL));
+  const [state, setState] = useState(() => {
+    const qi = Math.floor(Math.random() * QUESTIONS_TYPE2.length);
+    return { qi, tiles: shuffle(QUESTIONS_TYPE2[qi].options) };
+  });
   const [screen, setScreen] = useState(null); // null | 'success' | 'fail'
 
+  const question = QUESTIONS_TYPE2[state.qi];
+
   const reset = () => {
-    setTiles(shuffle(POOL));
+    setState(prev => {
+      const qi = pickIndex(QUESTIONS_TYPE2.length, prev.qi);
+      return { qi, tiles: shuffle(QUESTIONS_TYPE2[qi].options) };
+    });
     setScreen(null);
   };
 
   const pick = (tile) => {
     if (screen) return;
-    if (tile.correct) {
-      setScreen('success');
-    } else {
-      setScreen('fail');
-    }
+    setScreen(tile.correct ? 'success' : 'fail');
   };
 
   if (screen === 'success') return <SuccessScreen onReset={reset} />;
@@ -118,11 +222,11 @@ function ClickCaptcha() {
       </div>
 
       <div className="captcha-reference">
-        <img src={bananaAscii} alt="바나나 ASCII 아트" />
+        <img src={question.image} alt="문제 이미지" />
       </div>
 
       <div className="tiles choice-tiles">
-        {tiles.map(tile => (
+        {state.tiles.map(tile => (
           <button
             key={tile.key}
             className="tile"
@@ -148,7 +252,10 @@ function ClickCaptcha() {
    드래그-투-타깃 CAPTCHA
 ══════════════════════════════════════ */
 function DragCaptcha() {
-  const [tiles, setTiles] = useState(() => shuffle(POOL));
+  const [state, setState] = useState(() => {
+    const qi = Math.floor(Math.random() * QUESTIONS_TYPE1.length);
+    return { qi, tiles: shuffle(QUESTIONS_TYPE1[qi].options) };
+  });
   const [selected, setSelected] = useState(null);
   const [solved, setSolved] = useState(false);
   const [dropState, setDropState] = useState('idle');
@@ -161,8 +268,13 @@ function DragCaptcha() {
   selectedRef.current = selected;
   solvedRef.current = solved;
 
+  const question = QUESTIONS_TYPE1[state.qi];
+
   const reset = useCallback(() => {
-    setTiles(shuffle(POOL));
+    setState(prev => {
+      const qi = pickIndex(QUESTIONS_TYPE1.length, prev.qi);
+      return { qi, tiles: shuffle(QUESTIONS_TYPE1[qi].options) };
+    });
     setSelected(null);
     setSolved(false);
     setDropState('idle');
@@ -177,7 +289,7 @@ function DragCaptcha() {
   }, []);
 
   const submit = useCallback((tileKey) => {
-    const tile = POOL.find(t => t.key === tileKey);
+    const tile = question.options.find(t => t.key === tileKey);
     if (!tile) return;
     if (tile.correct) {
       setSolved(true);
@@ -187,7 +299,7 @@ function DragCaptcha() {
     } else {
       setScreen('fail');
     }
-  }, []);
+  }, [question]);
 
   const onPointerDown = useCallback((e, key) => {
     if (solvedRef.current) return;
@@ -228,14 +340,13 @@ function DragCaptcha() {
       <div className="demo-q">
         <img
           className="question-image"
-          src={cap1Question}
-          alt="바나나를 장바구니로 드래그하세요"
+          src={question.image}
+          alt="문제 이미지"
         />
-
       </div>
 
       <div className="tiles">
-        {tiles.map(item => (
+        {state.tiles.map(item => (
           <button
             key={item.key}
             className={`tile${selected === item.key ? ' sel' : ''}`}
@@ -291,7 +402,6 @@ export default function CaptchaDemo() {
           <i style={{ background: type === 1 ? 'var(--orange)' : 'var(--line)' }}/>
           <i style={{ background: type === 2 ? 'var(--orange)' : 'var(--line)' }}/>
         </div>
-        {/* 유형 탭 */}
         <div style={{ display: 'flex', gap: 4, marginLeft: 12 }}>
           {[1, 2].map(t => (
             <button
