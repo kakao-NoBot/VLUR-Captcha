@@ -44,4 +44,11 @@ def run_migrations() -> None:
             if any(f"'{v}'" not in board_type for v in ("general", "faq", "research")):
                 cur.execute(f"ALTER TABLE boards MODIFY board_type {BOARD_TYPE_ENUM} NOT NULL")
                 print("[migrate] boards.board_type ENUM 확장 (general/faq/research)")
+
+            # 3) users.api_key_suspended — 관리자의 API Key 사용 제재 플래그
+            if not _column_exists(cur, "users", "api_key_suspended"):
+                cur.execute(
+                    "ALTER TABLE users ADD COLUMN api_key_suspended BOOLEAN NOT NULL DEFAULT FALSE AFTER user_status"
+                )
+                print("[migrate] users.api_key_suspended 컬럼 추가")
         conn.commit()
