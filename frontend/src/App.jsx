@@ -293,7 +293,7 @@ export default function App() {
       <Metrics />
       <Flow />
 <Cases />
-      <Pricing openPage={openPage} openPlanPayment={openPlanPayment} />
+      <Pricing openPage={openPage} openPlanPayment={openPlanPayment} isLoggedIn={isLoggedIn} />
       <GuidePage openPage={openPage} />
       <Footer />
 
@@ -314,7 +314,7 @@ export default function App() {
 
       {/* Mypage */}
       <PageOverlay id="mypage" activePage={page} onBack={closePage} openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} user={currentUser}>
-        <div className="po-body">
+        <div className="po-body mp-po-body">
           <MypagePage key={mypageKey} openPage={openPage} closePage={closePage} initialTab={mypageTab} user={currentUser} onUserUpdate={handleUserUpdate} onLogout={handleLogout} />
         </div>
       </PageOverlay>

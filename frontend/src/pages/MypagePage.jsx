@@ -368,7 +368,7 @@ function InfoTab({ user, onUserUpdate, profile }) {
   };
   const preventFocus = (e) => e.target.blur();
   const joinDate = user?.created_at ? String(user.created_at).slice(0, 10) : '-';
-  const planLabel = profile?.plan_name === 'Pro' ? 'Pro' : '-';
+  const planLabel = profile?.plan_name || '-';
 
   return (
     <>
@@ -585,7 +585,7 @@ function ApiKeyTab({ closePage }) {
     return (
       <>
         <h2 className="pg-h2" style={{ marginBottom: 20 }}>API Key 관리</h2>
-        <div className="pg-card" style={{ maxWidth: 560, textAlign: 'center', padding: '48px 24px' }}>
+        <div className="pg-card" style={{ maxWidth: 640, textAlign: 'center', padding: '48px 24px' }}>
           <strong style={{ display: 'block', fontSize: 16, marginBottom: 8 }}>요금제 활성화 후 이용 가능합니다</strong>
           <p style={{ margin: '0 0 20px', fontSize: 13.5, color: 'var(--muted)' }}>
             API Key는 활성 요금제가 있는 계정에만 발급됩니다.
@@ -601,7 +601,7 @@ function ApiKeyTab({ closePage }) {
     return (
       <>
         <h2 className="pg-h2" style={{ marginBottom: 20 }}>API Key 관리</h2>
-        <div className="pg-card" style={{ maxWidth: 560, textAlign: 'center', padding: '48px 24px' }}>
+        <div className="pg-card" style={{ maxWidth: 640, textAlign: 'center', padding: '48px 24px' }}>
           <strong style={{ display: 'block', fontSize: 16, marginBottom: 8 }}>API Key를 발급해 주세요</strong>
           <p style={{ margin: '0 0 20px', fontSize: 13.5, color: 'var(--muted)' }}>
             {plan.name} 요금제가 활성화되어 있습니다. 발급된 원문 키는 한 번만 표시됩니다.
@@ -621,7 +621,7 @@ function ApiKeyTab({ closePage }) {
   return (
     <>
       <h2 className="pg-h2" style={{ marginBottom: 20 }}>API Key 관리</h2>
-      <div className="pg-card" style={{ maxWidth: 560 }}>
+      <div className="pg-card" style={{ maxWidth: 720 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <span className="pg-h3">현재 API Key</span>
           <span className="pill" style={{ background: 'var(--ok)' }}>사용 중</span>
@@ -1198,6 +1198,7 @@ function BillingTab({ closePage, profile }) {
   }, []);
 
   const isPro = profile?.plan_name === 'Pro';
+  const hasPlan = Boolean(profile?.plan_name);
   const latestPayment = payments[0] || null;
 
   const goToPricing = () => {
@@ -1223,7 +1224,7 @@ function BillingTab({ closePage, profile }) {
             <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 4 }}>현재 구독 중</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--disp)', color: 'var(--ink)' }}>
-                {isPro ? 'Pro 플랜' : '-'}
+                {hasPlan ? `${profile.plan_name} 플랜` : '-'}
               </span>
               {isPro && cancelled && (
                 <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: 'rgba(216,73,47,.15)', color: 'var(--bad)' }}>
