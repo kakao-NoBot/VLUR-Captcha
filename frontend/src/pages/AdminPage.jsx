@@ -211,7 +211,7 @@ function StatusBadge({ children, tone = 'neutral', style }) {
       style={{
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         minWidth: 46, width: 'fit-content', padding: '4px 10px', borderRadius: 999,
-        fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap',
+        fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap',
         ...toneBadgeStyle(tone, s),
         ...style,
       }}
@@ -362,7 +362,7 @@ function BotTrendChart({ data }) {
         ))}
         {/* 값 라벨은 커서를 올린 지점만 표시 */}
         {hovered && (
-          <text x={hovered.x} y={hovered.y - 14} textAnchor="middle" fontSize="13" fontWeight="700" fill="var(--ink)">
+          <text x={hovered.x} y={hovered.y - 14} textAnchor="middle" fontSize="13" fill="var(--ink)">
             {hovered.value}%
           </text>
         )}
@@ -493,7 +493,7 @@ function ScoreGauge({ score, max = 100 }) {
         position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center',
       }}>
-        <strong style={{ fontSize: 28, fontWeight: 800, color: 'var(--ink)', lineHeight: 1 }}>{score}</strong>
+        <strong style={{ fontSize: 28, fontWeight: 600, color: 'var(--ink)', lineHeight: 1 }}>{score}</strong>
         <span style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>/ 100점</span>
       </div>
     </div>
@@ -1064,7 +1064,7 @@ export default function AdminPage() {
                           <span>{log.time.slice(11)}</span>
                           <b style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{log.site}</b>
                           <StatusBadge tone={getStatusTone(log.result)} style={{ justifySelf: 'start' }}>{log.result}</StatusBadge>
-                          <span style={{ color: 'var(--orange-2)', fontWeight: 700, textAlign: 'right' }}>{log.botScore}점</span>
+                          <span style={{ color: 'var(--orange-2)', fontWeight: 500, textAlign: 'right' }}>{log.botScore}점</span>
                         </div>
                       );
                     })}
