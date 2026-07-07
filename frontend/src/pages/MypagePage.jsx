@@ -9,8 +9,6 @@ import api from '../api/axios';
 import kakaopayLogo from '../assets/kakao-pay-logo.png';
 import tossLogo from '../assets/toss.png';
 
-const realKey = 'sk-aicap_prod_7f3a91b2c4d5e6f789012345xxxx';
-
 const EMAIL_DOMAIN_OPTIONS = [
   { value: 'gmail.com', label: 'gmail.com' },
   { value: 'naver.com', label: 'naver.com' },
@@ -492,28 +490,33 @@ function ReissueDoneModal({ onClose }) {
 }
 
 /* ── SC-08 API Key 탭 ── */
-function ApiKeyTab({ openPage, closePage, profile }) {
-  const [paymentChecked, setPaymentChecked] = useState(false);
-  const [activeSubscription, setActiveSubscription] = useState(null);
+function ApiKeyTab({ closePage }) {
+  const [loading, setLoading] = useState(true);
+  const [plan, setPlan] = useState(null);
+  const [apiKey, setApiKey] = useState(null);
+  const [plainKey, setPlainKey] = useState('');
   const [visible, setVisible] = useState(false);
-  const [key, setKey] = useState(realKey);
   const [copyLabel, setCopyLabel] = useState('복사');
   const [showReissueConfirm, setShowReissueConfirm] = useState(false);
   const [showReissueDone, setShowReissueDone] = useState(false);
   const [guideStep, setGuideStep] = useState(null);
+  const [actionPending, setActionPending] = useState(false);
+  const [actionError, setActionError] = useState('');
 
   useEffect(() => {
     let ignore = false;
 
     (async () => {
       try {
-        const { data } = await api.get('/payments/history');
-        const latestPaidPayment = (data.payments || [])[0] || null;
-        if (!ignore) setActiveSubscription(latestPaidPayment);
-      } catch {
-        if (!ignore) setActiveSubscription(null);
+        const { data } = await api.get('/api-keys/current');
+        if (!ignore) {
+          setPlan(data.plan || null);
+          setApiKey(data.api_key || null);
+        }
+      } catch (err) {
+        if (!ignore) setActionError(err.response?.data?.detail || 'API Key 정보를 불러오지 못했습니다.');
       } finally {
-        if (!ignore) setPaymentChecked(true);
+        if (!ignore) setLoading(false);
       }
     })();
 
@@ -521,21 +524,45 @@ function ApiKeyTab({ openPage, closePage, profile }) {
   }, []);
 
   const copy = () => {
-    navigator.clipboard.writeText(key).catch(() => {});
+    if (!plainKey) return;
+    navigator.clipboard.writeText(plainKey).catch(() => {});
     setCopyLabel('복사됨 ✓');
     setTimeout(() => setCopyLabel('복사'), 1500);
   };
 
-  const reissue = () => {
-    setShowReissueConfirm(true);
+  const applyIssuedKey = (data) => {
+    setApiKey(data.api_key);
+    setPlainKey(data.plain_key);
+    setVisible(true);
+    setActionError('');
   };
 
-  const doReissue = () => {
-    const newKey = 'sk-aicap_prod_' + Math.random().toString(36).slice(2, 18) + 'xxxx';
-    setKey(newKey);
-    setVisible(true);
+  const issue = async () => {
+    setActionPending(true);
+    setActionError('');
+    try {
+      const { data } = await api.post('/api-keys');
+      applyIssuedKey(data);
+    } catch (err) {
+      setActionError(err.response?.data?.detail || 'API Key 발급에 실패했습니다.');
+    } finally {
+      setActionPending(false);
+    }
+  };
+
+  const doReissue = async () => {
     setShowReissueConfirm(false);
-    setShowReissueDone(true);
+    setActionPending(true);
+    setActionError('');
+    try {
+      const { data } = await api.post('/api-keys/reissue');
+      applyIssuedKey(data);
+      setShowReissueDone(true);
+    } catch (err) {
+      setActionError(err.response?.data?.detail || 'API Key 재발급에 실패했습니다.');
+    } finally {
+      setActionPending(false);
+    }
   };
 
   const goToPricing = () => {
@@ -545,29 +572,51 @@ function ApiKeyTab({ openPage, closePage, profile }) {
     }, 320);
   };
 
-  if (!paymentChecked) {
+  if (loading) {
     return (
       <>
         <h2 className="pg-h2" style={{ marginBottom: 20 }}>API Key 관리</h2>
-        <p style={{ color: 'var(--muted)', fontSize: 14 }}>결제 정보를 확인하는 중입니다...</p>
+        <p style={{ color: 'var(--muted)', fontSize: 14 }}>API Key 정보를 확인하는 중입니다...</p>
       </>
     );
   }
 
-  if (!activeSubscription) {
+  if (!plan) {
     return (
       <>
         <h2 className="pg-h2" style={{ marginBottom: 20 }}>API Key 관리</h2>
         <div className="pg-card" style={{ maxWidth: 560, textAlign: 'center', padding: '48px 24px' }}>
-          <strong style={{ display: 'block', fontSize: 16, marginBottom: 8 }}>결제 완료 후 이용 가능합니다</strong>
+          <strong style={{ display: 'block', fontSize: 16, marginBottom: 8 }}>요금제 활성화 후 이용 가능합니다</strong>
           <p style={{ margin: '0 0 20px', fontSize: 13.5, color: 'var(--muted)' }}>
-            API Key는 요금제 결제가 완료된 계정에만 발급됩니다.
+            API Key는 활성 요금제가 있는 계정에만 발급됩니다.
           </p>
           <button className="pg-btn primary" onClick={goToPricing}>요금제 선택하기</button>
         </div>
+        {actionError && <p style={{ color: 'var(--bad)', fontSize: 13, marginTop: 12 }}>{actionError}</p>}
       </>
     );
   }
+
+  if (!apiKey) {
+    return (
+      <>
+        <h2 className="pg-h2" style={{ marginBottom: 20 }}>API Key 관리</h2>
+        <div className="pg-card" style={{ maxWidth: 560, textAlign: 'center', padding: '48px 24px' }}>
+          <strong style={{ display: 'block', fontSize: 16, marginBottom: 8 }}>API Key를 발급해 주세요</strong>
+          <p style={{ margin: '0 0 20px', fontSize: 13.5, color: 'var(--muted)' }}>
+            {plan.name} 요금제가 활성화되어 있습니다. 발급된 원문 키는 한 번만 표시됩니다.
+          </p>
+          <button className="pg-btn primary" onClick={issue} disabled={actionPending}>
+            {actionPending ? '발급 중...' : 'API Key 발급'}
+          </button>
+        </div>
+        {actionError && <p style={{ color: 'var(--bad)', fontSize: 13, marginTop: 12 }}>{actionError}</p>}
+      </>
+    );
+  }
+
+  const issuedAt = apiKey.created_at ? String(apiKey.created_at).slice(0, 10) : '-';
+  const displayedKey = visible && plainKey ? plainKey : apiKey.masked_key;
 
   return (
     <>
@@ -578,24 +627,33 @@ function ApiKeyTab({ openPage, closePage, profile }) {
           <span className="pill" style={{ background: 'var(--ok)' }}>사용 중</span>
         </div>
         <div className="key-box">
-          <span style={{ fontFamily: 'monospace', fontSize: 13 }}>{visible ? key : 'sk-••••••••••••••••••••••••xxxx'}</span>
+          <span style={{ fontFamily: 'monospace', fontSize: 13 }}>{displayedKey}</span>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button className="pg-btn" style={{ padding: '7px 12px', fontSize: 13 }} onClick={() => setVisible(v => !v)}>조회</button>
-            <button className="pg-btn" style={{ padding: '7px 12px', fontSize: 13 }} onClick={copy}>{copyLabel}</button>
+            <button
+              className="pg-btn"
+              style={{ padding: '7px 12px', fontSize: 13 }}
+              onClick={() => setVisible((value) => !value)}
+              disabled={!plainKey}
+            >
+              {visible ? '숨기기' : '조회'}
+            </button>
+            <button className="pg-btn" style={{ padding: '7px 12px', fontSize: 13 }} onClick={copy} disabled={!plainKey}>{copyLabel}</button>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 20, margin: '14px 0', fontSize: 13, color: 'var(--ink-soft)' }}>
-          <span>발급일: {activeSubscription.date}</span><span>만료일: -</span><span>요금제: {activeSubscription.plan_name}</span>
+          <span>발급일: {issuedAt}</span><span>만료일: -</span><span>요금제: {plan.name}</span>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
-          <button className="pg-btn primary" onClick={reissue}>재발급</button>
+          <button className="pg-btn primary" onClick={() => setShowReissueConfirm(true)} disabled={actionPending}>
+            {actionPending ? '처리 중...' : '재발급'}
+          </button>
           <button className="pg-btn" onClick={() => setGuideStep(0)}>사용 가이드 보기</button>
         </div>
-        <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 12 }}>재발급 시 기존 Key는 즉시 만료됩니다.</p>
+        <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 12 }}>
+          {plainKey ? '지금 원문 키를 복사해 보관하세요. 페이지를 벗어나면 다시 조회할 수 없습니다.' : '원문 키는 저장되지 않습니다. 새 원문이 필요하면 재발급해 주세요.'}
+        </p>
       </div>
-      <div style={{ background: 'var(--peach)', border: '1px solid var(--line)', borderRadius: 10, padding: '14px 16px', marginTop: 14, fontSize: 13, color: 'var(--ink-soft)', maxWidth: 560 }}>
-        ※ 발급 한도 / Key 개수 제한은 요금제(plan)별 api_limit 정책에 따름
-      </div>
+      {actionError && <p style={{ color: 'var(--bad)', fontSize: 13, marginTop: 12 }}>{actionError}</p>}
 
       {showReissueConfirm && (
         <ReissueConfirmModal
