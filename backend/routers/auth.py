@@ -1,3 +1,5 @@
+# auth.py
+
 import hashlib
 
 import pymysql
