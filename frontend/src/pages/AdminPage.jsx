@@ -24,6 +24,7 @@ const INQUIRY_TYPE_TABS = [
 
 const INQUIRY_STATUS_OPTIONS = ['접수', '검토', '답변'];
 const MANAGE_STATUS_OPTIONS = ['활성', '점검', '비활성'];
+const USER_STATUS_OPTIONS = ['활성', '비활성'];
 
 const INQUIRY_STATUS_TONE = {
   '접수': 'neutral',
@@ -67,8 +68,13 @@ const INQUIRY_STATUS_BACKEND_TO_LABEL = {
 
 const USER_STATUS_BACKEND_TO_LABEL = {
   active: '활성',
-  suspended: '점검',
+  suspended: '비활성',
   inactive: '비활성',
+};
+
+const USER_STATUS_LABEL_TO_BACKEND = {
+  '활성': 'active',
+  '비활성': 'inactive',
 };
 
 const SOCIAL_PROVIDER_LABEL = {
@@ -192,21 +198,24 @@ function getPercent(used, limit) {
 
 /* ── 상태 뱃지 (읽기 전용: 모달, 인증 로그 결과 등) ── */
 const STATUS_TONE_STYLE = {
-  success: { color: '#1f8a54', background: 'rgba(46,163,107,0.14)', dot: '#2ea36b' },
-  warning: { color: '#a5720f', background: 'rgba(224,165,44,0.16)', dot: '#e0a52c' },
-  danger:  { color: '#c0392b', background: 'rgba(192,57,43,0.13)', dot: '#c0392b' },
-  neutral: { color: 'var(--ink-soft)', background: 'rgba(60,45,32,0.06)', dot: 'var(--muted)' },
+  success: { color: '#1f8a54', background: 'rgba(46,163,107,0.14)', dot: '#2ea36b', glow: 'rgba(46,163,107,.25)', textDark: '#c9f2dd' },
+  warning: { color: '#a5720f', background: 'rgba(224,165,44,0.16)', dot: '#e0a52c', glow: 'rgba(224,165,44,.25)', textDark: '#fbe3ae' },
+  danger:  { color: '#c0392b', background: 'rgba(192,57,43,0.13)', dot: '#c0392b', glow: 'rgba(192,57,43,.25)', textDark: '#f6cac4' },
+  neutral: { color: 'var(--ink-soft)', background: 'rgba(60,45,32,0.06)', dot: 'var(--muted)', glow: 'rgba(146,128,113,.25)', textDark: '#e4ddd5' },
 };
 
 function StatusBadge({ children, tone = 'neutral', style }) {
   const s = STATUS_TONE_STYLE[tone] || STATUS_TONE_STYLE.neutral;
   return (
     <span
+      className="admin-glow-badge"
       style={{
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         minWidth: 46, width: 'fit-content', padding: '4px 10px', borderRadius: 999,
         fontSize: 12, fontWeight: 700, color: s.color, background: s.background,
         whiteSpace: 'nowrap',
+        '--status-glow': s.glow,
+        '--status-text-dark': s.textDark,
         ...style,
       }}
     >
@@ -243,12 +252,15 @@ function StatusDropdown({ status, options, isOpen, onToggle, onSelect, resolveTo
         aria-haspopup="menu"
         aria-expanded={isOpen}
         onClick={(event) => { event.stopPropagation(); onToggle(); }}
+        className="admin-glow-badge"
         style={{
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
           minWidth, padding: '4px 10px', borderRadius: 999,
           border: isOpen ? `1px solid ${s.dot}` : '1px solid transparent',
           fontSize: 12, fontWeight: 700, color: s.color, background: s.background,
           cursor: 'pointer', whiteSpace: 'nowrap',
+          '--status-glow': s.glow,
+          '--status-text-dark': s.textDark,
         }}
       >
         <span style={{ fontSize: 9 }}>{isOpen ? '▲' : '▼'}</span>
@@ -775,7 +787,7 @@ export default function AdminPage() {
     const query = userSearch.trim().toLowerCase();
     if (!query) return activeUsers;
 
-    if (MANAGE_STATUS_OPTIONS.some((status) => status.toLowerCase() === query)) {
+    if (USER_STATUS_OPTIONS.some((status) => status.toLowerCase() === query)) {
       return activeUsers.filter(
         (user) => user.status.toLowerCase() === query
       );
@@ -847,17 +859,33 @@ export default function AdminPage() {
     setBusinessInquiries(updater);
   };
 
-  const updateUserStatus = (type, internalId, nextStatus) => {
-    const updater = (users) => users.map((user) => (
+  const updateUserStatus = async (type, internalId, nextStatus) => {
+    const backendStatus = USER_STATUS_LABEL_TO_BACKEND[nextStatus];
+    if (!backendStatus) return;
+
+    const setUsers = type === 'personal' ? setPersonalUsers : setBusinessUsers;
+    const applyStatus = (users) => users.map((user) => (
       user.internalId === internalId ? { ...user, status: nextStatus } : user
     ));
 
-    if (type === 'personal') {
-      setPersonalUsers(updater);
-      return;
-    }
+    // 낙관적 업데이트: 먼저 화면에 반영하고, 실패하면 되돌린다.
+    let previousStatus = null;
+    setUsers((users) => users.map((user) => {
+      if (user.internalId === internalId) previousStatus = user.status;
+      return user;
+    }));
+    setUsers(applyStatus);
+    setUsersError('');
 
-    setBusinessUsers(updater);
+    try {
+      await api.patch(`/admin/users/${internalId}/status`, { status: backendStatus });
+    } catch (err) {
+      // 실패 시 원래 상태로 롤백
+      setUsers((users) => users.map((user) => (
+        user.internalId === internalId ? { ...user, status: previousStatus ?? user.status } : user
+      )));
+      setUsersError(err.response?.data?.detail || '사용자 상태를 변경하지 못했습니다.');
+    }
   };
 
   const updateSiteStatus = (domain, nextStatus) => {
@@ -957,6 +985,10 @@ export default function AdminPage() {
         [data-theme="dark"] .mp-sidebar {
           background: var(--card) !important;
           border-color: var(--line) !important;
+        }
+        [data-theme="dark"] .admin-glow-badge {
+          color: var(--status-text-dark) !important;
+          box-shadow: inset 0 0 0 1px var(--status-glow), 0 1px 6px -1px var(--status-glow);
         }
 
         /* 화면이 좁아져서 사이드바가 가로 탭바로 바뀔 때만 가운데 정렬 (넓은 화면은 그대로) */
@@ -1128,12 +1160,18 @@ export default function AdminPage() {
                         <td>{user.socialProvider ? <SocialProviderLogo provider={user.socialProvider} /> : user.userId}</td>
                         <td>{user.email}</td>
                         <td>{user.plan}</td>
-                        <td><code className="admin-key-mask">{user.apiKey}</code></td>
+                        <td>
+                          {user.apiKey === '미발급' ? (
+                            user.apiKey
+                          ) : (
+                            <code className="admin-key-mask">{user.apiKey}</code>
+                          )}
+                        </td>
                         <td>{user.joinedAt}</td>
                         <td>
                           <StatusDropdown
                             status={user.status}
-                            options={MANAGE_STATUS_OPTIONS}
+                            options={USER_STATUS_OPTIONS}
                             isOpen={openStatusMenu === menuKey}
                             onToggle={() => setOpenStatusMenu(openStatusMenu === menuKey ? null : menuKey)}
                             onSelect={(option) => {
@@ -1169,13 +1207,19 @@ export default function AdminPage() {
                         <td>{user.socialProvider ? <SocialProviderLogo provider={user.socialProvider} /> : user.userId}</td>
                         <td>{user.email}</td>
                         <td>{user.plan}</td>
-                        <td><code className="admin-key-mask">{user.apiKey}</code></td>
+                        <td>
+                          {user.apiKey === '미발급' ? (
+                            user.apiKey
+                          ) : (
+                            <code className="admin-key-mask">{user.apiKey}</code>
+                          )}
+                        </td>
                         <td>{user.siteCount}</td>
                         <td>{formatNumber(user.monthlyLimit)}</td>
                         <td>
                           <StatusDropdown
                             status={user.status}
-                            options={MANAGE_STATUS_OPTIONS}
+                            options={USER_STATUS_OPTIONS}
                             isOpen={openStatusMenu === menuKey}
                             onToggle={() => setOpenStatusMenu(openStatusMenu === menuKey ? null : menuKey)}
                             onSelect={(option) => {

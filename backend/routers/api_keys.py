@@ -1,7 +1,10 @@
+# api_keys.py
+
 import hashlib
 import secrets
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 
 from auth.deps import get_current_admin, get_current_user
 from db import get_conn
@@ -10,6 +13,9 @@ from db import get_conn
 router = APIRouter(tags=["api-keys"])
 
 API_KEY_PREFIX = "sk-aicap_prod_"
+
+# 관리자가 부여할 수 있는 상태 값. 'deleted'(탈퇴)는 사용자 본인 탈퇴 절차 전용이라 제외한다.
+ADMIN_ASSIGNABLE_USER_STATUSES = ("active", "inactive")
 
 
 def _generate_api_key() -> str:
@@ -194,3 +200,61 @@ def list_users_with_api_keys(admin: dict = Depends(get_current_admin)):
             users = cur.fetchall()
 
     return {"users": users}
+
+
+class UpdateUserStatusRequest(BaseModel):
+    status: str  # 'active' | 'inactive'
+
+
+@router.patch("/admin/users/{user_id}/status")
+def update_user_status(
+    user_id: str,
+    body: UpdateUserStatusRequest,
+    admin: dict = Depends(get_current_admin),
+):
+    """관리자 전용 — 사용자 계정을 활성/비활성으로 전환한다.
+    탈퇴(deleted) 계정이나 관리자(role='admin') 계정은 대상에서 제외한다."""
+    if body.status not in ADMIN_ASSIGNABLE_USER_STATUSES:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="status는 'active' 또는 'inactive'만 가능합니다.",
+        )
+
+    conn = get_conn()
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT role, user_status FROM users WHERE user_id = %s FOR UPDATE",
+                (user_id,),
+            )
+            target = cur.fetchone()
+
+            if not target:
+                raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
+            if target["role"] != "user":
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="관리자 계정의 상태는 변경할 수 없습니다.",
+                )
+            if target["user_status"] == "deleted":
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="이미 탈퇴한 계정입니다.",
+                )
+
+            cur.execute(
+                "UPDATE users SET user_status = %s WHERE user_id = %s",
+                (body.status, user_id),
+            )
+
+            # 계정을 비활성화하면 해당 사용자의 활성 API Key도 즉시 무효화한다.
+            if body.status == "inactive":
+                cur.execute(
+                    """UPDATE api_keys
+                       SET is_active = FALSE, expired_at = NOW()
+                       WHERE user_id = %s AND is_active = TRUE""",
+                    (user_id,),
+                )
+        conn.commit()
+
+    return {"user_id": user_id, "user_status": body.status}

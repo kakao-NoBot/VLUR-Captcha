@@ -1,3 +1,5 @@
+// GuidePage.jsx
+
 import React, { useState, useRef, useEffect } from 'react';
 
 const WIDGET_CODE = '<div class="vlur-captcha" data-sitekey="YOUR_SITE_KEY"></div>\n'
