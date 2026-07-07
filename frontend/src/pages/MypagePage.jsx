@@ -1614,6 +1614,13 @@ export default function MypagePage({ openPage, closePage, initialTab = 'info', u
         .mp-wrap .pg-table td {
           text-align: center !important;
         }
+
+        /* 화면이 좁아져서 사이드바가 가로 탭바로 바뀔 때만 가운데 정렬 (넓은 화면은 그대로) */
+        @media (max-width: 940px) {
+          .mp-wrap .mp-sidebar {
+            justify-content: center;
+          }
+        }
       `}</style>
       <div className="mp-sidebar">
         {tabs.map(t => (
