@@ -2,6 +2,8 @@
 
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import api from '../api/axios';
+
 
 const ADMIN_TABS = [
   { id: 'dashboard', label: '대시보드' },
@@ -57,17 +59,36 @@ const MOCK_SITES = [
   { name: 'Secure Board', domain: 'board.sample.kr', owner: 'Secure Board Inc.', plan: 'Free', monthlyLimit: 50000, monthlyUsage: 12850, status: '비활성', createdAt: '2026-06-21' },
 ];
 
-const MOCK_GENERAL_INQUIRIES = [
-  { id: 'GEN-001', requester: '이지아', email: 'jia@demo.co.kr', type: 'API Key 문의', message: '마이페이지에서 API Key를 어디서 확인하는지 궁금합니다.', receivedAt: '2026-07-03', status: '답변' },
-  { id: 'GEN-002', requester: '최하린', email: 'harin@example.com', type: '결제/요금제 문의', message: 'Basic에서 Pro 요금제로 변경 가능한지 문의드립니다.', receivedAt: '2026-07-02', status: '접수' },
-  { id: 'GEN-003', requester: '김민준', email: 'minjun@example.com', type: '기술 문의', message: 'CAPTCHA 검증 로그를 기간별로 확인할 수 있는지 궁금합니다.', receivedAt: '2026-07-01', status: '검토' },
-];
+const INQUIRY_STATUS_BACKEND_TO_LABEL = {
+  new: '접수',
+  in_progress: '검토',
+  done: '답변',
+  spam: '접수',
+};
 
-const MOCK_BUSINESS_INQUIRIES = [
-  { id: 'ENT-001', company: '준수커머스', manager: '김준수', phone: '010-2931-1335', email: 'contact@junsucommerce.kr', estimatedCalls: '1,000,000회 이상', message: '대량 CAPTCHA 호출 한도와 전용 지원 문의', receivedAt: '2026-07-03', status: '검토' },
-  { id: 'ENT-002', company: 'VLUR Commerce', manager: '정다은', phone: '010-1234-5678', email: 'ops@vlur-commerce.kr', estimatedCalls: '3,000,000회 이상', message: '월 호출량 증설과 SLA 적용 가능 여부 문의', receivedAt: '2026-07-02', status: '답변' },
-  { id: 'ENT-003', company: 'AI Study Lab', manager: '윤태오', phone: '010-9876-5432', email: 'admin@aistudy.io', estimatedCalls: '500,000회', message: '교육 포털 연동 테스트 환경 문의', receivedAt: '2026-06-30', status: '접수' },
-];
+function mapInquiry(row) {
+  const shared = {
+    id: row.inquiry_id,
+    email: row.email,
+    message: row.message,
+    receivedAt: row.created_at ? String(row.created_at).slice(0, 10) : '',
+    status: INQUIRY_STATUS_BACKEND_TO_LABEL[row.inquiry_status] || '접수',
+  };
+  if (row.inquiry_type === 'enterprise') {
+    return {
+      ...shared,
+      company: row.company,
+      manager: row.contact_name,
+      phone: row.phone,
+      estimatedCalls: row.plan_interest,
+    };
+  }
+  return {
+    ...shared,
+    requester: row.contact_name,
+    type: row.plan_interest,
+  };
+}
 
 const SCORE_BREAKDOWN = [
   { label: '드래그 궤적 자연스러움', score: 18, max: 30 },
@@ -235,6 +256,7 @@ function StatusDropdown({ status, options, isOpen, onToggle, onSelect, resolveTo
 
 /* ── 봇 차단 추이 꺾은선 그래프 (순수 SVG, 외부 라이브러리 불필요) ── */
 function BotTrendChart({ data }) {
+  const [hoverIndex, setHoverIndex] = useState(null);
   const width = 640;
   const height = 160;
   const paddingX = 24;
@@ -251,10 +273,17 @@ function BotTrendChart({ data }) {
 
   const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
   const areaPath = `${linePath} L${points[points.length - 1].x},${height - paddingY} L${points[0].x},${height - paddingY} Z`;
+  const slotWidth = (width - paddingX * 2) / (data.length - 1 || 1);
+  const hovered = hoverIndex !== null ? points[hoverIndex] : null;
 
   return (
     <div style={{ width: '100%', overflowX: 'auto' }}>
-      <svg viewBox={`0 0 ${width} ${height + 22}`} width="100%" style={{ display: 'block', minWidth: 480 }}>
+      <svg
+        viewBox={`0 0 ${width} ${height + 22}`}
+        width="100%"
+        style={{ display: 'block', minWidth: 480 }}
+        onMouseLeave={() => setHoverIndex(null)}
+      >
         <defs>
           <linearGradient id="botTrendFill" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="var(--orange)" stopOpacity="0.22" />
@@ -263,18 +292,45 @@ function BotTrendChart({ data }) {
         </defs>
         <path d={areaPath} fill="url(#botTrendFill)" stroke="none" />
         <path d={linePath} fill="none" stroke="var(--orange)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-        {points.map((p) => (
-          <circle key={`${p.label}-dot`} cx={p.x} cy={p.y} r="4" fill="var(--card)" stroke="var(--orange)" strokeWidth="2.5" />
+        {hovered && (
+          <line
+            x1={hovered.x} y1={paddingY - 8} x2={hovered.x} y2={height - paddingY}
+            stroke="var(--orange)" strokeWidth="1" strokeOpacity="0.35"
+          />
+        )}
+        {points.map((p, i) => (
+          <circle
+            key={`${p.label}-dot`}
+            cx={p.x} cy={p.y}
+            r={hoverIndex === i ? 5.5 : 4}
+            fill="var(--card)" stroke="var(--orange)" strokeWidth="2.5"
+          />
         ))}
-        {points.map((p) => (
-          <text key={`${p.label}-val`} x={p.x} y={p.y - 12} textAnchor="middle" fontSize="12" fontWeight="700" fill="var(--ink)">
-            {p.value}%
+        {/* 값 라벨은 커서를 올린 지점만 표시 */}
+        {hovered && (
+          <text x={hovered.x} y={hovered.y - 14} textAnchor="middle" fontSize="13" fontWeight="700" fill="var(--ink)">
+            {hovered.value}%
           </text>
-        ))}
-        {points.map((p) => (
-          <text key={`${p.label}-lab`} x={p.x} y={height + 14} textAnchor="middle" fontSize="11" fill="var(--muted)">
+        )}
+        {points.map((p, i) => (
+          <text
+            key={`${p.label}-lab`}
+            x={p.x} y={height + 14} textAnchor="middle" fontSize="11"
+            fontWeight={hoverIndex === i ? 700 : 400}
+            fill={hoverIndex === i ? 'var(--ink)' : 'var(--muted)'}
+          >
             {p.label}
           </text>
+        ))}
+        {/* 호버 감지용 투명 슬롯 */}
+        {points.map((p, i) => (
+          <rect
+            key={`${p.label}-hit`}
+            x={p.x - slotWidth / 2} y={0}
+            width={slotWidth} height={height + 22}
+            fill="transparent"
+            onMouseEnter={() => setHoverIndex(i)}
+          />
         ))}
       </svg>
     </div>
@@ -607,8 +663,8 @@ export default function AdminPage() {
   const [inquirySearch, setInquirySearch] = useState('');
   const [siteSearch, setSiteSearch] = useState('');
   const [logSearch, setLogSearch] = useState('');
-  const [generalInquiries, setGeneralInquiries] = useState(MOCK_GENERAL_INQUIRIES);
-  const [businessInquiries, setBusinessInquiries] = useState(MOCK_BUSINESS_INQUIRIES);
+  const [generalInquiries, setGeneralInquiries] = useState([]);
+  const [businessInquiries, setBusinessInquiries] = useState([]);
   const [personalUsers, setPersonalUsers] = useState(MOCK_PERSONAL_USERS);
   const [businessUsers, setBusinessUsers] = useState(MOCK_BUSINESS_USERS);
   const [sites, setSites] = useState(MOCK_SITES);
@@ -620,6 +676,28 @@ export default function AdminPage() {
   const activeUsers = activeUserType === 'personal' ? personalUsers : businessUsers;
   const activeInquiries = activeInquiryType === 'general' ? generalInquiries : businessInquiries;
 
+  useEffect(() => {
+    let ignore = false;
+
+    (async () => {
+      try {
+        const { data } = await api.get('/admin/inquiries');
+        const inquiries = data.inquiries || [];
+        if (ignore) return;
+        setGeneralInquiries(inquiries.filter((row) => row.inquiry_type !== 'enterprise').map(mapInquiry));
+        setBusinessInquiries(inquiries.filter((row) => row.inquiry_type === 'enterprise').map(mapInquiry));
+      } catch {
+        if (!ignore) {
+          setGeneralInquiries([]);
+          setBusinessInquiries([]);
+        }
+      }
+    })();
+
+    return () => { ignore = true; };
+  }, []);
+
+  
   const filteredUsers = useMemo(() => {
     const query = userSearch.trim().toLowerCase();
     if (!query) return activeUsers;

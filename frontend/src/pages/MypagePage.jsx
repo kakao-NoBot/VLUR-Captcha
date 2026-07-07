@@ -156,7 +156,7 @@ function ChangePwModal({ onClose }) {
           {matchError && (
             <p style={{ margin: '-6px 0 0', fontSize: 12, color: '#c0392b' }}>{matchError}</p>
           )}
-          <p style={{ margin: 0, fontSize: 12, color: 'var(--muted)' }}>영문·숫자·특수문자 포함 8자 이상</p>
+          <p style={{ margin: 0, fontSize: 12, color: 'var(--muted)' }}>8~16자 · 영문 대소문자 · 숫자 · 특수문자 포함</p>
           <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
             <button className="pg-btn" style={{ flex: 1, padding: 13 }} onClick={onClose}>취소</button>
             <button
@@ -186,9 +186,67 @@ function EditInfoModal({ onClose, user, onUpdated }) {
   const [saving, setSaving] = useState(false);
   const [apiError, setApiError] = useState('');
 
+  // 이메일 변경 시 인증 (회원가입과 동일한 send-code/verify-code 재사용)
+  const EMAIL_CODE_TTL = 180;
+  const [emailSent, setEmailSent] = useState(false);
+  const [emailCode, setEmailCode] = useState('');
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [emailTimeLeft, setEmailTimeLeft] = useState(EMAIL_CODE_TTL);
+  const [emailSending, setEmailSending] = useState(false);
+  const [verifyError, setVerifyError] = useState('');
+
   const errorStyle = { border: '1.5px solid #c0392b' };
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(finalEmail);
-  const isValid = name.trim() && isEmailValid && phone.trim();
+  const originalEmail = (user?.email || '').trim().toLowerCase();
+  const emailChanged = finalEmail.trim().toLowerCase() !== originalEmail;
+  const isValid = name.trim() && isEmailValid && phone.trim() && (!emailChanged || emailVerified);
+
+  // 이메일 입력이 바뀌면 인증 상태 초기화
+  useEffect(() => {
+    setEmailSent(false);
+    setEmailVerified(false);
+    setEmailCode('');
+    setEmailTimeLeft(EMAIL_CODE_TTL);
+    setVerifyError('');
+    setApiError('');
+  }, [finalEmail]);
+
+  // 인증번호 유효시간 카운트다운
+  useEffect(() => {
+    if (!emailSent || emailVerified || emailTimeLeft <= 0) return undefined;
+    const t = setInterval(() => setEmailTimeLeft((s) => (s > 0 ? s - 1 : 0)), 1000);
+    return () => clearInterval(t);
+  }, [emailSent, emailVerified, emailTimeLeft <= 0]);
+
+  const handleSendCode = async () => {
+    if (!isEmailValid || emailSending) return;
+    setEmailSending(true);
+    setVerifyError('');
+    try {
+      const { data } = await api.post('/auth/email/send-code', { email: finalEmail.trim() });
+      setEmailSent(true);
+      setEmailCode('');
+      setEmailTimeLeft(data.ttl || EMAIL_CODE_TTL);
+    } catch (err) {
+      setVerifyError(err.response?.data?.detail || '인증 메일 발송에 실패했습니다.');
+    } finally {
+      setEmailSending(false);
+    }
+  };
+
+  const handleVerifyCode = async () => {
+    if (!/^\d{6}$/.test(emailCode.trim())) {
+      setVerifyError('인증번호 6자리 숫자를 입력해주세요.');
+      return;
+    }
+    setVerifyError('');
+    try {
+      await api.post('/auth/email/verify-code', { email: finalEmail.trim(), code: emailCode.trim() });
+      setEmailVerified(true);
+    } catch (err) {
+      setVerifyError(err.response?.data?.detail || '인증에 실패했습니다.');
+    }
+  };
 
   const handleSave = async () => {
     if (!isValid) { setAttempted(true); return; }
@@ -226,6 +284,49 @@ function EditInfoModal({ onClose, user, onUpdated }) {
             error={attempted && !isEmailValid}
             initialEmail={user?.email || ''}
           />
+
+          {/* 이메일이 원래 값과 달라지면 인증 절차 노출 */}
+          {emailChanged && isEmailValid && !emailVerified && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  className="pg-input"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder={!emailSent ? '변경한 이메일 인증이 필요합니다' : emailTimeLeft > 0 ? `인증번호 6자리 (${Math.floor(emailTimeLeft / 60)}:${String(emailTimeLeft % 60).padStart(2, '0')})` : '인증번호가 만료되었습니다'}
+                  value={emailCode}
+                  disabled={!emailSent || emailTimeLeft <= 0}
+                  onChange={e => { setEmailCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6)); setVerifyError(''); }}
+                  style={{ flex: 1, padding: '11px 12px', fontSize: 14 }}
+                />
+                {emailSent && (
+                  <button
+                    type="button"
+                    className="pg-btn primary"
+                    style={{ padding: '0 14px', fontSize: 13, whiteSpace: 'nowrap' }}
+                    onClick={handleVerifyCode}
+                  >확인</button>
+                )}
+                <button
+                  type="button"
+                  className="pg-btn"
+                  style={{ padding: '0 14px', fontSize: 13, whiteSpace: 'nowrap', opacity: emailSending ? 0.5 : 1 }}
+                  onClick={handleSendCode}
+                  disabled={emailSending}
+                >{emailSending ? '발송 중...' : emailSent ? '재발송' : '인증번호 전송'}</button>
+              </div>
+              {verifyError && (
+                <p style={{ margin: 0, fontSize: 12.5, color: '#c0392b' }}>{verifyError}</p>
+              )}
+              {attempted && !emailVerified && !verifyError && (
+                <p style={{ margin: 0, fontSize: 12.5, color: '#c0392b' }}>변경한 이메일의 인증을 완료해주세요.</p>
+              )}
+            </div>
+          )}
+          {emailChanged && emailVerified && (
+            <p style={{ margin: 0, fontSize: 12.5, color: 'var(--orange)', fontWeight: 600 }}>이메일 인증이 완료되었습니다.</p>
+          )}
 
           <ClearableInput
             type="tel"

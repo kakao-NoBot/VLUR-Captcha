@@ -437,14 +437,24 @@ class UpdateProfileRequest(BaseModel):
 
 @router.put("/me")
 def update_me(body: UpdateProfileRequest, current_user: dict = Depends(get_current_user)):
-    """내 정보 수정 (이름·이메일·전화번호)"""
+    """내 정보 수정 (이름·이메일·전화번호) — 이메일 변경 시 인증 필요"""
     user_id = current_user["sub"]
+    new_email = body.email.strip().lower()
     conn = get_conn()
     with conn:
         with conn.cursor() as cur:
+            cur.execute("SELECT email FROM users WHERE user_id = %s", (user_id,))
+            me = cur.fetchone()
+            email_changed = me and (me["email"] or "").strip().lower() != new_email
+
+            if email_changed and not email_verify.is_verified(new_email):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="변경할 이메일의 인증이 필요합니다.",
+                )
             cur.execute(
                 "SELECT 1 FROM users WHERE email = %s AND user_id <> %s",
-                (body.email, user_id),
+                (new_email, user_id),
             )
             if cur.fetchone():
                 raise HTTPException(
@@ -453,7 +463,7 @@ def update_me(body: UpdateProfileRequest, current_user: dict = Depends(get_curre
                 )
             cur.execute(
                 "UPDATE users SET user_name = %s, email = %s, phone = %s WHERE user_id = %s",
-                (body.user_name, body.email, body.phone, user_id),
+                (body.user_name, new_email, body.phone, user_id),
             )
             cur.execute(
                 "SELECT user_id, user_name, email, phone, role, created_at "
@@ -462,6 +472,9 @@ def update_me(body: UpdateProfileRequest, current_user: dict = Depends(get_curre
             )
             updated = cur.fetchone()
         conn.commit()
+
+    if email_changed:
+        email_verify.consume_verified(new_email)
     return {"user": updated}
 
 
