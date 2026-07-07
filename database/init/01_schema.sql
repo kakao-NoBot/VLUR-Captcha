@@ -85,7 +85,7 @@ CREATE TABLE IF NOT EXISTS api_keys (
     api_key_hash CHAR(64)        NOT NULL,
     user_id      VARCHAR(50)     NOT NULL,
     plan_id      BIGINT UNSIGNED NULL COMMENT '키 발급 시점의 요금제 스냅샷 — users.plan_id와 별개로 관리',
-    key_name     VARCHAR(120)    NULL,
+    key_name     VARCHAR(120)    NULL COMMENT '관리 화면용 마스킹 키 표시값 — API Key 원문 저장 금지',
     created_at   DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
     expired_at   DATETIME        NULL,
     is_active    BOOLEAN         NOT NULL DEFAULT TRUE,
