@@ -14,8 +14,8 @@ router = APIRouter(tags=["api-keys"])
 
 API_KEY_PREFIX = "sk-aicap_prod_"
 
-# 관리자가 부여할 수 있는 상태 값. 'deleted'(탈퇴)는 사용자 본인 탈퇴 절차 전용이라 제외한다.
-ADMIN_ASSIGNABLE_USER_STATUSES = ("active", "inactive")
+# 관리자가 API Key에 부여할 수 있는 상태 값.
+ADMIN_ASSIGNABLE_KEY_STATUSES = ("active", "inactive")
 
 
 def _generate_api_key() -> str:
@@ -131,11 +131,11 @@ def get_current_api_key(current_user: dict = Depends(get_current_user)):
             if not user:
                 raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
 
+            # is_active 컬럼을 그대로 신뢰 소스로 사용한다 (관리자가 직접 제어하는 값).
             cur.execute(
                 """SELECT api_key_id, key_name, created_at, expired_at, is_active
                    FROM api_keys
-                   WHERE user_id = %s AND is_active = TRUE
-                     AND (expired_at IS NULL OR expired_at > NOW())
+                   WHERE user_id = %s
                    ORDER BY api_key_id DESC
                    LIMIT 1""",
                 (current_user["sub"],),
@@ -176,7 +176,8 @@ def list_users_with_api_keys(admin: dict = Depends(get_current_admin)):
                           u.user_status, u.created_at, pl.plan_name, pl.api_limit,
                           COALESCE(s.site_count, 0) AS site_count,
                           ak.api_key_id, ak.key_name AS masked_api_key,
-                          ak.created_at AS api_key_created_at
+                          ak.created_at AS api_key_created_at,
+                          ak.is_active AS api_key_active
                    FROM users u
                    LEFT JOIN plans pl ON pl.plan_id = u.plan_id
                    LEFT JOIN (
@@ -189,8 +190,6 @@ def list_users_with_api_keys(admin: dict = Depends(get_current_admin)):
                        SELECT inner_ak.api_key_id
                        FROM api_keys inner_ak
                        WHERE inner_ak.user_id = u.user_id
-                         AND inner_ak.is_active = TRUE
-                         AND (inner_ak.expired_at IS NULL OR inner_ak.expired_at > NOW())
                        ORDER BY inner_ak.api_key_id DESC
                        LIMIT 1
                    )
@@ -202,59 +201,76 @@ def list_users_with_api_keys(admin: dict = Depends(get_current_admin)):
     return {"users": users}
 
 
-class UpdateUserStatusRequest(BaseModel):
+class UpdateApiKeyStatusRequest(BaseModel):
     status: str  # 'active' | 'inactive'
 
 
-@router.patch("/admin/users/{user_id}/status")
-def update_user_status(
+@router.patch("/admin/users/{user_id}/api-key-status")
+def update_user_api_key_status(
     user_id: str,
-    body: UpdateUserStatusRequest,
+    body: UpdateApiKeyStatusRequest,
     admin: dict = Depends(get_current_admin),
 ):
-    """관리자 전용 — 사용자 계정을 활성/비활성으로 전환한다.
-    탈퇴(deleted) 계정이나 관리자(role='admin') 계정은 대상에서 제외한다."""
-    if body.status not in ADMIN_ASSIGNABLE_USER_STATUSES:
+    """관리자 전용 — 사용자의 API Key만 활성/비활성으로 전환한다.
+    users.user_status나 로그인 가능 여부에는 전혀 영향을 주지 않는다."""
+    if body.status not in ADMIN_ASSIGNABLE_KEY_STATUSES:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="status는 'active' 또는 'inactive'만 가능합니다.",
         )
 
+    make_active = body.status == "active"
+
     conn = get_conn()
     with conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT role, user_status FROM users WHERE user_id = %s FOR UPDATE",
+                "SELECT role FROM users WHERE user_id = %s",
                 (user_id,),
             )
             target = cur.fetchone()
-
             if not target:
                 raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
             if target["role"] != "user":
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail="관리자 계정의 상태는 변경할 수 없습니다.",
-                )
-            if target["user_status"] == "deleted":
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail="이미 탈퇴한 계정입니다.",
+                    detail="관리자 계정의 API Key는 제어할 수 없습니다.",
                 )
 
-            cur.execute(
-                "UPDATE users SET user_status = %s WHERE user_id = %s",
-                (body.status, user_id),
-            )
-
-            # 계정을 비활성화하면 해당 사용자의 활성 API Key도 즉시 무효화한다.
-            if body.status == "inactive":
+            if not make_active:
+                # 현재 활성 키를 비활성화 + 만료 처리
                 cur.execute(
                     """UPDATE api_keys
                        SET is_active = FALSE, expired_at = NOW()
                        WHERE user_id = %s AND is_active = TRUE""",
                     (user_id,),
                 )
+                if cur.rowcount == 0:
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail="이미 비활성 상태이거나 발급된 API Key가 없습니다.",
+                    )
+            else:
+                # 가장 최근에 비활성화된 키를 다시 활성화 (원문 키는 재발급 없이는 복구되지 않음)
+                cur.execute(
+                    """SELECT api_key_id FROM api_keys
+                       WHERE user_id = %s AND is_active = FALSE
+                       ORDER BY api_key_id DESC
+                       LIMIT 1""",
+                    (user_id,),
+                )
+                row = cur.fetchone()
+                if not row:
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail="다시 활성화할 API Key가 없습니다.",
+                    )
+                cur.execute(
+                    """UPDATE api_keys
+                       SET is_active = TRUE, expired_at = NULL
+                       WHERE api_key_id = %s""",
+                    (row["api_key_id"],),
+                )
         conn.commit()
 
-    return {"user_id": user_id, "user_status": body.status}
+    return {"user_id": user_id, "api_key_active": make_active}

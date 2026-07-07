@@ -24,6 +24,7 @@ const INQUIRY_TYPE_TABS = [
 
 const INQUIRY_STATUS_OPTIONS = ['접수', '검토', '답변'];
 const MANAGE_STATUS_OPTIONS = ['활성', '점검', '비활성'];
+// 사용자 관리 탭의 "상태"는 계정 로그인 가능 여부가 아니라 API Key 활성 여부를 의미한다.
 const USER_STATUS_OPTIONS = ['활성', '비활성'];
 
 const INQUIRY_STATUS_TONE = {
@@ -40,19 +41,6 @@ const DASHBOARD_STATS = [
   { label: '봇 차단률', value: '8.7%', note: 'drag trace 판별 기준' },
 ];
 
-const MOCK_PERSONAL_USERS = [
-  { name: '김민준', userId: 'minjun01', email: 'minjun@example.com', plan: 'Pro', joinedAt: '2026-06-02', status: '활성' },
-  { name: '이지아', userId: 'jia-lab', email: 'jia@demo.co.kr', plan: 'Basic', joinedAt: '2026-06-10', status: '활성' },
-  { name: '박서준', userId: 'seo-admin', email: 'seo@vlur.test', plan: 'Enterprise', joinedAt: '2026-06-18', status: '점검' },
-  { name: '최하린', userId: 'harin77', email: 'harin@example.com', plan: 'Basic', joinedAt: '2026-06-24', status: '비활성' },
-];
-
-const MOCK_BUSINESS_USERS = [
-  { company: 'VLUR Commerce', manager: '정다은', userId: 'vlur-commerce', email: 'ops@vlur-commerce.kr', plan: 'Enterprise', siteCount: 6, monthlyLimit: 500000, status: '활성' },
-  { company: 'AI Study Lab', manager: '윤태오', userId: 'study-lab', email: 'admin@study.example.io', plan: 'Pro', siteCount: 3, monthlyLimit: 100000, status: '활성' },
-  { company: 'Secure Board Inc.', manager: '한서연', userId: 'secure-board', email: 'contact@secureboard.kr', plan: 'Basic', siteCount: 1, monthlyLimit: 50000, status: '비활성' },
-];
-
 const MOCK_SITES = [
   { name: 'VLUR Demo Shop', domain: 'shop.vlur-demo.kr', owner: 'VLUR Commerce', plan: 'Enterprise', monthlyLimit: 500000, monthlyUsage: 312000, status: '활성', createdAt: '2026-06-03' },
   { name: 'AI Study Portal', domain: 'study.example.io', owner: 'AI Study Lab', plan: 'Pro', monthlyLimit: 100000, monthlyUsage: 68400, status: '활성', createdAt: '2026-06-12' },
@@ -66,13 +54,13 @@ const INQUIRY_STATUS_BACKEND_TO_LABEL = {
   spam: '접수',
 };
 
-const USER_STATUS_BACKEND_TO_LABEL = {
-  active: '활성',
-  suspended: '비활성',
-  inactive: '비활성',
+// API Key 활성 상태 <-> 뱃지 라벨 매핑 (계정 상태 user_status와는 무관)
+const KEY_ACTIVE_TO_LABEL = {
+  true: '활성',
+  false: '비활성',
 };
 
-const USER_STATUS_LABEL_TO_BACKEND = {
+const KEY_LABEL_TO_BACKEND = {
   '활성': 'active',
   '비활성': 'inactive',
 };
@@ -94,6 +82,8 @@ function SocialProviderLogo({ provider }) {
 }
 
 function mapAdminUser(row) {
+  // api_key_active: true/false(발급 후) 또는 null(발급 이력 자체가 없음) → 모두 "비활성"으로 표시
+  const keyActive = row.api_key_active === true || row.api_key_active === 1;
   const shared = {
     internalId: row.user_id,
     userId: row.user_id,
@@ -101,7 +91,7 @@ function mapAdminUser(row) {
     email: row.email,
     plan: row.plan_name || '미가입',
     joinedAt: row.created_at ? String(row.created_at).slice(0, 10) : '-',
-    status: USER_STATUS_BACKEND_TO_LABEL[row.user_status] || '비활성',
+    status: keyActive ? '활성' : '비활성',
     apiKey: row.masked_api_key || '미발급',
   };
 
@@ -859,8 +849,9 @@ export default function AdminPage() {
     setBusinessInquiries(updater);
   };
 
-  const updateUserStatus = async (type, internalId, nextStatus) => {
-    const backendStatus = USER_STATUS_LABEL_TO_BACKEND[nextStatus];
+  // 사용자 관리 탭에서 "상태"를 바꾸면 → 계정(user_status)이 아니라 그 사용자의 API Key만 켜고/끈다.
+  const updateUserApiKeyStatus = async (type, internalId, nextStatus) => {
+    const backendStatus = KEY_LABEL_TO_BACKEND[nextStatus];
     if (!backendStatus) return;
 
     const setUsers = type === 'personal' ? setPersonalUsers : setBusinessUsers;
@@ -878,13 +869,13 @@ export default function AdminPage() {
     setUsersError('');
 
     try {
-      await api.patch(`/admin/users/${internalId}/status`, { status: backendStatus });
+      await api.patch(`/admin/users/${internalId}/api-key-status`, { status: backendStatus });
     } catch (err) {
       // 실패 시 원래 상태로 롤백
       setUsers((users) => users.map((user) => (
         user.internalId === internalId ? { ...user, status: previousStatus ?? user.status } : user
       )));
-      setUsersError(err.response?.data?.detail || '사용자 상태를 변경하지 못했습니다.');
+      setUsersError(err.response?.data?.detail || 'API Key 상태를 변경하지 못했습니다.');
     }
   };
 
@@ -1175,7 +1166,7 @@ export default function AdminPage() {
                             isOpen={openStatusMenu === menuKey}
                             onToggle={() => setOpenStatusMenu(openStatusMenu === menuKey ? null : menuKey)}
                             onSelect={(option) => {
-                              updateUserStatus('personal', user.internalId, option);
+                              updateUserApiKeyStatus('personal', user.internalId, option);
                               setOpenStatusMenu(null);
                             }}
                           />
@@ -1223,7 +1214,7 @@ export default function AdminPage() {
                             isOpen={openStatusMenu === menuKey}
                             onToggle={() => setOpenStatusMenu(openStatusMenu === menuKey ? null : menuKey)}
                             onSelect={(option) => {
-                              updateUserStatus('business', user.internalId, option);
+                              updateUserApiKeyStatus('business', user.internalId, option);
                               setOpenStatusMenu(null);
                             }}
                           />
