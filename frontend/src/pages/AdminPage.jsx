@@ -808,10 +808,6 @@ export default function AdminPage() {
         .admin-table td {
           text-align: center;
         }
-        .admin-table th:first-child,
-        .admin-table td:first-child {
-          text-align: left;
-        }
         .admin-readable-table {
           table-layout: auto;
           width: max-content;
@@ -871,16 +867,14 @@ export default function AdminPage() {
           background: var(--paper) !important;
         }
         [data-theme="dark"] .admin-segmented {
-          background: var(--paper) !important;
-          border-color: var(--line) !important;
+          border-bottom-color: var(--line) !important;
         }
         [data-theme="dark"] .admin-segmented button {
           color: var(--ink-soft) !important;
-          background: transparent !important;
         }
         [data-theme="dark"] .admin-segmented button.active {
-          background: var(--card) !important;
           color: var(--orange) !important;
+          border-bottom-color: var(--orange) !important;
         }
         [data-theme="dark"] .admin-progress,
         [data-theme="dark"] .usage-bar-wrap {
