@@ -1,17 +1,36 @@
 import React, { useState } from 'react';
+import api from '../api/axios';
 
 export default function ApplyDonePage({ openPage, closePage }) {
   const [integTab, setIntegTab] = useState('fe');
   const [secretKey, setSecretKey] = useState('');
   const [secretIssued, setSecretIssued] = useState(false);
   const [step2Done, setStep2Done] = useState(false);
+  const [issuing, setIssuing] = useState(false);
+  const [issueError, setIssueError] = useState('');
 
-  const issueSecret = () => {
-    if (secretIssued) { alert('Secret Key는 1회만 표시됩니다. 이미 발급되었습니다.'); return; }
-    const key = 'sk_live_' + Math.random().toString(36).slice(2, 22);
-    setSecretKey(key);
-    setSecretIssued(true);
-    setStep2Done(true);
+  const issueSecret = async () => {
+    if (secretIssued) {
+      setIssueError('Secret Key는 1회만 표시됩니다. 이미 발급되었습니다.');
+      return;
+    }
+    if (issuing) return;
+    setIssuing(true);
+    setIssueError('');
+    try {
+      const { data } = await api.post('/api-keys');
+      setSecretKey(data.plain_key);
+      setSecretIssued(true);
+      setStep2Done(true);
+    } catch (err) {
+      if (err.response?.status === 409) {
+        setIssueError('이미 사용 중인 API Key가 있습니다. 마이페이지 > API Key 관리에서 확인하세요.');
+      } else {
+        setIssueError(err.response?.data?.detail || 'API Key 발급에 실패했습니다.');
+      }
+    } finally {
+      setIssuing(false);
+    }
   };
 
   const [copyLabel, setCopyLabel] = useState('복사');
@@ -54,12 +73,17 @@ export default function ApplyDonePage({ openPage, closePage }) {
             <h3 className="pg-h3" style={{ marginBottom: 10 }}>Secret Key 발급</h3>
             <p style={{ fontSize: 14, color: 'var(--ink-soft)', marginBottom: 4 }}>Secret Key는 백엔드에서 CAPTCHA 응답 토큰을 검증할 때 사용하는 비공개 키입니다.</p>
             <p style={{ fontSize: 13, color: '#c0392b', marginBottom: 12 }}>⚠ 발급 후에는 다시 확인할 수 없으니 안전한 곳에 보관하세요.</p>
-            <button className="pg-btn primary" style={{ fontSize: 13, padding: '9px 18px', marginBottom: 12 }} onClick={issueSecret}>Secret Key 발급받기</button>
+            <button className="pg-btn primary" style={{ fontSize: 13, padding: '9px 18px', marginBottom: 12 }} onClick={issueSecret} disabled={issuing}>
+              {issuing ? '발급 중...' : 'Secret Key 발급받기'}
+            </button>
             <div className="key-box">
               <span style={{ color: secretKey ? 'inherit' : 'var(--muted)', fontSize: 13 }}>
                 {secretKey ? `secret_key: ${secretKey}` : 'secret_key: (발급 버튼 클릭 시 1회 표시)'}
               </span>
             </div>
+            {issueError && (
+              <p style={{ margin: '10px 0 0', fontSize: 12.5, color: '#c0392b' }}>{issueError}</p>
+            )}
           </div>
         </div>
 

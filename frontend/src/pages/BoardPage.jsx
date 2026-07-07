@@ -40,7 +40,7 @@ function BoardDetail({ post, previousPost, nextPost, onBack, onSelectPost, onEdi
           <div>
             <span className="board-detail-author"><b>VLUR CAPTCHA 운영팀</b></span>
             <i aria-hidden="true" />
-            <span className="board-detail-views">조회 : {120 + post.id * 17}</span>
+            <span className="board-detail-views">조회 : {post.viewCount ?? 0}</span>
             <span className="board-detail-date">
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <circle cx="12" cy="12" r="9" />
@@ -390,6 +390,7 @@ export default function BoardPage({ user = null }) {
         type: n.board_type,
         title: n.title,
         content: n.content,
+        viewCount: n.view_count ?? 0,
         badge: n.board_type === 'notice' ? '공지' : n.board_type === 'general' ? '일반' : null,
         date: String(n.created_at).slice(0, 10),
       })));
@@ -486,6 +487,17 @@ export default function BoardPage({ user = null }) {
     }
   };
 
+  // 상세보기 열기: 조회수 +1 후 화면·목록에 반영
+  const openPost = (post) => {
+    setSelectedPost(post);
+    api.post(`/boards/${post.id}/view`)
+      .then(({ data }) => {
+        setPosts((prev) => prev.map((p) => (p.id === post.id ? { ...p, viewCount: data.view_count } : p)));
+        setSelectedPost((prev) => (prev && prev.id === post.id ? { ...prev, viewCount: data.view_count } : prev));
+      })
+      .catch(() => { /* 조회수 반영 실패는 열람을 막지 않음 */ });
+  };
+
   const openDeleteModal = (post) => {
     setDeleteError('');
     setDeleteTarget(post);
@@ -525,7 +537,7 @@ export default function BoardPage({ user = null }) {
                   previousPost={previousPost}
                   nextPost={nextPost}
                   onBack={() => setSelectedPost(null)}
-                  onSelectPost={setSelectedPost}
+                  onSelectPost={openPost}
                   onEdit={() => { setEditingPost(selectedPost); setIsWriting(true); }}
                   onDelete={() => openDeleteModal(selectedPost)}
                   canEdit={isAdmin}
@@ -581,11 +593,11 @@ export default function BoardPage({ user = null }) {
                   role="link"
                   tabIndex={0}
                   aria-label={`${n.title} 상세 보기`}
-                  onClick={() => setSelectedPost(n)}
+                  onClick={() => openPost(n)}
                   onKeyDown={(event) => {
                     if (event.key === 'Enter' || event.key === ' ') {
                       event.preventDefault();
-                      setSelectedPost(n);
+                      openPost(n);
                     }
                   }}
                 >
@@ -680,11 +692,11 @@ export default function BoardPage({ user = null }) {
                   role="link"
                   tabIndex={0}
                   aria-label={`${r.title} 상세 보기`}
-                  onClick={() => setSelectedPost(r)}
+                  onClick={() => openPost(r)}
                   onKeyDown={(event) => {
                     if (event.key === 'Enter' || event.key === ' ') {
                       event.preventDefault();
-                      setSelectedPost(r);
+                      openPost(r);
                     }
                   }}
                 >

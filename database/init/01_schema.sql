@@ -140,6 +140,7 @@ CREATE TABLE IF NOT EXISTS boards (
     board_id   BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     user_id    VARCHAR(50)     NULL,
     board_type ENUM('notice','qna','inquiry','general','faq','research') NOT NULL,
+    view_count INT UNSIGNED    NOT NULL DEFAULT 0,
     company    VARCHAR(255)    NULL,
     title      VARCHAR(255)    NOT NULL,
     content    TEXT            NOT NULL,

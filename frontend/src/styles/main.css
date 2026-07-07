@@ -2576,6 +2576,8 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
 .pg-table td { padding: 14px 14px; border-bottom: 1px solid var(--line-soft); color: var(--ink-soft); }
 .pg-table tr:hover td { background: var(--paper); }
 .pg-table .num { font-family: var(--disp); color: var(--muted); }
+/* 표 본문 강조: 데이터 텍스트를 브랜드 주황으로 (관리자 사이트 관리, 마이페이지 사용량 조회) */
+.table-ink-orange td { color: var(--orange); }
 .badge-notice { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 6px; background: var(--orange); color: #fff; font-weight: 700; margin-right: 6px; }
 /* 검증 3단계 번호(.step::before)와 같은 룩: 주황 테두리 + 바탕색이 그대로 비침 (다크모드에선 남색) */
 .badge-general { background: transparent; color: var(--orange); border: 1px solid var(--orange); padding: 1px 7px; }
@@ -3075,6 +3077,15 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
   --bad:        #F2705C;
   --shadow-sm:  0 1px 0 rgba(0,0,0,.4),  0 8px 28px -16px rgba(0,0,0,.85);
   --shadow-md:  0 2px 0 rgba(0,0,0,.3),  0 30px 64px -34px rgba(0,0,0,.95);
+
+  /* 관리자 상태 배지(성공/의심/실패 등): 배경은 네이비, 글자는 밝은 톤,
+     글씨 색 테두리(inset ring) + 은은한 글로우. 라이트모드에서는 이 변수들이 없어 기존 스타일 유지 */
+  --status-badge-bg: var(--peach);
+  --status-badge-ink-success: #46C289;
+  --status-badge-ink-warning: #F6AD3F;
+  --status-badge-ink-danger:  #F2705C;
+  --status-badge-ink-neutral: #A8B1C2;
+  --status-badge-fx: 0 0 6px color-mix(in srgb, currentColor 35%, transparent), inset 0 0 0 1px currentColor;
 }
 
 /* ── header ── */

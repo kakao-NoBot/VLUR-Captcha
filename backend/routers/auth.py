@@ -73,7 +73,7 @@ def _find_or_create_social_user(
     with conn:
         with conn.cursor() as cur:
             cur.execute(
-                """SELECT u.user_id, u.user_name, u.email, u.phone, u.role, u.user_status
+                """SELECT u.user_id, u.user_name, u.email, u.phone, u.role, u.user_status, u.created_at
                    FROM social_accounts s
                    JOIN users u ON u.user_id = s.user_id
                    WHERE s.provider = %s AND s.provider_user_id = %s""",
@@ -83,7 +83,7 @@ def _find_or_create_social_user(
 
             if not user:
                 cur.execute(
-                    """SELECT user_id, user_name, email, phone, role, user_status
+                    """SELECT user_id, user_name, email, phone, role, user_status, created_at
                        FROM users WHERE email = %s""",
                     (email,),
                 )
@@ -98,6 +98,11 @@ def _find_or_create_social_user(
                            VALUES (%s, %s, NULL, %s, NULL, NULL, NULL)""",
                         (user_id, user_name, email),
                     )
+                    cur.execute(
+                        "SELECT created_at FROM users WHERE user_id = %s",
+                        (user_id,),
+                    )
+                    created = cur.fetchone()
                     user = {
                         "user_id": user_id,
                         "user_name": user_name,
@@ -105,6 +110,7 @@ def _find_or_create_social_user(
                         "phone": None,
                         "role": "user",
                         "user_status": "active",
+                        "created_at": created["created_at"] if created else None,
                     }
 
                 cur.execute(
@@ -137,6 +143,7 @@ def _social_login_response(user: dict):
             "email": user["email"],
             "phone": user["phone"],
             "role": user["role"],
+            "created_at": user.get("created_at"),
         },
     }
 
@@ -417,7 +424,8 @@ def me(current_user: dict = Depends(get_current_user)):
         with conn.cursor() as cur:
             cur.execute(
                 """SELECT u.user_id, u.user_name, u.email, u.phone, u.role,
-                          u.created_at, u.subscription_date, pl.plan_name
+                          u.created_at, u.subscription_date, pl.plan_name,
+                          (u.password_hash IS NOT NULL AND u.password_hash <> '') AS has_password
                    FROM users u
                    LEFT JOIN plans pl ON pl.plan_id = u.plan_id
                    WHERE u.user_id = %s""",
