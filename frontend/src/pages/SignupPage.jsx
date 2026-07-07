@@ -62,6 +62,10 @@ export default function SignupPage({ openPage, onLogin }) {
   const isIdFormatValid = /^[a-zA-Z0-9]+$/.test(loginId.trim());
   const isIdAvailable = idCheck === 'available' && checkedId === loginId.trim();
   const isPasswordValid = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_\-+=\[\]{};':"\\|,.<>/?`~]).{8,16}$/.test(password);
+  const pwHasLength = password.length >= 8 && password.length <= 16;
+  const pwHasCase = /(?=.*[a-z])(?=.*[A-Z])/.test(password);
+  const pwHasDigit = /\d/.test(password);
+  const pwHasSpecial = /[!@#$%^&*()_\-+=\[\]{};':"\\|,.<>/?`~]/.test(password);
   const isPasswordMatch = password === passwordConfirm;
   const isEmailCodeValid = /^\d{6}$/.test(emailCode.trim()) && emailTimeLeft > 0;
 
@@ -283,8 +287,16 @@ export default function SignupPage({ openPage, onLogin }) {
             }}
             style={showPasswordError ? errorStyle : {}}
           />
-          <p style={{ margin: 0, fontSize: 12, color: showPasswordError ? '#c0392b' : 'var(--muted)' }}>
-            8~16자 · 영문 대소문자 · 숫자 · 특수문자 포함
+          <p style={{ margin: 0, fontSize: 12, color: 'var(--muted)' }}>
+            <span style={{ color: pwHasLength ? 'var(--orange)' : 'inherit', fontWeight: pwHasLength ? 600 : 400 }}>8~16자</span>
+            {' · '}
+            <span style={{ color: pwHasCase ? 'var(--orange)' : 'inherit', fontWeight: pwHasCase ? 600 : 400 }}>영문 대소문자</span>
+            {' · '}
+            <span style={{ color: pwHasDigit ? 'var(--orange)' : 'inherit', fontWeight: pwHasDigit ? 600 : 400 }}>숫자</span>
+            {' · '}
+            <span style={{ color: pwHasSpecial ? 'var(--orange)' : 'inherit', fontWeight: pwHasSpecial ? 600 : 400 }}>특수문자</span>
+            {' '}
+            <span style={{ color: isPasswordValid ? 'var(--orange)' : 'inherit', fontWeight: isPasswordValid ? 600 : 400 }}>포함</span>
           </p>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
