@@ -32,7 +32,7 @@ def list_notices():
     with conn:
         with conn.cursor() as cur:
             cur.execute(
-                f"""SELECT board_id, board_type, title, content, created_at
+                f"""SELECT board_id, board_type, title, content, view_count, created_at
                    FROM boards
                    WHERE board_type IN ({','.join(['%s'] * len(BOARD_TYPES))})
                    ORDER BY board_id DESC""",
@@ -40,6 +40,28 @@ def list_notices():
             )
             rows = cur.fetchall()
     return {"notices": rows}
+
+
+@router.post("/{board_id}/view")
+def increase_view_count(board_id: int):
+    """상세보기 진입 시 조회수 +1 (누구나 호출 가능)"""
+    conn = get_conn()
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"""UPDATE boards SET view_count = view_count + 1
+                   WHERE board_id = %s AND board_type IN ({','.join(['%s'] * len(BOARD_TYPES))})""",
+                (board_id, *BOARD_TYPES),
+            )
+            if cur.rowcount == 0:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="해당 게시글을 찾을 수 없습니다.",
+                )
+            cur.execute("SELECT view_count FROM boards WHERE board_id = %s", (board_id,))
+            row = cur.fetchone()
+        conn.commit()
+    return {"view_count": row["view_count"] if row else 0}
 
 
 @router.post("", status_code=201)

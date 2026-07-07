@@ -367,7 +367,9 @@ function InfoTab({ user, onUserUpdate, profile }) {
     caretColor: 'transparent',
   };
   const preventFocus = (e) => e.target.blur();
-  const joinDate = user?.created_at ? String(user.created_at).slice(0, 10) : '-';
+  // 소셜 로그인 응답에는 created_at이 없을 수 있어 서버 프로필(/auth/me)을 우선 사용
+  const joinDateSource = profile?.created_at || user?.created_at;
+  const joinDate = joinDateSource ? String(joinDateSource).slice(0, 10) : '-';
   const planLabel = profile?.plan_name || '-';
 
   return (
@@ -419,9 +421,17 @@ function InfoTab({ user, onUserUpdate, profile }) {
           />
         </div>
         <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
-          <button className="pg-btn" onClick={() => setModal('pw')}>비밀번호 변경</button>
+          {/* 간편(소셜) 로그인 계정은 우리 서비스에 비밀번호가 없으므로 변경 메뉴를 숨김 */}
+          {(!profile || Boolean(profile.has_password)) && (
+            <button className="pg-btn" onClick={() => setModal('pw')}>비밀번호 변경</button>
+          )}
           <button className="pg-btn" onClick={() => setModal('edit')}>정보 수정</button>
         </div>
+        {profile && !profile.has_password && (
+          <p style={{ margin: '10px 0 0', fontSize: 12.5, color: 'var(--muted)' }}>
+            간편 로그인으로 가입한 계정은 비밀번호를 소셜 플랫폼에서 관리합니다.
+          </p>
+        )}
       </div>
 
       {modal === 'pw'   && <ChangePwModal onClose={() => setModal(null)} />}

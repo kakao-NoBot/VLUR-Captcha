@@ -202,7 +202,11 @@ function StatusBadge({ children, tone = 'neutral', style }) {
       style={{
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         minWidth: 46, width: 'fit-content', padding: '4px 10px', borderRadius: 999,
-        fontSize: 12, fontWeight: 700, color: s.color, background: s.background,
+        fontSize: 12, fontWeight: 700,
+        // 다크모드에서만 CSS 변수가 정의되어 네이비 배경·글씨색 테두리·글로우 적용 (라이트는 기존 그대로)
+        color: `var(--status-badge-ink-${tone}, ${s.color})`,
+        background: `var(--status-badge-bg, ${s.background})`,
+        boxShadow: 'var(--status-badge-fx, none)',
         whiteSpace: 'nowrap',
         '--status-glow': s.glow,
         '--status-text-dark': s.textDark,
@@ -246,8 +250,12 @@ function StatusDropdown({ status, options, isOpen, onToggle, onSelect, resolveTo
         style={{
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
           minWidth, padding: '4px 10px', borderRadius: 999,
+          // 다크모드에서만 StatusBadge와 동일한 룩 (네이비 배경·테두리·글로우), 라이트는 기존 그대로
           border: isOpen ? `1px solid ${s.dot}` : '1px solid transparent',
-          fontSize: 12, fontWeight: 700, color: s.color, background: s.background,
+          fontSize: 12, fontWeight: 700,
+          color: `var(--status-badge-ink-${tone}, ${s.color})`,
+          background: `var(--status-badge-bg, ${s.background})`,
+          boxShadow: 'var(--status-badge-fx, none)',
           cursor: 'pointer', whiteSpace: 'nowrap',
           '--status-glow': s.glow,
           '--status-text-dark': s.textDark,
