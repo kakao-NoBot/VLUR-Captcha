@@ -1327,7 +1327,7 @@ function BillingTab({ closePage, profile }) {
                 {cancelled
                   ? '해지 신청이 접수되었습니다.'
                   : latestPayment
-                    ? <>최근 결제일: <strong>{latestPayment.date}</strong> · <PayBadge provider={latestPayment.provider} fallback={latestPayment.method} /></>
+                    ? <>최근 결제일: <strong>{latestPayment.date}</strong> <PayBadge provider={latestPayment.provider} fallback={latestPayment.method} /></>
                     : '결제 내역을 확인하는 중입니다.'
                 }
               </div>

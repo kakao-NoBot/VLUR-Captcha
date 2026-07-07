@@ -944,12 +944,9 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
   background: var(--card);
 }
 .admin-stat-card span {
-  display: flex;
-  align-items: flex-start;
-  min-height: 32px;
   color: var(--ink-soft);
   font-size: 11.4px;
-  font-weight: 800;
+  /* font-weight: 800;  ← 삭제 */
   line-height: 1.35;
   letter-spacing: -.02em;
   white-space: nowrap;
@@ -1022,7 +1019,6 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
 .admin-card-head span {
   color: var(--muted);
   font-size: 12px;
-  font-weight: 800;
   white-space: nowrap;
 }
 .admin-compact-log-list,
@@ -1045,12 +1041,12 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
 .admin-compact-log-row span {
   color: var(--muted);
   font-size: 12px;
-  font-weight: 800;
 }
 .admin-compact-log-row b {
   overflow: hidden;
   color: var(--ink-soft);
   font-size: 13px;
+  font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1072,6 +1068,7 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
   color: var(--ink);
   font-family: var(--disp);
   font-size: 15px;
+  font-weight: 600;
 }
 .admin-plan-usage-row span {
   color: var(--muted);
@@ -1092,6 +1089,7 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
 .admin-usage-meter-text b {
   color: var(--orange-2);
   font-size: 12px;
+  font-weight: 500;
 }
 .admin-progress {
   width: 100%;
