@@ -50,9 +50,8 @@ def _issue_api_key(user_id: str, replace: bool) -> dict:
     conn = get_conn()
     with conn:
         with conn.cursor() as cur:
-            # 사용자 행을 잠가 동일 사용자의 동시 발급/재발급을 직렬화한다.
             cur.execute(
-                """SELECT u.plan_id, pl.plan_name
+                """SELECT u.plan_id, pl.plan_name, u.api_key_suspended
                    FROM users u
                    LEFT JOIN plans pl ON pl.plan_id = u.plan_id
                    WHERE u.user_id = %s AND u.user_status = 'active'
@@ -62,6 +61,14 @@ def _issue_api_key(user_id: str, replace: bool) -> dict:
             user = cur.fetchone()
             if not user:
                 raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
+
+            # 관리자가 API Key 사용을 제재한 계정은 재발급으로도 풀 수 없다.
+            if user["api_key_suspended"]:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="관리자에 의해 API Key 사용이 제한된 계정입니다.",
+                )
+
             if not user["plan_id"]:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
@@ -211,8 +218,6 @@ def update_user_api_key_status(
     body: UpdateApiKeyStatusRequest,
     admin: dict = Depends(get_current_admin),
 ):
-    """관리자 전용 — 사용자의 API Key만 활성/비활성으로 전환한다.
-    users.user_status나 로그인 가능 여부에는 전혀 영향을 주지 않는다."""
     if body.status not in ADMIN_ASSIGNABLE_KEY_STATUSES:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -237,21 +242,21 @@ def update_user_api_key_status(
                     detail="관리자 계정의 API Key는 제어할 수 없습니다.",
                 )
 
+            # 관리자 제재 플래그를 users 테이블에 기록 — 사용자의 재발급으로는 풀리지 않는다.
+            cur.execute(
+                "UPDATE users SET api_key_suspended = %s WHERE user_id = %s",
+                (not make_active, user_id),
+            )
+
             if not make_active:
-                # 현재 활성 키를 비활성화 + 만료 처리
                 cur.execute(
                     """UPDATE api_keys
                        SET is_active = FALSE, expired_at = NOW()
                        WHERE user_id = %s AND is_active = TRUE""",
                     (user_id,),
                 )
-                if cur.rowcount == 0:
-                    raise HTTPException(
-                        status_code=status.HTTP_409_CONFLICT,
-                        detail="이미 비활성 상태이거나 발급된 API Key가 없습니다.",
-                    )
+                # rowcount 체크는 제거하거나 완화: 이미 비활성 상태에서 다시 눌러도 플래그는 세팅되게
             else:
-                # 가장 최근에 비활성화된 키를 다시 활성화 (원문 키는 재발급 없이는 복구되지 않음)
                 cur.execute(
                     """SELECT api_key_id FROM api_keys
                        WHERE user_id = %s AND is_active = FALSE
@@ -260,17 +265,13 @@ def update_user_api_key_status(
                     (user_id,),
                 )
                 row = cur.fetchone()
-                if not row:
-                    raise HTTPException(
-                        status_code=status.HTTP_409_CONFLICT,
-                        detail="다시 활성화할 API Key가 없습니다.",
+                if row:
+                    cur.execute(
+                        """UPDATE api_keys
+                           SET is_active = TRUE, expired_at = NULL
+                           WHERE api_key_id = %s""",
+                        (row["api_key_id"],),
                     )
-                cur.execute(
-                    """UPDATE api_keys
-                       SET is_active = TRUE, expired_at = NULL
-                       WHERE api_key_id = %s""",
-                    (row["api_key_id"],),
-                )
         conn.commit()
 
     return {"user_id": user_id, "api_key_active": make_active}
