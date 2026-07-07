@@ -934,12 +934,10 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
   display: flex;
   flex-direction: column;
   min-height: 150px;
-  padding: 18px 14px 16px;
+  padding: 22px 20px;
   border: 1px solid var(--line);
-  border-radius: 16px;
-  background:
-    linear-gradient(180deg, #fff 0%, var(--paper) 100%);
-  box-shadow: 0 1px 0 rgba(36,27,21,.03);
+  border-radius: var(--r);
+  background: var(--card);
 }
 .admin-stat-card span {
   display: flex;
@@ -993,11 +991,10 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
 }
 .admin-overview-card {
   min-width: 0;
-  padding: 20px;
+  padding: 28px;
   border: 1px solid var(--line);
-  border-radius: 16px;
-  background: linear-gradient(180deg, #fff 0%, var(--paper) 100%);
-  box-shadow: 0 1px 0 rgba(36,27,21,.03);
+  border-radius: var(--r);
+  background: var(--card);
 }
 .admin-overview-card-wide {
   min-height: 280px;
@@ -1027,20 +1024,21 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
   white-space: nowrap;
 }
 .admin-compact-log-list,
-.admin-plan-usage-list,
-.admin-score-list {
-  display: grid;
-  gap: 10px;
+.admin-plan-usage-list {
+  display: flex;
+  flex-direction: column;
 }
-.admin-compact-log-row {
-  display: grid;
-  grid-template-columns: 48px minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border: 1px solid var(--line-soft);
-  border-radius: 12px;
-  background: rgba(255,255,255,.72);
+.admin-compact-log-row,
+.admin-plan-usage-row {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  border-bottom: 1px solid var(--line-soft);
+  padding: 12px 2px;
+}
+.admin-compact-log-list > *:last-child,
+.admin-plan-usage-list > *:last-child {
+  border-bottom: 0;
 }
 .admin-compact-log-row span {
   color: var(--muted);
