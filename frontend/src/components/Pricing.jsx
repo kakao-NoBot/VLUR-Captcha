@@ -42,7 +42,7 @@ const plans = [
   },
 ];
 
-export default function Pricing({ openPage, openPlanPayment, isLoggedIn }) {
+export default function Pricing({ openPage, openPlanPayment, isLoggedIn, planRefreshKey }) {
   const [myPlan, setMyPlan] = useState(null);
 
   useEffect(() => {
@@ -55,7 +55,7 @@ export default function Pricing({ openPage, openPlanPayment, isLoggedIn }) {
       .then(({ data }) => { if (!ignore) setMyPlan(data.plan_name || null); })
       .catch(() => { if (!ignore) setMyPlan(null); });
     return () => { ignore = true; };
-  }, [isLoggedIn]);
+  }, [isLoggedIn, planRefreshKey]);
 
   return (
     <section className="band tint" id="pricing">

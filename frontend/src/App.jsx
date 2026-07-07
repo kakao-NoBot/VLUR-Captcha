@@ -141,6 +141,8 @@ export default function App() {
   const [boardKey, setBoardKey] = useState(0);
   // 비로그인 상태로 결제 진입 시 로그인 후 이어갈 요금제
   const [pendingPlan, setPendingPlan] = useState(null);
+  // 결제/요금제 변경 완료 후 홈으로 돌아올 때마다 Pricing 섹션의 내 요금제 표시를 갱신
+  const [planRefreshKey, setPlanRefreshKey] = useState(0);
 
   useEffect(() => {
     if (completedPayment) {
@@ -173,6 +175,7 @@ export default function App() {
   const closePage = () => {
     setPendingPlan(null);
     setPage(null);
+    setPlanRefreshKey(k => k + 1);
   };
   const handleLogin = (user) => {
     setIsLoggedIn(true);
@@ -293,7 +296,7 @@ export default function App() {
       <Metrics />
       <Flow />
 <Cases />
-      <Pricing openPage={openPage} openPlanPayment={openPlanPayment} isLoggedIn={isLoggedIn} />
+      <Pricing openPage={openPage} openPlanPayment={openPlanPayment} isLoggedIn={isLoggedIn} planRefreshKey={planRefreshKey} />
       <GuidePage openPage={openPage} />
       <Footer />
 

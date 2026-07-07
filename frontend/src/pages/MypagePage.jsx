@@ -489,6 +489,12 @@ function ReissueDoneModal({ onClose }) {
   );
 }
 
+function addMonths(dateString, months) {
+  const [year, month, day] = dateString.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1 + months, day));
+  return date.toISOString().slice(0, 10);
+}
+
 /* ── SC-08 API Key 탭 ── */
 function ApiKeyTab({ closePage }) {
   const [loading, setLoading] = useState(true);
@@ -616,6 +622,7 @@ function ApiKeyTab({ closePage }) {
   }
 
   const issuedAt = apiKey.created_at ? String(apiKey.created_at).slice(0, 10) : '-';
+  const expiresAt = apiKey.created_at ? addMonths(issuedAt, 1) : '-';
   const displayedKey = visible && plainKey ? plainKey : apiKey.masked_key;
 
   return (
@@ -641,7 +648,7 @@ function ApiKeyTab({ closePage }) {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 20, margin: '14px 0', fontSize: 13, color: 'var(--ink-soft)' }}>
-          <span>발급일: {issuedAt}</span><span>만료일: -</span><span>요금제: {plan.name}</span>
+          <span>발급일: {issuedAt}</span><span>만료일: {expiresAt}</span><span>요금제: {plan.name}</span>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <button className="pg-btn primary" onClick={() => setShowReissueConfirm(true)} disabled={actionPending}>
