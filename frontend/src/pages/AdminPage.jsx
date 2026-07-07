@@ -4,7 +4,6 @@ import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import api from '../api/axios';
 
-
 const ADMIN_TABS = [
   { id: 'dashboard', label: '대시보드' },
   { id: 'users', label: '사용자 관리' },
@@ -65,6 +64,54 @@ const INQUIRY_STATUS_BACKEND_TO_LABEL = {
   done: '답변',
   spam: '접수',
 };
+
+const USER_STATUS_BACKEND_TO_LABEL = {
+  active: '활성',
+  suspended: '점검',
+  inactive: '비활성',
+};
+
+const SOCIAL_PROVIDER_LABEL = {
+  kakao: 'kakao',
+  naver: 'NAVER',
+  google: 'Google',
+};
+
+function getSocialProvider(userId) {
+  return Object.keys(SOCIAL_PROVIDER_LABEL).find((provider) => (
+    userId.startsWith(`${provider}_`)
+  )) || null;
+}
+
+function SocialProviderLogo({ provider }) {
+  return <span>{SOCIAL_PROVIDER_LABEL[provider]}</span>;
+}
+
+function mapAdminUser(row) {
+  const shared = {
+    internalId: row.user_id,
+    userId: row.user_id,
+    socialProvider: getSocialProvider(row.user_id),
+    email: row.email,
+    plan: row.plan_name || '미가입',
+    joinedAt: row.created_at ? String(row.created_at).slice(0, 10) : '-',
+    status: USER_STATUS_BACKEND_TO_LABEL[row.user_status] || '비활성',
+    apiKey: row.masked_api_key || '미발급',
+  };
+
+  if (row.company_name) {
+    return {
+      ...shared,
+      isBusiness: true,
+      company: row.company_name,
+      manager: row.contact_name || row.user_name,
+      siteCount: Number(row.site_count || 0),
+      monthlyLimit: Number(row.api_limit || 0),
+    };
+  }
+
+  return { ...shared, isBusiness: false, name: row.user_name };
+}
 
 function mapInquiry(row) {
   const shared = {
@@ -665,8 +712,10 @@ export default function AdminPage() {
   const [logSearch, setLogSearch] = useState('');
   const [generalInquiries, setGeneralInquiries] = useState([]);
   const [businessInquiries, setBusinessInquiries] = useState([]);
-  const [personalUsers, setPersonalUsers] = useState(MOCK_PERSONAL_USERS);
-  const [businessUsers, setBusinessUsers] = useState(MOCK_BUSINESS_USERS);
+  const [personalUsers, setPersonalUsers] = useState([]);
+  const [businessUsers, setBusinessUsers] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(true);
+  const [usersError, setUsersError] = useState('');
   const [sites, setSites] = useState(MOCK_SITES);
   const [logs, setLogs] = useState(MOCK_LOGS);
   const [selectedScoreLog, setSelectedScoreLog] = useState(null);
@@ -691,6 +740,31 @@ export default function AdminPage() {
           setGeneralInquiries([]);
           setBusinessInquiries([]);
         }
+      }
+    })();
+
+    return () => { ignore = true; };
+  }, []);
+
+  useEffect(() => {
+    let ignore = false;
+
+    (async () => {
+      try {
+        const { data } = await api.get('/admin/api-keys');
+        if (ignore) return;
+        const users = (data.users || []).map(mapAdminUser);
+        setPersonalUsers(users.filter((user) => !user.isBusiness));
+        setBusinessUsers(users.filter((user) => user.isBusiness));
+        setUsersError('');
+      } catch (err) {
+        if (!ignore) {
+          setPersonalUsers([]);
+          setBusinessUsers([]);
+          setUsersError(err.response?.data?.detail || '사용자와 API Key 정보를 불러오지 못했습니다.');
+        }
+      } finally {
+        if (!ignore) setUsersLoading(false);
       }
     })();
 
@@ -773,9 +847,9 @@ export default function AdminPage() {
     setBusinessInquiries(updater);
   };
 
-  const updateUserStatus = (type, userId, nextStatus) => {
+  const updateUserStatus = (type, internalId, nextStatus) => {
     const updater = (users) => users.map((user) => (
-      user.userId === userId ? { ...user, status: nextStatus } : user
+      user.internalId === internalId ? { ...user, status: nextStatus } : user
     ));
 
     if (type === 'personal') {
@@ -1032,6 +1106,8 @@ export default function AdminPage() {
                 />
               </div>
 
+              {usersError && <p style={{ color: 'var(--bad)', fontSize: 13, margin: '0 0 12px' }}>{usersError}</p>}
+
               {activeUserType === 'personal' ? (
                 <AdminTable
                   columns={[
@@ -1039,18 +1115,20 @@ export default function AdminPage() {
                     { key: 'userId', label: '아이디' },
                     { key: 'email', label: '이메일' },
                     { key: 'plan', label: '요금제' },
+                    { key: 'apiKey', label: 'API Key' },
                     { key: 'joinedAt', label: '가입일' },
                     { key: 'status', label: '상태' },
                   ]}
-                  emptyMessage="검색 결과가 없습니다."
+                  emptyMessage={usersLoading ? '사용자 정보를 불러오는 중입니다.' : '검색 결과가 없습니다.'}
                   rows={filteredUsers.map((user) => {
-                    const menuKey = `user-personal-${user.userId}`;
+                    const menuKey = `user-personal-${user.internalId}`;
                     return (
-                      <tr key={user.userId}>
+                      <tr key={user.internalId}>
                         <td>{user.name}</td>
-                        <td>{user.userId}</td>
+                        <td>{user.socialProvider ? <SocialProviderLogo provider={user.socialProvider} /> : user.userId}</td>
                         <td>{user.email}</td>
                         <td>{user.plan}</td>
+                        <td><code className="admin-key-mask">{user.apiKey}</code></td>
                         <td>{user.joinedAt}</td>
                         <td>
                           <StatusDropdown
@@ -1059,7 +1137,7 @@ export default function AdminPage() {
                             isOpen={openStatusMenu === menuKey}
                             onToggle={() => setOpenStatusMenu(openStatusMenu === menuKey ? null : menuKey)}
                             onSelect={(option) => {
-                              updateUserStatus('personal', user.userId, option);
+                              updateUserStatus('personal', user.internalId, option);
                               setOpenStatusMenu(null);
                             }}
                           />
@@ -1076,20 +1154,22 @@ export default function AdminPage() {
                     { key: 'userId', label: '아이디' },
                     { key: 'email', label: '이메일' },
                     { key: 'plan', label: '요금제' },
+                    { key: 'apiKey', label: 'API Key' },
                     { key: 'siteCount', label: '등록 사이트 수' },
                     { key: 'monthlyLimit', label: '월 호출 한도' },
                     { key: 'status', label: '상태' },
                   ]}
-                  emptyMessage="검색 결과가 없습니다."
+                  emptyMessage={usersLoading ? '사용자 정보를 불러오는 중입니다.' : '검색 결과가 없습니다.'}
                   rows={filteredUsers.map((user) => {
-                    const menuKey = `user-business-${user.userId}`;
+                    const menuKey = `user-business-${user.internalId}`;
                     return (
-                      <tr key={user.userId}>
+                      <tr key={user.internalId}>
                         <td>{user.company}</td>
                         <td>{user.manager}</td>
-                        <td>{user.userId}</td>
+                        <td>{user.socialProvider ? <SocialProviderLogo provider={user.socialProvider} /> : user.userId}</td>
                         <td>{user.email}</td>
                         <td>{user.plan}</td>
+                        <td><code className="admin-key-mask">{user.apiKey}</code></td>
                         <td>{user.siteCount}</td>
                         <td>{formatNumber(user.monthlyLimit)}</td>
                         <td>
@@ -1099,7 +1179,7 @@ export default function AdminPage() {
                             isOpen={openStatusMenu === menuKey}
                             onToggle={() => setOpenStatusMenu(openStatusMenu === menuKey ? null : menuKey)}
                             onSelect={(option) => {
-                              updateUserStatus('business', user.userId, option);
+                              updateUserStatus('business', user.internalId, option);
                               setOpenStatusMenu(null);
                             }}
                           />
