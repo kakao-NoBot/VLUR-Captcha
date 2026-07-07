@@ -371,6 +371,9 @@ function InfoTab({ user, onUserUpdate, profile }) {
   const joinDateSource = profile?.created_at || user?.created_at;
   const joinDate = joinDateSource ? String(joinDateSource).slice(0, 10) : '-';
   const planLabel = profile?.plan_name || '-';
+  // 비밀번호 보유 여부: 서버 프로필이 있으면 그 값을, 로딩 전에는 아이디 형태로 추정
+  const looksSocial = /^(kakao|naver|google)_/.test(user?.user_id || '');
+  const hasPassword = profile ? Boolean(profile.has_password) : !looksSocial;
 
   return (
     <>
@@ -421,13 +424,14 @@ function InfoTab({ user, onUserUpdate, profile }) {
           />
         </div>
         <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
-          {/* 간편(소셜) 로그인 계정은 우리 서비스에 비밀번호가 없으므로 변경 메뉴를 숨김 */}
-          {(!profile || Boolean(profile.has_password)) && (
+          {/* 간편(소셜) 로그인 계정은 우리 서비스에 비밀번호가 없으므로 변경 메뉴를 숨김.
+              프로필 로딩 전에는 소셜 아이디 형태(provider_ 프리픽스)로 추정해 버튼 깜박임 방지 */}
+          {hasPassword && (
             <button className="pg-btn" onClick={() => setModal('pw')}>비밀번호 변경</button>
           )}
           <button className="pg-btn" onClick={() => setModal('edit')}>정보 수정</button>
         </div>
-        {profile && !profile.has_password && (
+        {!hasPassword && (
           <p style={{ margin: '10px 0 0', fontSize: 12.5, color: 'var(--muted)' }}>
             간편 로그인으로 가입한 계정은 비밀번호를 소셜 플랫폼에서 관리합니다.
           </p>
@@ -597,6 +601,19 @@ function ApiKeyTab({ closePage }) {
     );
   }
 
+  // 조회 자체가 실패한 경우: '요금제 미가입' 화면으로 오해하게 두지 않고 에러를 명확히 표시
+  if (!plan && actionError) {
+    return (
+      <>
+        <h2 className="pg-h2" style={{ marginBottom: 20 }}>API Key 관리</h2>
+        <div className="pg-card" style={{ maxWidth: 640, textAlign: 'center', padding: '48px 24px' }}>
+          <strong style={{ display: 'block', fontSize: 16, marginBottom: 8 }}>API Key 정보를 불러오지 못했습니다</strong>
+          <p style={{ margin: 0, fontSize: 13.5, color: 'var(--bad)' }}>{actionError}</p>
+        </div>
+      </>
+    );
+  }
+
   if (!plan) {
     return (
       <>
@@ -608,7 +625,6 @@ function ApiKeyTab({ closePage }) {
           </p>
           <button className="pg-btn primary" onClick={goToPricing}>요금제 선택하기</button>
         </div>
-        {actionError && <p style={{ color: 'var(--bad)', fontSize: 13, marginTop: 12 }}>{actionError}</p>}
       </>
     );
   }
@@ -1157,7 +1173,7 @@ function UsageTab() {
           </div>
         </div>
       </div>
-      <table className="pg-table">
+      <table className="pg-table table-ink-orange">
         <thead><tr><th>날짜</th><th>CAPTCHA 발급</th><th>CAPTCHA 검증</th><th>성공률</th></tr></thead>
         <tbody>
           {usageTableRows.length > 0 ? (
@@ -1183,11 +1199,22 @@ function UsageTab() {
 }
 
 const STATUS_STYLE = {
-  '완료':   { background: 'rgba(46,158,107,.15)', color: 'var(--ok)' },
-  '환불':   { background: 'rgba(216,73,47,.15)', color: 'var(--bad)' },
-  '실패':   { background: 'rgba(216,73,47,.15)', color: 'var(--bad)' },
-  '대기':   { background: 'var(--peach)', color: 'var(--orange-2)' },
+  '완료':   { tone: 'success', background: 'rgba(46,158,107,.15)', color: 'var(--ok)' },
+  '환불':   { tone: 'danger',  background: 'rgba(216,73,47,.15)', color: 'var(--bad)' },
+  '실패':   { tone: 'danger',  background: 'rgba(216,73,47,.15)', color: 'var(--bad)' },
+  '대기':   { tone: 'warning', background: 'var(--peach)', color: 'var(--orange-2)' },
 };
+
+// 관리자 상태 배지와 동일한 룩: 다크모드에서만 CSS 변수가 정의되어
+// 네이비 배경 + 글씨색 링 + 글로우 적용, 라이트모드는 기존 틴트 그대로
+function paymentBadgeStyle(status) {
+  const s = STATUS_STYLE[status] || { tone: 'neutral', background: 'transparent', color: 'var(--ink-soft)' };
+  return {
+    color: `var(--status-badge-ink-${s.tone}, ${s.color})`,
+    background: `var(--status-badge-bg, ${s.background})`,
+    boxShadow: 'var(--status-badge-fx, none)',
+  };
+}
 
 /* ── 결제 수단 로고 ── */
 const PAY_BADGE_LOGO = {
@@ -1359,7 +1386,7 @@ function BillingTab({ closePage, profile }) {
                     display: 'inline-block',
                     padding: '3px 10px', borderRadius: 20,
                     fontSize: 12, fontWeight: 600,
-                    ...(STATUS_STYLE[row.status] || {}),
+                    ...paymentBadgeStyle(row.status),
                   }}>
                     {row.status}
                   </span>

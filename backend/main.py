@@ -10,10 +10,17 @@ from routers import chatbot as chatbot_router
 from routers import email_verification as email_verification_router
 from routers import password_reset as password_reset_router
 from routers import api_keys as api_keys_router
+from migrations import run_migrations
 
 load_dotenv()
 
 app = FastAPI()
+
+
+@app.on_event("startup")
+def apply_migrations():
+    """init SQL은 빈 볼륨에서만 실행되므로, 기존 DB에도 스키마 변경이 반영되게 시작 시 보정"""
+    run_migrations()
 
 app.add_middleware(
     CORSMiddleware,

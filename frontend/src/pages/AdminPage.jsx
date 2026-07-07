@@ -188,28 +188,31 @@ function getPercent(used, limit) {
 
 /* ── 상태 뱃지 (읽기 전용: 모달, 인증 로그 결과 등) ── */
 const STATUS_TONE_STYLE = {
-  success: { color: '#1f8a54', background: 'rgba(46,163,107,0.14)', dot: '#2ea36b', glow: 'rgba(46,163,107,.25)', textDark: '#c9f2dd' },
-  warning: { color: '#a5720f', background: 'rgba(224,165,44,0.16)', dot: '#e0a52c', glow: 'rgba(224,165,44,.25)', textDark: '#fbe3ae' },
-  danger:  { color: '#c0392b', background: 'rgba(192,57,43,0.13)', dot: '#c0392b', glow: 'rgba(192,57,43,.25)', textDark: '#f6cac4' },
-  neutral: { color: 'var(--ink-soft)', background: 'rgba(60,45,32,0.06)', dot: 'var(--muted)', glow: 'rgba(146,128,113,.25)', textDark: '#e4ddd5' },
+  success: { color: '#1f8a54', background: 'rgba(46,163,107,0.14)', dot: '#2ea36b' },
+  warning: { color: '#a5720f', background: 'rgba(224,165,44,0.16)', dot: '#e0a52c' },
+  danger:  { color: '#c0392b', background: 'rgba(192,57,43,0.13)', dot: '#c0392b' },
+  neutral: { color: 'var(--ink-soft)', background: 'rgba(60,45,32,0.06)', dot: 'var(--muted)' },
 };
+
+// 다크모드에서만 CSS 변수(--status-badge-*)가 정의되어 네이비 배경·글씨색 링·글로우가 적용된다.
+// 라이트모드에서는 변수가 없어 기존 틴트 배경으로 폴백. (StatusBadge/StatusDropdown 공용)
+function toneBadgeStyle(tone, s) {
+  return {
+    color: `var(--status-badge-ink-${tone}, ${s.color})`,
+    background: `var(--status-badge-bg, ${s.background})`,
+    boxShadow: 'var(--status-badge-fx, none)',
+  };
+}
 
 function StatusBadge({ children, tone = 'neutral', style }) {
   const s = STATUS_TONE_STYLE[tone] || STATUS_TONE_STYLE.neutral;
   return (
     <span
-      className="admin-glow-badge"
       style={{
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         minWidth: 46, width: 'fit-content', padding: '4px 10px', borderRadius: 999,
-        fontSize: 12, fontWeight: 700,
-        // 다크모드에서만 CSS 변수가 정의되어 네이비 배경·글씨색 테두리·글로우 적용 (라이트는 기존 그대로)
-        color: `var(--status-badge-ink-${tone}, ${s.color})`,
-        background: `var(--status-badge-bg, ${s.background})`,
-        boxShadow: 'var(--status-badge-fx, none)',
-        whiteSpace: 'nowrap',
-        '--status-glow': s.glow,
-        '--status-text-dark': s.textDark,
+        fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap',
+        ...toneBadgeStyle(tone, s),
         ...style,
       }}
     >
@@ -246,19 +249,13 @@ function StatusDropdown({ status, options, isOpen, onToggle, onSelect, resolveTo
         aria-haspopup="menu"
         aria-expanded={isOpen}
         onClick={(event) => { event.stopPropagation(); onToggle(); }}
-        className="admin-glow-badge"
         style={{
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
           minWidth, padding: '4px 10px', borderRadius: 999,
-          // 다크모드에서만 StatusBadge와 동일한 룩 (네이비 배경·테두리·글로우), 라이트는 기존 그대로
           border: isOpen ? `1px solid ${s.dot}` : '1px solid transparent',
           fontSize: 12, fontWeight: 700,
-          color: `var(--status-badge-ink-${tone}, ${s.color})`,
-          background: `var(--status-badge-bg, ${s.background})`,
-          boxShadow: 'var(--status-badge-fx, none)',
           cursor: 'pointer', whiteSpace: 'nowrap',
-          '--status-glow': s.glow,
-          '--status-text-dark': s.textDark,
+          ...toneBadgeStyle(tone, s),
         }}
       >
         <span style={{ fontSize: 9 }}>{isOpen ? '▲' : '▼'}</span>
@@ -985,11 +982,6 @@ export default function AdminPage() {
           background: var(--card) !important;
           border-color: var(--line) !important;
         }
-        [data-theme="dark"] .admin-glow-badge {
-          color: var(--status-text-dark) !important;
-          box-shadow: inset 0 0 0 1px var(--status-glow), 0 1px 6px -1px var(--status-glow);
-        }
-
         /* 화면이 좁아져서 사이드바가 가로 탭바로 바뀔 때만 가운데 정렬 (넓은 화면은 그대로) */
         @media (max-width: 940px) {
           .admin-page .mp-sidebar {
@@ -1253,6 +1245,7 @@ export default function AdminPage() {
               </div>
 
               <AdminTable
+                tableClassName="table-ink-orange"
                 columns={[
                   { key: 'name', label: '사이트명' },
                   { key: 'domain', label: '도메인' },

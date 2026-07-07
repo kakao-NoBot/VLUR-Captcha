@@ -2576,6 +2576,8 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
 .pg-table td { padding: 14px 14px; border-bottom: 1px solid var(--line-soft); color: var(--ink-soft); }
 .pg-table tr:hover td { background: var(--paper); }
 .pg-table .num { font-family: var(--disp); color: var(--muted); }
+/* 표 본문 강조: 데이터 텍스트를 브랜드 주황으로 (관리자 사이트 관리, 마이페이지 사용량 조회) */
+.table-ink-orange td { color: var(--orange); }
 .badge-notice { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 6px; background: var(--orange); color: #fff; font-weight: 700; margin-right: 6px; }
 /* 검증 3단계 번호(.step::before)와 같은 룩: 주황 테두리 + 바탕색이 그대로 비침 (다크모드에선 남색) */
 .badge-general { background: transparent; color: var(--orange); border: 1px solid var(--orange); padding: 1px 7px; }

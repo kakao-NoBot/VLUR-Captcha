@@ -1,6 +1,7 @@
 // pages/ApplyPage.jsx
 
 import React, { useState } from 'react';
+import api from '../api/axios';
 
 const PLAN_LABELS = {
   Basic: 'Basic — 무료',
@@ -78,15 +79,38 @@ export default function ApplyPage({ openPage, initialPlan = 'Pro' }) {
   const [company, setCompany] = useState('');
   const [email, setEmail] = useState('');
   const [touched, setTouched] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   const [emailBlurred, setEmailBlurred] = useState(false);
   const isEmailFormatValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   const isValid = company.trim().length > 0 && isEmailFormatValid;
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setTouched(true);
-    if (!isValid) return;
-    openPage('apply-done');
+    if (!isValid || submitting) return;
+    if (!localStorage.getItem('access_token')) {
+      openPage('login');
+      return;
+    }
+    setSubmitting(true);
+    setSubmitError('');
+    try {
+      if (plan === 'Basic') {
+        // 무료 요금제는 즉시 활성화 → 완료 페이지에서 실제 API Key 발급 가능
+        await api.post('/payments/free/activate');
+        openPage('apply-done');
+      } else if (plan === 'Enterprise') {
+        openPage('enterprise');
+      } else {
+        // 유료 요금제는 결제 페이지에서 결제 완료 후 활성화
+        openPage('plan-pay');
+      }
+    } catch (err) {
+      setSubmitError(err.response?.data?.detail || '요금제 활성화에 실패했습니다. 잠시 후 다시 시도해주세요.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -178,11 +202,15 @@ export default function ApplyPage({ openPage, initialPlan = 'Pro' }) {
           style={{
             padding: 15,
             fontSize: 16,
-            opacity: isValid ? 1 : 0.5,
-            cursor: isValid ? 'pointer' : 'not-allowed',
+            opacity: (isValid && !submitting) ? 1 : 0.5,
+            cursor: (isValid && !submitting) ? 'pointer' : 'not-allowed',
           }}
           onClick={handleSubmit}
-        >신청 및 API Key 발급</button>
+          disabled={submitting}
+        >{submitting ? '처리 중...' : '신청 및 API Key 발급'}</button>
+        {submitError && (
+          <p style={{ margin: '10px 0 0', fontSize: 13, color: '#c0392b', textAlign: 'right' }}>{submitError}</p>
+        )}
       </div>
     </div>
   );
