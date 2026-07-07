@@ -583,7 +583,7 @@ export default function BoardPage({ user = null }) {
         <>
           <table className="pg-table board-table" style={{ marginBottom: 8 }}>
             <thead>
-              <tr><th style={{ width: 60 }}>번호</th><th>제목</th><th style={{ width: 130 }}>작성일</th></tr>
+              <tr><th style={{ width: 60 }}>번호</th><th>제목</th><th style={{ width: 130, textAlign: 'right' }}>작성일</th></tr>
             </thead>
             <tbody>
               {noticeSlice.map(n => (
@@ -608,7 +608,7 @@ export default function BoardPage({ user = null }) {
                     )}
                     {n.title}
                   </td>
-                  <td style={{ color: 'var(--muted)' }}>{n.date}</td>
+                  <td style={{ color: 'var(--muted)', textAlign: 'right' }}>{n.date}</td>
                 </tr>
               ))}
             </tbody>
@@ -683,7 +683,7 @@ export default function BoardPage({ user = null }) {
       {tab === 'research' && (
         <>
           <table className="pg-table board-table" style={{ marginBottom: 8 }}>
-            <thead><tr><th style={{ width: 60 }}>번호</th><th>제목</th><th style={{ width: 130 }}>작성일</th></tr></thead>
+            <thead><tr><th style={{ width: 60 }}>번호</th><th>제목</th><th style={{ width: 130, textAlign: 'right' }}>작성일</th></tr></thead>
             <tbody>
               {researchSlice.map(r => (
                 <tr
@@ -702,7 +702,7 @@ export default function BoardPage({ user = null }) {
                 >
                   <td className="num">{r.id}</td>
                   <td><span className="badge-notice badge-research">연구</span>{r.title}</td>
-                  <td style={{ color: 'var(--muted)' }}>{r.date}</td>
+                  <td style={{ color: 'var(--muted)', textAlign: 'right' }}>{r.date}</td>
                 </tr>
               ))}
             </tbody>
