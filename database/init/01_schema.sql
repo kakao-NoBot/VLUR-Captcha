@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS users (
     company_name      VARCHAR(255)    NULL,
     contact_name      VARCHAR(100)    NULL,
     user_status       ENUM('active','inactive','suspended','deleted') NOT NULL DEFAULT 'active',
+    api_key_suspended BOOLEAN         NOT NULL DEFAULT FALSE COMMENT '관리자가 API Key 사용을 제재했는지 여부',
     subscription_date DATETIME        NULL,
     created_at        DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at        DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
