@@ -655,13 +655,22 @@ export default function AdminPage() {
   const activeUsers = activeUserType === 'personal' ? personalUsers : businessUsers;
   const activeInquiries = activeInquiryType === 'general' ? generalInquiries : businessInquiries;
 
-  const filteredUsers = useMemo(() => {
-    const query = userSearch.trim().toLowerCase();
-    if (!query) return activeUsers;
-    return activeUsers.filter((user) => (
-      Object.values(user).some((value) => String(value).toLowerCase().includes(query))
-    ));
-  }, [activeUsers, userSearch]);
+const filteredUsers = useMemo(() => {
+  const query = userSearch.trim().toLowerCase();
+  if (!query) return activeUsers;
+
+  if (MANAGE_STATUS_OPTIONS.some((status) => status.toLowerCase() === query)) {
+    return activeUsers.filter(
+      (user) => user.status.toLowerCase() === query
+    );
+  }
+
+  return activeUsers.filter((user) =>
+    Object.values(user).some((value) =>
+      String(value).toLowerCase().includes(query)
+    )
+  );
+}, [activeUsers, userSearch]);
 
   const filteredInquiries = useMemo(() => {
     const query = inquirySearch.trim().toLowerCase();
