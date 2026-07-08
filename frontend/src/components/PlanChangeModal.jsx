@@ -143,7 +143,7 @@ export default function PlanChangeModal({
                 </div>
               </div>
               <p style={{ fontSize: 13.5, color: 'var(--ink-soft)', lineHeight: 1.7, margin: 0 }}>
-                지금 취소하면 예약이 사라지고 <strong>Pro 요금제</strong>를 계속 이용하시게 됩니다. 언제든 다시 다운그레이드를 예약할 수 있습니다.
+                지금 취소하면 예약이 사라지고 <strong>Pro 요금제</strong>를 계속 이용하시게 됩니다.
               </p>
               {errorMessage && (
                 <p style={{ margin: '12px 0 0', fontSize: 13, color: '#c0392b' }}>{errorMessage}</p>
@@ -161,7 +161,7 @@ export default function PlanChangeModal({
                 </div>
                 <div style={{ height: 1, background: 'var(--line-soft)' }} />
                 <div style={{ padding: '14px 18px' }}>
-                  <div style={{ fontSize: 11, color: 'var(--orange)', fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 4 }}>변경할 요금제</div>
+                  <div style={{ fontSize: 11, color: 'var(--orange)', fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 4 }}>변경 요금제</div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                     <strong style={{ fontSize: 15 }}>{next.label}</strong>
                     <span style={{ fontSize: 13, color: 'var(--ink-soft)' }}>{next.price}</span>
@@ -174,7 +174,7 @@ export default function PlanChangeModal({
                   <>지금 전환하면 결제 절차로 이동하며, 결제가 완료되는 즉시 <strong>Pro 요금제</strong>로 업그레이드됩니다.</>
                 )}
                 {isDowngrade && (
-                  <>지금 변경해도 현재 결제 주기가 끝날 때까지는 Pro 요금제를 그대로 이용하실 수 있습니다. 이후 별도 결제 없이 자동으로 <strong>Basic 요금제</strong>로 전환됩니다.</>
+                  <>지금 변경해도 현재 결제 기간이 끝날 때까지는 Pro 요금제를 그대로 이용하실 수 있습니다. 이후 별도 결제 없이 자동으로 <strong>Basic 요금제</strong>로 전환됩니다.</>
                 )}
               </p>
 
