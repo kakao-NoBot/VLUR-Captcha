@@ -46,6 +46,9 @@ CREATE TABLE IF NOT EXISTS users (
     phone             VARCHAR(30)     NULL,
     role              ENUM('user','admin') NOT NULL DEFAULT 'user',
     plan_id           BIGINT UNSIGNED NULL,
+    pending_plan_id   BIGINT UNSIGNED NULL,
+    plan_change_at    DATETIME        NULL,
+    cancel_at         DATETIME        NULL,
     company_name      VARCHAR(255)    NULL,
     contact_name      VARCHAR(100)    NULL,
     user_status       ENUM('active','inactive','suspended','deleted') NOT NULL DEFAULT 'active',
@@ -56,10 +59,14 @@ CREATE TABLE IF NOT EXISTS users (
     PRIMARY KEY (user_id),
     UNIQUE KEY uk_users_email (email),
     KEY idx_users_plan_id (plan_id),
+    KEY idx_users_pending_plan_id (pending_plan_id),
     KEY idx_users_role (role),
     KEY idx_users_user_status (user_status),
     CONSTRAINT fk_users_plan
         FOREIGN KEY (plan_id) REFERENCES plans (plan_id)
+        ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_users_pending_plan
+        FOREIGN KEY (pending_plan_id) REFERENCES plans (plan_id)
         ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -379,6 +386,26 @@ CREATE TABLE IF NOT EXISTS captcha_verifications (
         ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT chk_captcha_verifications_bot_score
         CHECK (bot_score IS NULL OR (bot_score >= 0 AND bot_score <= 1))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- 13. usage_daily_stats: per-user daily CAPTCHA usage aggregates.
+--     The dashboard sums issued_count for the current month.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS usage_daily_stats (
+    user_id        VARCHAR(50)  NOT NULL,
+    usage_date     DATE         NOT NULL,
+    issued_count   INT UNSIGNED NOT NULL DEFAULT 0,
+    verified_count INT UNSIGNED NOT NULL DEFAULT 0,
+    created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, usage_date),
+    KEY idx_usage_daily_stats_date (usage_date),
+    CONSTRAINT fk_usage_daily_stats_user
+        FOREIGN KEY (user_id) REFERENCES users (user_id)
+        ON DELETE CASCADE ON UPDATE RESTRICT,
+    CONSTRAINT chk_usage_daily_stats_verified
+        CHECK (verified_count <= issued_count)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SET FOREIGN_KEY_CHECKS = 1;

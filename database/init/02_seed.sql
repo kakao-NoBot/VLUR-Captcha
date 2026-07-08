@@ -32,7 +32,7 @@ VALUES (
 );
 
 -- ============================================================
--- [3] 테스트 일반 사용자 (Basic 플랜)
+-- [3] 테스트 일반 사용자 (Pro 플랜)
 --   아이디: testuser  /  비밀번호: test1234
 -- ============================================================
 INSERT INTO users (user_id, user_name, password_hash, email, phone, role, plan_id, created_at, subscription_date)
@@ -43,7 +43,7 @@ VALUES (
     'test@example.com',
     '010-1234-5678',
     'user',
-    (SELECT plan_id FROM plans WHERE plan_name = 'Basic'),
+    (SELECT plan_id FROM plans WHERE plan_name = 'Pro'),
     NOW(),
     NOW()
 );
@@ -119,3 +119,16 @@ INSERT INTO captcha_options (captcha_id, image_id, position, is_correct_server_s
     (@type2_captcha_id, (SELECT image_id FROM captcha_images WHERE filename = 'opt_banana_001.jpg'), 2, 0),
     (@type2_captcha_id, (SELECT image_id FROM captcha_images WHERE filename = 'opt_bag_001.jpg'),    3, 0),
     (@type2_captcha_id, (SELECT image_id FROM captcha_images WHERE filename = 'opt_cup_001.jpg'),    4, 0);
+
+-- ============================================================
+-- [10] usage_daily_stats — testuser 2026년 7월 사용량
+-- ============================================================
+INSERT INTO usage_daily_stats (user_id, usage_date, issued_count, verified_count) VALUES
+    ('testuser', '2026-07-01',  820,  786),
+    ('testuser', '2026-07-02', 1100, 1063),
+    ('testuser', '2026-07-03',  950,  920),
+    ('testuser', '2026-07-04', 1240, 1203),
+    ('testuser', '2026-07-05', 1380, 1341),
+    ('testuser', '2026-07-06',  990,  954),
+    ('testuser', '2026-07-07',  670,  649),
+    ('testuser', '2026-07-08', 1050, 1017);
