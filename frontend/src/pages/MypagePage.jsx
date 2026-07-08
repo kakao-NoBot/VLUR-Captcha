@@ -1425,7 +1425,7 @@ function BillingTab({ closePage, profile, onProfileRefresh }) {
               {isPro && (
                 <div style={{ fontSize: 13, color: 'var(--ink-soft)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
                   {pendingCancellation
-                    ? <>{pendingCancellation.effectiveDate}까지 Pro 이용 후 요금제가 해지됩니다.</>
+                    ? <>{pendingCancellation.effectiveDate}까지 Pro 요금제를 이용하실 수 있으며, 이후 자동으로 해지됩니다.</>
                     : latestPayment
                       ? <>최근 결제일: <strong>{latestPayment.date}</strong> <PayBadge provider={latestPayment.provider} fallback={latestPayment.method} /></>
                       : '결제 내역을 확인하는 중입니다.'}
