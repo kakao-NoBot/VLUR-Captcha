@@ -412,6 +412,17 @@ export default function BoardPage({ user = null }) {
     });
   const faqPosts = posts.filter(p => p.type === 'faq');
   const researchPosts = posts.filter(p => p.type === 'research');
+  
+  const noticeNumberById = new Map(
+    [...notices]
+      .sort((a, b) => a.id - b.id)
+      .map((post, index) => [post.id, index + 1])
+  );
+  const researchNumberById = new Map(
+    [...researchPosts]
+      .sort((a, b) => a.id - b.id)
+      .map((post, index) => [post.id, index + 1])
+  );
   // 상세 보기의 이전/다음 글은 해당 글이 속한 탭 목록 기준
   const detailList = selectedPost?.type === 'research' ? researchPosts : notices;
 
@@ -601,7 +612,7 @@ export default function BoardPage({ user = null }) {
                     }
                   }}
                 >
-                  <td className="num">{n.id}</td>
+                  <td className="num">{noticeNumberById.get(n.id)}</td>
                   <td>
                     {n.badge && (
                       <span className={`badge-notice${n.type === 'general' ? ' badge-general' : ''}`}>{n.badge}</span>
@@ -700,7 +711,7 @@ export default function BoardPage({ user = null }) {
                     }
                   }}
                 >
-                  <td className="num">{r.id}</td>
+                  <td className="num">{researchNumberById.get(r.id)}</td>
                   <td><span className="badge-notice badge-research">연구</span>{r.title}</td>
                   <td style={{ color: 'var(--muted)', textAlign: 'right' }}>{r.date}</td>
                 </tr>
