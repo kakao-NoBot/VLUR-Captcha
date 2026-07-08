@@ -719,16 +719,6 @@ function ApiKeyTab({ closePage }) {
   );
 }
 
-const DAILY_USAGE_VALUES = [
-  820, 1100, 950, 1240, 1380, 990, 670, 1050, 1180, 1320,
-  880, 740, 1060, 1290, 1100, 930, 1040, 1170, 1350, 990,
-  850, 1080, 1250, 1060, 970, 1130, 1200, 1340, 1180, 1240,
-];
-const MONTHLY_USAGE_LABELS = [
-  '2025-07', '2025-08', '2025-09', '2025-10', '2025-11', '2025-12',
-  '2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06',
-];
-const MONTHLY_USAGE_VALUES = [18000, 22000, 19500, 24000, 28000, 31200, 29800, 33000, 27000, 30500, 31200, 32800];
 const formatNumber = new Intl.NumberFormat('ko-KR').format;
 
 function addDays(dateString, days) {
@@ -766,21 +756,9 @@ function getCalendarDays(monthKey) {
   });
 }
 
-const DAILY_USAGE_DATA = DAILY_USAGE_VALUES.map((issued, index) => {
-  const ratio = 0.958 + ((index % 5) * 0.003);
-  return {
-    date: addDays('2026-05-14', index),
-    issued,
-    verified: Math.round(issued * ratio),
-  };
-});
-const MONTHLY_USAGE_DATA = MONTHLY_USAGE_VALUES.map((issued, index) => ({
-  month: MONTHLY_USAGE_LABELS[index],
-  issued,
-}));
-const DEFAULT_USAGE_START_DATE = DAILY_USAGE_DATA[0].date;
-const DEFAULT_USAGE_END_DATE = DAILY_USAGE_DATA[DAILY_USAGE_DATA.length - 1].date;
 const TODAY_DATE = new Date().toISOString().slice(0, 10);
+const DEFAULT_USAGE_START_DATE = addDays(TODAY_DATE, -29);
+const DEFAULT_USAGE_END_DATE = TODAY_DATE;
 const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
 
 function getSuccessRate(row) {
@@ -875,6 +853,15 @@ function UsageLineChart({ data, labelKey, valueKey = 'issued', emptyMessage }) {
 
 /* ── SC-09 사용량 탭 ── */
 function UsageTab() {
+  const [dailyUsageData, setDailyUsageData] = useState([]);
+  const [monthlyUsageData, setMonthlyUsageData] = useState([]);
+  const [usageSummary, setUsageSummary] = useState({
+    currentMonthIssued: 0,
+    apiLimit: 0,
+    planName: '',
+  });
+  const [usageLoading, setUsageLoading] = useState(true);
+  const [usageError, setUsageError] = useState('');
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -882,6 +869,32 @@ function UsageTab() {
   const [calendarMonth, setCalendarMonth] = useState(DEFAULT_USAGE_END_DATE.slice(0, 7));
   const [dateError, setDateError] = useState('');
   const datePickerRef = useRef(null);
+
+  useEffect(() => {
+    let ignore = false;
+
+    api.get('/usage/summary')
+      .then(({ data }) => {
+        if (ignore) return;
+        setDailyUsageData(data.daily || []);
+        setMonthlyUsageData(data.monthly || []);
+        setUsageSummary({
+          currentMonthIssued: Number(data.current_month_issued || 0),
+          apiLimit: Number(data.api_limit || 0),
+          planName: data.plan_name || '',
+        });
+        setUsageError('');
+      })
+      .catch((err) => {
+        if (ignore) return;
+        setUsageError(err.response?.data?.detail || '사용량 데이터를 불러오지 못했습니다.');
+      })
+      .finally(() => {
+        if (!ignore) setUsageLoading(false);
+      });
+
+    return () => { ignore = true; };
+  }, []);
 
   useEffect(() => {
     if (!isDatePickerOpen) return undefined;
@@ -909,10 +922,10 @@ function UsageTab() {
   };
 
   const filteredDailyUsageData = useMemo(() => (
-    DAILY_USAGE_DATA.filter((row) => (
+    dailyUsageData.filter((row) => (
       row.date >= activeRange.start && row.date <= activeRange.end
     ))
-  ), [activeRange.start, activeRange.end]);
+  ), [activeRange.start, activeRange.end, dailyUsageData]);
 
   const usageTableRows = useMemo(() => (
     [...filteredDailyUsageData].reverse()
@@ -925,6 +938,9 @@ function UsageTab() {
     : '기간 선택';
 
   const calendarDays = useMemo(() => getCalendarDays(calendarMonth), [calendarMonth]);
+  const usagePercent = usageSummary.apiLimit > 0
+    ? Math.min((usageSummary.currentMonthIssued / usageSummary.apiLimit) * 100, 100)
+    : 0;
 
   // 조회 기간 최대 1개월 제한
   const isWithinOneMonth = (start, end) => {
@@ -1115,10 +1131,22 @@ function UsageTab() {
       </div>
       <div className="pg-card" style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 10 }}>
-          <span>이번 달 API 호출량</span><strong>31,200 / 50,000회</strong>
+          <span>이번 달 CAPTCHA 발급량</span>
+          <strong>
+            {usageLoading
+              ? '불러오는 중...'
+              : `${formatNumber(usageSummary.currentMonthIssued)} / ${formatNumber(usageSummary.apiLimit)}회`}
+          </strong>
         </div>
-        <div className="usage-bar-wrap"><div className="usage-bar" style={{ width: '62%' }}/></div>
-        <p style={{ fontSize: 12, color: 'var(--muted)', margin: '8px 0 0' }}>한도의 62% 사용 중 (Pro 요금제 api_limit 기준)</p>
+        <div className="usage-bar-wrap"><div className="usage-bar" style={{ width: `${usagePercent}%` }}/></div>
+        <p style={{ fontSize: 12, color: 'var(--muted)', margin: '8px 0 0' }}>
+          {usageSummary.apiLimit > 0
+            ? `한도의 ${Math.round(usagePercent)}% 사용 중 (${usageSummary.planName} 요금제 api_limit 기준)`
+            : '적용된 API 호출 한도가 없습니다.'}
+        </p>
+        {usageError && (
+          <p style={{ fontSize: 12, color: 'var(--bad)', margin: '6px 0 0' }}>{usageError}</p>
+        )}
       </div>
       <div
         style={{
@@ -1166,7 +1194,7 @@ function UsageTab() {
           <div className="pg-label" style={{ margin: 0, flex: '0 0 auto' }}>월별 호출량 (최근 12개월)</div>
           <div style={{ flex: '1 1 auto', minHeight: 0 }}>
             <UsageLineChart
-              data={MONTHLY_USAGE_DATA}
+              data={monthlyUsageData}
               labelKey="month"
               emptyMessage="월별 사용량 데이터가 없습니다."
             />
@@ -1868,7 +1896,7 @@ export default function MypagePage({ openPage, closePage, initialTab = 'info', u
   useEffect(() => {
     fetchProfile();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [activeTab]);
 
   return (
     <div className="mp-wrap">

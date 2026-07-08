@@ -10,6 +10,7 @@ from routers import chatbot as chatbot_router
 from routers import email_verification as email_verification_router
 from routers import password_reset as password_reset_router
 from routers import api_keys as api_keys_router
+from routers import usage as usage_router
 from migrations import run_migrations
 
 load_dotenv()
@@ -38,6 +39,7 @@ app.include_router(chatbot_router.router)
 app.include_router(email_verification_router.router)
 app.include_router(password_reset_router.router)
 app.include_router(api_keys_router.router)
+app.include_router(usage_router.router)
 
 
 @app.get("/health")
