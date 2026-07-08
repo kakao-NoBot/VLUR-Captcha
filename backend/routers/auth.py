@@ -128,11 +128,15 @@ def _find_or_create_social_user(
     return user
 
 
-def _social_login_response(user: dict):
+SOCIAL_PROVIDERS = {"kakao", "naver", "google"}
+
+
+def _social_login_response(user: dict, provider: str):
     token = create_access_token({
         "sub": user["user_id"],
         "role": user["role"],
         "name": user["user_name"],
+        "auth_provider": provider,
     })
     return {
         "access_token": token,
@@ -144,6 +148,7 @@ def _social_login_response(user: dict):
             "phone": user["phone"],
             "role": user["role"],
             "created_at": user.get("created_at"),
+            "is_social_login": True,
         },
     }
 
@@ -240,7 +245,7 @@ async def kakao_callback(body: KakaoCallbackRequest):
     user = _find_or_create_social_user(
         "kakao", provider_user_id, email, user_name
     )
-    return _social_login_response(user)
+    return _social_login_response(user, "kakao")
 
 
 @router.get("/naver/authorize-url")
@@ -292,7 +297,7 @@ async def naver_callback(body: NaverCallbackRequest):
     user = _find_or_create_social_user(
         "naver", provider_user_id, email, user_name
     )
-    return _social_login_response(user)
+    return _social_login_response(user, "naver")
 
 
 @router.get("/google/authorize-url")
@@ -344,7 +349,7 @@ async def google_callback(body: GoogleCallbackRequest):
     user = _find_or_create_social_user(
         "google", provider_user_id, email, user_name
     )
-    return _social_login_response(user)
+    return _social_login_response(user, "google")
 
 
 @router.get("/check-id")
@@ -436,6 +441,12 @@ def me(current_user: dict = Depends(get_current_user)):
     if not profile:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="사용자를 찾을 수 없습니다.")
 
+    # 새 소셜 로그인 토큰은 provider를 명시한다. 기존 발급 토큰도 비밀번호가 없는
+    # 소셜 전용 계정이라면 동일한 탈퇴 UI를 사용할 수 있도록 호환 처리한다.
+    profile["is_social_login"] = (
+        current_user.get("auth_provider") in SOCIAL_PROVIDERS
+        or not bool(profile["has_password"])
+    )
     return profile
 
 
@@ -551,6 +562,7 @@ def change_password(
 
 class DeactivateRequest(BaseModel):
     password: str | None = None
+    confirmation: str | None = None
 
 
 @router.post("/deactivate")
@@ -576,8 +588,19 @@ def deactivate_account(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="탈퇴할 수 있는 계정이 아닙니다.",
                 )
-            # 일반 계정은 비밀번호 재확인, 소셜 계정(password_hash NULL)은 토큰 인증만으로 진행
-            if user["password_hash"]:
+            is_social_login = (
+                current_user.get("auth_provider") in SOCIAL_PROVIDERS
+                or not bool(user["password_hash"])
+            )
+
+            # 소셜 로그인 세션은 확인 문구, 일반 로그인 세션은 비밀번호로 재확인한다.
+            if is_social_login:
+                if body.confirmation != "탈퇴":
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="확인란에 '탈퇴'를 정확히 입력해주세요.",
+                    )
+            else:
                 if not body.password or not verify_password(body.password, user["password_hash"]):
                     raise HTTPException(
                         status_code=status.HTTP_401_UNAUTHORIZED,
