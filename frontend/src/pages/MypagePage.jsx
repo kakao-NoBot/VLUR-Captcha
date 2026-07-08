@@ -1289,17 +1289,27 @@ function CancelSubscriptionModal({ onConfirm, onClose, loading, errorMessage }) 
             기간이 끝나면 자동으로 요금제가 해지되어 API Key도 정지됩니다.
           </span>
         </div>
-        <div style={{ width: '100%', textAlign: 'left' }}>
-          <label style={{ fontSize: 12.5, color: 'var(--muted)', display: 'block', marginBottom: 6 }}>
-            계속하려면 아래에 <strong style={{ color: 'var(--ink)' }}>해지</strong>를 입력하세요.
-          </label>
+        <div style={{ width: '100%', textAlign: 'left', position: 'relative' }}>
           <input
             className="pg-input"
             value={confirmText}
             onChange={e => setConfirmText(e.target.value)}
-            placeholder="해지"
+            aria-label="계속하려면 해지를 입력하세요"
             disabled={loading}
           />
+          {!confirmText && (
+            <span style={{
+              position: 'absolute',
+              left: 16,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              color: 'var(--muted)',
+              fontSize: 15,
+              pointerEvents: 'none',
+            }}>
+              계속하려면 <strong>해지</strong>를 입력하세요
+            </span>
+          )}
         </div>
         {errorMessage && (
           <p style={{ margin: 0, fontSize: 12.5, color: '#c0392b' }}>{errorMessage}</p>
@@ -1537,21 +1547,33 @@ function ConfirmDeactivateModal({ onConfirm, onClose, isSocialLogin, confirmatio
         </div>
         {isSocialLogin && (
           <div style={{ width: '100%', textAlign: 'left' }}>
-            <label htmlFor="deactivate-confirmation" style={{ display: 'block', fontSize: 13, color: 'var(--ink-soft)', marginBottom: 7 }}>
-              계속하려면 아래에 <strong>탈퇴</strong>를 입력해주세요.
-            </label>
-            <input
-              id="deactivate-confirmation"
-              className="pg-input"
-              value={confirmation}
-              onChange={e => onConfirmationChange(e.target.value)}
-              placeholder="탈퇴"
-              autoFocus
-              autoComplete="off"
-              onKeyDown={e => {
-                if (e.key === 'Enter' && canConfirm && !busy) onConfirm();
-              }}
-            />
+            <div style={{ position: 'relative' }}>
+              <input
+                id="deactivate-confirmation"
+                className="pg-input"
+                value={confirmation}
+                onChange={e => onConfirmationChange(e.target.value)}
+                aria-label="계속하려면 탈퇴를 입력하세요"
+                autoFocus
+                autoComplete="off"
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && canConfirm && !busy) onConfirm();
+                }}
+              />
+              {!confirmation && (
+                <span style={{
+                  position: 'absolute',
+                  left: 16,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: 'var(--muted)',
+                  fontSize: 15,
+                  pointerEvents: 'none',
+                }}>
+                  계속하려면 <strong>탈퇴</strong>를 입력하세요
+                </span>
+              )}
+            </div>
           </div>
         )}
         <div style={{ display: 'flex', gap: 8, width: '100%', marginTop: 4 }}>
