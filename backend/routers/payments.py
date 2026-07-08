@@ -2,6 +2,7 @@ import hashlib
 import os
 import uuid
 from typing import Literal
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -60,6 +61,10 @@ class TossConfirmRequest(BaseModel):
 class TossCloseRequest(BaseModel):
     order_id: str
     result: Literal["cancelled", "failed"]
+
+
+class CancelSubscriptionRequest(BaseModel):
+    confirmation: str
 
 
 def _partner_user_id(user_id: str) -> str:
@@ -315,7 +320,7 @@ def payment_history(current_user: dict = Depends(get_current_user)):
     with conn:
         with conn.cursor() as cur:
             cur.execute(
-                """SELECT p.paid_at, p.amount, p.pg_provider, pl.plan_name
+                """SELECT p.payment_id, p.paid_at, p.amount, p.pg_provider, pl.plan_name
                    FROM payments p
                    JOIN plans pl ON pl.plan_id = p.plan_id
                    WHERE p.user_id = %s AND p.payment_status = 'paid'
@@ -327,6 +332,7 @@ def payment_history(current_user: dict = Depends(get_current_user)):
     return {
         "payments": [
             {
+                "payment_id": row["payment_id"],
                 "date": row["paid_at"].strftime("%Y-%m-%d") if row["paid_at"] else None,
                 "plan_name": row["plan_name"],
                 "amount": int(row["amount"]),
@@ -508,3 +514,166 @@ def toss_pay_close(
 ):
     _mark_toss_payment(body.order_id, current_user["sub"], body.result)
     return {"status": body.result}
+
+
+def _add_one_month(dt):
+    year = dt.year + (dt.month // 12)
+    month = dt.month % 12 + 1
+    day = min(dt.day, 28)
+    return dt.replace(year=year, month=month, day=day)
+
+
+@router.post("/schedule-downgrade")
+def schedule_downgrade(current_user: dict = Depends(get_current_user)):
+    user_id = current_user["sub"]
+    conn = get_conn()
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT u.plan_id, pl.plan_name
+                   FROM users u JOIN plans pl ON pl.plan_id = u.plan_id
+                   WHERE u.user_id = %s""",
+                (user_id,),
+            )
+            user_plan = cur.fetchone()
+            if not user_plan or user_plan["plan_name"] != "Pro":
+                raise HTTPException(status_code=400, detail="Pro 요금제 사용자만 다운그레이드를 예약할 수 있습니다.")
+
+            cur.execute("SELECT plan_id FROM plans WHERE plan_name = 'Basic' LIMIT 1")
+            basic_plan = cur.fetchone()
+            if not basic_plan:
+                raise HTTPException(status_code=404, detail="Basic 요금제를 찾을 수 없습니다.")
+
+            cur.execute(
+                """SELECT paid_at FROM payments
+                   WHERE user_id = %s AND plan_id = %s AND payment_status = 'paid'
+                   ORDER BY paid_at DESC LIMIT 1""",
+                (user_id, user_plan["plan_id"]),
+            )
+            latest = cur.fetchone()
+            base_date = latest["paid_at"] if latest and latest["paid_at"] else datetime.utcnow()
+            effective_date = _add_one_month(base_date)
+
+            cur.execute(
+                """UPDATE users SET pending_plan_id = %s, plan_change_at = %s WHERE user_id = %s""",
+                (basic_plan["plan_id"], effective_date, user_id),
+            )
+        conn.commit()
+
+    return {"scheduled": True, "effective_date": effective_date.strftime("%Y-%m-%d")}
+
+
+def apply_pending_plan_change(user_id: str):
+    """예약된 다운그레이드/해지 시점이 지났으면 실제로 반영. auth.py의 /auth/me 등에서 매 요청마다 호출."""
+    conn = get_conn()
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT pending_plan_id, plan_change_at, cancel_at FROM users WHERE user_id = %s",
+                (user_id,),
+            )
+            row = cur.fetchone()
+            if not row:
+                return
+
+            now = datetime.utcnow()
+
+            if row["cancel_at"] and row["cancel_at"] <= now:
+                cur.execute(
+                    """UPDATE users
+                       SET plan_id = NULL, pending_plan_id = NULL, plan_change_at = NULL,
+                           cancel_at = NULL, api_key_suspended = 1
+                       WHERE user_id = %s""",
+                    (user_id,),
+                )
+                conn.commit()
+                return
+
+            if row["pending_plan_id"] and row["plan_change_at"] and row["plan_change_at"] <= now:
+                cur.execute(
+                    """UPDATE users SET plan_id = pending_plan_id, pending_plan_id = NULL,
+                           plan_change_at = NULL, subscription_date = NOW()
+                       WHERE user_id = %s""",
+                    (user_id,),
+                )
+                conn.commit()
+
+
+@router.post("/cancel-scheduled-downgrade")
+def cancel_scheduled_downgrade(current_user: dict = Depends(get_current_user)):
+    conn = get_conn()
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT pending_plan_id FROM users WHERE user_id = %s",
+                (current_user["sub"],),
+            )
+            row = cur.fetchone()
+            if not row or not row["pending_plan_id"]:
+                raise HTTPException(status_code=400, detail="예약된 요금제 변경이 없습니다.")
+
+            cur.execute(
+                "UPDATE users SET pending_plan_id = NULL, plan_change_at = NULL WHERE user_id = %s",
+                (current_user["sub"],),
+            )
+        conn.commit()
+    return {"cancelled": True}
+
+
+@router.post("/cancel-subscription")
+def cancel_subscription(
+    body: CancelSubscriptionRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    if body.confirmation.strip() != "해지":
+        raise HTTPException(status_code=400, detail="'해지'를 정확히 입력해주세요.")
+
+    user_id = current_user["sub"]
+    conn = get_conn()
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT plan_id FROM users WHERE user_id = %s",
+                (user_id,),
+            )
+            user_row = cur.fetchone()
+            if not user_row or not user_row["plan_id"]:
+                raise HTTPException(status_code=400, detail="해지할 구독이 없습니다.")
+
+            cur.execute(
+                """SELECT paid_at FROM payments
+                   WHERE user_id = %s AND plan_id = %s AND payment_status = 'paid'
+                   ORDER BY paid_at DESC LIMIT 1""",
+                (user_id, user_row["plan_id"]),
+            )
+            latest = cur.fetchone()
+            base_date = latest["paid_at"] if latest and latest["paid_at"] else datetime.utcnow()
+            effective_date = _add_one_month(base_date)
+
+            # 해지 예약이 다운그레이드 예약보다 우선하므로 기존 다운그레이드 예약은 정리
+            cur.execute(
+                """UPDATE users
+                   SET pending_plan_id = NULL, plan_change_at = NULL, cancel_at = %s
+                   WHERE user_id = %s""",
+                (effective_date, user_id),
+            )
+        conn.commit()
+
+    return {"scheduled": True, "effective_date": effective_date.strftime("%Y-%m-%d")}
+
+
+@router.post("/cancel-scheduled-cancellation")
+def cancel_scheduled_cancellation(current_user: dict = Depends(get_current_user)):
+    conn = get_conn()
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT cancel_at FROM users WHERE user_id = %s", (current_user["sub"],))
+            row = cur.fetchone()
+            if not row or not row["cancel_at"]:
+                raise HTTPException(status_code=400, detail="예약된 해지가 없습니다.")
+            cur.execute(
+                "UPDATE users SET cancel_at = NULL WHERE user_id = %s",
+                (current_user["sub"],),
+            )
+        conn.commit()
+    return {"cancelled": True}

@@ -1,6 +1,5 @@
 // PaymentPage.jsx
 
-
 import React, { useState } from 'react';
 
 /* ── 스텝 인디케이터 원형 배지 ── */

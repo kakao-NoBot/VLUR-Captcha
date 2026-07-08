@@ -29,6 +29,7 @@ from services.google_oauth import (
     build_google_authorize_url,
     fetch_google_user,
 )
+from routers.payments import apply_pending_plan_change
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -424,15 +425,20 @@ def signup(body: SignupRequest):
 
 @router.get("/me")
 def me(current_user: dict = Depends(get_current_user)):
+    # 예약된 다운그레이드/해지 시점이 지났으면 이 요청에서 바로 실제 전환
+    apply_pending_plan_change(current_user["sub"])
+
     conn = get_conn()
     with conn:
         with conn.cursor() as cur:
             cur.execute(
                 """SELECT u.user_id, u.user_name, u.email, u.phone, u.role,
                           u.created_at, u.subscription_date, pl.plan_name,
+                          pp.plan_name AS pending_plan_name, u.plan_change_at, u.cancel_at,
                           (u.password_hash IS NOT NULL AND u.password_hash <> '') AS has_password
                    FROM users u
                    LEFT JOIN plans pl ON pl.plan_id = u.plan_id
+                   LEFT JOIN plans pp ON pp.plan_id = u.pending_plan_id
                    WHERE u.user_id = %s""",
                 (current_user["sub"],),
             )

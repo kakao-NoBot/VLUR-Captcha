@@ -1228,16 +1228,19 @@ function PayBadge({ provider, fallback }) {
   return <img src={logo} alt={provider} className={`pay-badge-logo ${provider}`} />;
 }
 
-function CancelSubModal({ onConfirm, onClose }) {
+function CancelSubscriptionModal({ onConfirm, onClose, loading, errorMessage }) {
+  const [confirmText, setConfirmText] = useState('');
+  const canConfirm = confirmText.trim() === '해지' && !loading;
+
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 9999,
       background: 'rgba(36,27,21,.45)', display: 'flex',
       alignItems: 'center', justifyContent: 'center', padding: 24,
-    }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+    }} onClick={e => { if (e.target === e.currentTarget && !loading) onClose(); }}>
       <div style={{
         background: 'var(--card)', borderRadius: 'var(--r)', padding: '28px 24px',
-        width: '100%', maxWidth: 340, boxShadow: 'var(--shadow-md)',
+        width: '100%', maxWidth: 380, boxShadow: 'var(--shadow-md)',
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
         textAlign: 'center',
       }}>
@@ -1252,25 +1255,49 @@ function CancelSubModal({ onConfirm, onClose }) {
           </svg>
         </div>
         <div>
-          <strong style={{ display: 'block', fontSize: 16, marginBottom: 6 }}>구독을 해지하시겠어요?</strong>
+          <strong style={{ display: 'block', fontSize: 16, marginBottom: 6 }}>정말 구독을 해지하시겠어요?</strong>
           <span style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.6 }}>
-            해지해도 현재 결제 주기가 끝날 때까지는<br/>Pro 플랜을 계속 이용할 수 있습니다.
+            결제하신 기간 동안은 Pro 요금제를 계속 이용하실 수 있고,<br/>
+            기간이 끝나면 자동으로 요금제가 해지되어 API Key도 정지됩니다.
           </span>
         </div>
+        <div style={{ width: '100%', textAlign: 'left' }}>
+          <label style={{ fontSize: 12.5, color: 'var(--muted)', display: 'block', marginBottom: 6 }}>
+            계속하려면 아래에 <strong style={{ color: 'var(--ink)' }}>해지</strong>를 입력하세요.
+          </label>
+          <input
+            className="pg-input"
+            value={confirmText}
+            onChange={e => setConfirmText(e.target.value)}
+            placeholder="해지"
+            disabled={loading}
+          />
+        </div>
+        {errorMessage && (
+          <p style={{ margin: 0, fontSize: 12.5, color: '#c0392b' }}>{errorMessage}</p>
+        )}
         <div style={{ display: 'flex', gap: 8, width: '100%', marginTop: 4 }}>
-          <button className="pg-btn" style={{ flex: 1, padding: 11 }} onClick={onClose}>취소</button>
-          <button className="pg-btn danger" style={{ flex: 1, padding: 11 }} onClick={onConfirm}>해지하기</button>
+          <button className="pg-btn" style={{ flex: 1, padding: 11 }} onClick={onClose} disabled={loading}>취소</button>
+          <button
+            className="pg-btn danger"
+            style={{ flex: 1, padding: 11, opacity: canConfirm ? 1 : 0.5, cursor: canConfirm ? 'pointer' : 'not-allowed' }}
+            onClick={() => onConfirm(confirmText)}
+            disabled={!canConfirm}
+          >
+            {loading ? '처리 중...' : '해지하기'}
+          </button>
         </div>
       </div>
     </div>
   );
 }
 
-function BillingTab({ closePage, profile }) {
+function BillingTab({ closePage, profile, onProfileRefresh }) {
   const [showCancelModal, setShowCancelModal] = useState(false);
-  const [cancelled, setCancelled] = useState(false);
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [cancelPending, setCancelPending] = useState(false);
+  const [cancelError, setCancelError] = useState('');
 
   useEffect(() => {
     let ignore = false;
@@ -1291,6 +1318,14 @@ function BillingTab({ closePage, profile }) {
   const hasPlan = Boolean(profile?.plan_name);
   const latestPayment = payments[0] || null;
 
+  const pendingDowngrade = isPro && profile?.pending_plan_name === 'Basic' && profile?.plan_change_at
+    ? { effectiveDate: String(profile.plan_change_at).slice(0, 10) }
+    : null;
+
+  const pendingCancellation = isPro && profile?.cancel_at
+    ? { effectiveDate: String(profile.cancel_at).slice(0, 10) }
+    : null;
+
   const goToPricing = () => {
     closePage?.();
     setTimeout(() => {
@@ -1298,63 +1333,100 @@ function BillingTab({ closePage, profile }) {
     }, 320);
   };
 
-  const handleCancel = () => {
-    setCancelled(true);
-    setShowCancelModal(false);
+  const handleCancelSubscription = async (confirmationText) => {
+    setCancelPending(true);
+    setCancelError('');
+    try {
+      await api.post('/payments/cancel-subscription', { confirmation: confirmationText });
+      setShowCancelModal(false);
+      onProfileRefresh?.();
+    } catch (err) {
+      setCancelError(err.response?.data?.detail || '구독 해지 처리 중 오류가 발생했습니다.');
+    } finally {
+      setCancelPending(false);
+    }
+  };
+
+  const handleResumeSubscription = async () => {
+    setCancelPending(true);
+    setCancelError('');
+    try {
+      await api.post('/payments/cancel-scheduled-cancellation');
+      onProfileRefresh?.();
+    } catch (err) {
+      setCancelError(err.response?.data?.detail || '재구독 처리 중 오류가 발생했습니다.');
+    } finally {
+      setCancelPending(false);
+    }
   };
 
   return (
     <>
       <h2 className="pg-h2" style={{ marginBottom: 20 }}>결제 내역</h2>
 
-      {/* 현재 구독 요약 */}
       <div className="pg-card" style={{ maxWidth: 720, marginBottom: 20 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
-          <div>
-            <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 4 }}>현재 구독 중</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--disp)', color: 'var(--ink)' }}>
-                {hasPlan ? `${profile.plan_name} 플랜` : '-'}
-              </span>
-              {isPro && cancelled && (
-                <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: 'rgba(216,73,47,.15)', color: 'var(--bad)' }}>
-                  해지 예정
+        {hasPlan ? (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+            <div>
+              <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 4 }}>현재 구독 중</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--disp)', color: 'var(--ink)' }}>
+                  {profile.plan_name} 플랜
                 </span>
+                {pendingCancellation && (
+                  <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: 'rgba(216,73,47,.15)', color: 'var(--bad)' }}>
+                    해지 예정
+                  </span>
+                )}
+                {!pendingCancellation && pendingDowngrade && (
+                  <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: 'var(--peach)', color: 'var(--orange-2)' }}>
+                    {pendingDowngrade.effectiveDate}부터 Basic 전환 예정
+                  </span>
+                )}
+              </div>
+              {isPro && (
+                <div style={{ fontSize: 13, color: 'var(--ink-soft)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {pendingCancellation
+                    ? <>{pendingCancellation.effectiveDate}까지 Pro 이용 후 요금제가 해지됩니다.</>
+                    : latestPayment
+                      ? <>최근 결제일: <strong>{latestPayment.date}</strong> <PayBadge provider={latestPayment.provider} fallback={latestPayment.method} /></>
+                      : '결제 내역을 확인하는 중입니다.'}
+                </div>
               )}
             </div>
-            {isPro && (
-              <div style={{ fontSize: 13, color: 'var(--ink-soft)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
-                {cancelled
-                  ? '해지 신청이 접수되었습니다.'
-                  : latestPayment
-                    ? <>최근 결제일: <strong>{latestPayment.date}</strong> <PayBadge provider={latestPayment.provider} fallback={latestPayment.method} /></>
-                    : '결제 내역을 확인하는 중입니다.'
-                }
-              </div>
-            )}
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {!(isPro && cancelled) && (
-              <button className="pg-btn" style={{ fontSize: 13, padding: '9px 16px' }} onClick={goToPricing}>
-                요금제 변경
-              </button>
-            )}
-            {isPro && (
-              !cancelled ? (
-                <button className="pg-btn danger" style={{ fontSize: 13, padding: '9px 16px' }} onClick={() => setShowCancelModal(true)}>
-                  구독 해지
-                </button>
-              ) : (
+            <div style={{ display: 'flex', gap: 8 }}>
+              {!pendingCancellation && (
                 <button className="pg-btn" style={{ fontSize: 13, padding: '9px 16px' }} onClick={goToPricing}>
-                  재구독
+                  요금제 변경
                 </button>
-              )
-            )}
+              )}
+              {isPro && (
+                pendingCancellation ? (
+                  <button className="pg-btn" style={{ fontSize: 13, padding: '9px 16px' }} onClick={handleResumeSubscription} disabled={cancelPending}>
+                    {cancelPending ? '처리 중...' : '재구독'}
+                  </button>
+                ) : (
+                  <button className="pg-btn danger" style={{ fontSize: 13, padding: '9px 16px' }} onClick={() => setShowCancelModal(true)}>
+                    구독 해지
+                  </button>
+                )
+              )}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div style={{ textAlign: 'center', padding: '20px 0' }}>
+            <strong style={{ display: 'block', fontSize: 16, marginBottom: 8 }}>구독 중인 요금제가 없습니다</strong>
+            <p style={{ margin: '0 0 16px', fontSize: 13.5, color: 'var(--muted)' }}>
+              API Key를 사용하려면 요금제를 다시 선택해주세요.
+            </p>
+            <button className="pg-btn primary" onClick={goToPricing}>요금제 선택하기</button>
+          </div>
+        )}
+        {cancelError && (
+          <p style={{ color: 'var(--bad)', fontSize: 13, marginTop: 12 }}>{cancelError}</p>
+        )}
       </div>
 
-      {/* 결제 내역 테이블 */}
       {loading ? (
         <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--muted)', fontSize: 14 }}>
           불러오는 중...
@@ -1376,7 +1448,7 @@ function BillingTab({ closePage, profile }) {
           </thead>
           <tbody>
             {payments.map(row => (
-              <tr key={`${row.date}-${row.plan_name}-${row.amount}`}>
+              <tr key={row.payment_id}>
                 <td>{row.date}</td>
                 <td>{row.plan_name}</td>
                 <td>{formatNumber(row.amount)}원</td>
@@ -1398,9 +1470,11 @@ function BillingTab({ closePage, profile }) {
       )}
 
       {showCancelModal && (
-        <CancelSubModal
-          onConfirm={handleCancel}
+        <CancelSubscriptionModal
+          onConfirm={handleCancelSubscription}
           onClose={() => setShowCancelModal(false)}
+          loading={cancelPending}
+          errorMessage={cancelError}
         />
       )}
     </>
@@ -1785,17 +1859,15 @@ export default function MypagePage({ openPage, closePage, initialTab = 'info', u
     setActiveTab(initialTab);
   }, [initialTab]);
 
+  const fetchProfile = () => {
+    api.get('/auth/me')
+      .then(({ data }) => setProfile(data))
+      .catch(() => setProfile(null));
+  };
+
   useEffect(() => {
-    let ignore = false;
-    (async () => {
-      try {
-        const { data } = await api.get('/auth/me');
-        if (!ignore) setProfile(data);
-      } catch {
-        if (!ignore) setProfile(null);
-      }
-    })();
-    return () => { ignore = true; };
+    fetchProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -1826,8 +1898,8 @@ export default function MypagePage({ openPage, closePage, initialTab = 'info', u
         {activeTab === 'info'       && <InfoTab user={user} onUserUpdate={onUserUpdate} profile={profile} />}
         {activeTab === 'apikey'     && <ApiKeyTab openPage={openPage} closePage={closePage} profile={profile} />}
         {activeTab === 'usage'      && <UsageTab />}
-        {activeTab === 'billing'    && <BillingTab closePage={closePage} profile={profile} />}
-        {activeTab === 'deactivate' && <DeactivateTab closePage={closePage} onLogout={onLogout} profile={profile} user={user} />}
+        {activeTab === 'billing'    && <BillingTab closePage={closePage} profile={profile} onProfileRefresh={fetchProfile} />}
+        {activeTab === 'deactivate' && <DeactivateTab closePage={closePage} onLogout={onLogout} />}
         {activeTab === 'inquiries' && isAdmin && <InquiriesTab />}
       </div>
     </div>
