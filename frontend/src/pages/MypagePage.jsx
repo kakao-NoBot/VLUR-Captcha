@@ -1899,7 +1899,14 @@ export default function MypagePage({ openPage, closePage, initialTab = 'info', u
         {activeTab === 'apikey'     && <ApiKeyTab openPage={openPage} closePage={closePage} profile={profile} />}
         {activeTab === 'usage'      && <UsageTab />}
         {activeTab === 'billing'    && <BillingTab closePage={closePage} profile={profile} onProfileRefresh={fetchProfile} />}
-        {activeTab === 'deactivate' && <DeactivateTab closePage={closePage} onLogout={onLogout} />}
+        {activeTab === 'deactivate' && (
+          <DeactivateTab
+            closePage={closePage}
+            onLogout={onLogout}
+            profile={profile}
+            user={user}
+          />
+        )}
         {activeTab === 'inquiries' && isAdmin && <InquiriesTab />}
       </div>
     </div>
