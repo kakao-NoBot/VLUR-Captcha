@@ -1481,8 +1481,10 @@ function BillingTab({ closePage, profile, onProfileRefresh }) {
   );
 }
 
-/* ── 탈퇴 확인 모달 (작은 사이즈) ── */
-function ConfirmDeactivateModal({ onConfirm, onClose }) {
+/* ── 탈퇴 확인 모달 (소셜 로그인은 확인 문구 입력) ── */
+function ConfirmDeactivateModal({ onConfirm, onClose, isSocialLogin, confirmation, onConfirmationChange, busy }) {
+  const canConfirm = !isSocialLogin || confirmation === '탈퇴';
+
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 9999,
@@ -1502,12 +1504,41 @@ function ConfirmDeactivateModal({ onConfirm, onClose }) {
           </svg>
         </div>
         <div>
-          <strong style={{ display: 'block', fontSize: 16, marginBottom: 4 }}>정말로 탈퇴하시겠어요?</strong>
+          <strong style={{ display: 'block', fontSize: 16, marginBottom: 4 }}>정말 탈퇴하시겠습니까?</strong>
           <span style={{ fontSize: 13, color: 'var(--muted)' }}>이 작업은 되돌릴 수 없습니다.</span>
         </div>
+        {isSocialLogin && (
+          <div style={{ width: '100%', textAlign: 'left' }}>
+            <label htmlFor="deactivate-confirmation" style={{ display: 'block', fontSize: 13, color: 'var(--ink-soft)', marginBottom: 7 }}>
+              계속하려면 아래에 <strong>탈퇴</strong>를 입력해주세요.
+            </label>
+            <input
+              id="deactivate-confirmation"
+              className="pg-input"
+              value={confirmation}
+              onChange={e => onConfirmationChange(e.target.value)}
+              placeholder="탈퇴"
+              autoFocus
+              autoComplete="off"
+              onKeyDown={e => {
+                if (e.key === 'Enter' && canConfirm && !busy) onConfirm();
+              }}
+            />
+          </div>
+        )}
         <div style={{ display: 'flex', gap: 8, width: '100%', marginTop: 4 }}>
-          <button className="pg-btn" style={{ flex: 1, padding: 11 }} onClick={onClose}>취소</button>
-          <button className="pg-btn danger" style={{ flex: 1, padding: 11 }} onClick={onConfirm}>확인</button>
+          <button className="pg-btn" style={{ flex: 1, padding: 11 }} onClick={onClose} disabled={busy}>취소</button>
+          <button
+            className="pg-btn danger"
+            style={{
+              flex: 1,
+              padding: 11,
+              opacity: canConfirm && !busy ? 1 : 0.5,
+              cursor: canConfirm && !busy ? 'pointer' : 'not-allowed',
+            }}
+            onClick={onConfirm}
+            disabled={!canConfirm || busy}
+          >{busy ? '처리 중...' : (isSocialLogin ? '탈퇴' : '확인')}</button>
         </div>
       </div>
     </div>
@@ -1605,8 +1636,9 @@ function DeactivateDoneModal({ onClose }) {
 }
 
 /* ── SC-17 계정 탈퇴 탭 (탈퇴사유 제거) ── */
-function DeactivateTab({ closePage, onLogout }) {
+function DeactivateTab({ closePage, onLogout, profile, user }) {
   const [password, setPassword] = useState('');
+  const [confirmation, setConfirmation] = useState('');
   const [agreed, setAgreed] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [showDone, setShowDone] = useState(false);
@@ -1614,19 +1646,23 @@ function DeactivateTab({ closePage, onLogout }) {
   const [showPwWarn, setShowPwWarn] = useState(false);
   const [apiError, setApiError] = useState('');
   const [busy, setBusy] = useState(false);
+  const looksSocial = Boolean(user?.is_social_login) || /^(kakao|naver|google)_/.test(user?.user_id || '');
+  const isSocialLogin = profile ? Boolean(profile.is_social_login) : looksSocial;
 
   const confirm_ = () => {
     if (busy) return;
-    if (!password.trim()) { setShowPwWarn(true); return; }
+    if (!isSocialLogin && !password.trim()) { setShowPwWarn(true); return; }
     if (!agreed) { setShowAgreeWarn(true); return; }
     setApiError('');
+    setConfirmation('');
     setShowConfirm(true);
   };
 
   const doDeactivate = async () => {
     setBusy(true);
     try {
-      await api.post('/auth/deactivate', { password });
+      const payload = isSocialLogin ? { confirmation } : { password };
+      await api.post('/auth/deactivate', payload);
       setShowConfirm(false);
       setShowDone(true);
     } catch (err) {
@@ -1643,7 +1679,7 @@ function DeactivateTab({ closePage, onLogout }) {
     else closePage();
   };
 
-  const isValid = password.trim() && agreed;
+  const isValid = (isSocialLogin || password.trim()) && agreed;
 
   return (
     <>
@@ -1655,12 +1691,14 @@ function DeactivateTab({ closePage, onLogout }) {
         작성한 게시글/문의 내역은 별도 처리 정책에 따릅니다.
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 420 }}>
-        <PasswordInput
-          placeholder="비밀번호 확인"
-          value={password}
-          onChange={e => { setPassword(e.target.value); setApiError(''); }}
-          style={apiError ? { border: '1.5px solid #c0392b' } : {}}
-        />
+        {!isSocialLogin && (
+          <PasswordInput
+            placeholder="비밀번호 확인"
+            value={password}
+            onChange={e => { setPassword(e.target.value); setApiError(''); }}
+            style={apiError ? { border: '1.5px solid #c0392b' } : {}}
+          />
+        )}
         {apiError && (
           <p style={{ margin: '-6px 0 0', fontSize: 12.5, color: '#c0392b' }}>{apiError}</p>
         )}
@@ -1681,7 +1719,11 @@ function DeactivateTab({ closePage, onLogout }) {
       {showConfirm && (
         <ConfirmDeactivateModal
           onConfirm={doDeactivate}
-          onClose={() => setShowConfirm(false)}
+          onClose={() => { setShowConfirm(false); setConfirmation(''); }}
+          isSocialLogin={isSocialLogin}
+          confirmation={confirmation}
+          onConfirmationChange={value => { setConfirmation(value); setApiError(''); }}
+          busy={busy}
         />
       )}
       {showDone && (
