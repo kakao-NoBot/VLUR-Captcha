@@ -77,8 +77,10 @@ function renderBody(text) {
     if (!line.trim()) return <div key={i} style={{ height: 6 }} />;
     if (line.startsWith('•')) {
       return (
-        <div key={i} style={{ display: 'flex', gap: 8, margin: '0 0 4px', paddingLeft: 4 }}>
-          <span style={{ flexShrink: 0, color: 'var(--orange)', lineHeight: 1.75 }}>•</span>
+        <div key={i} style={{ display: 'grid', gridTemplateColumns: '8px minmax(0, 1fr)', columnGap: 10, alignItems: 'start', margin: '0 0 4px', paddingLeft: 4 }}>
+          <span aria-hidden="true" style={{ width: 8, height: '1.75em', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', transform: 'translateY(-2px)' }}>
+            <span style={{ display: 'block', width: 4, height: 4, borderRadius: 999, background: 'var(--orange)' }} />
+          </span>
           <span style={{ fontSize: 13.5, color: 'var(--ink-soft)', lineHeight: 1.75 }}>{line.slice(1).trim()}</span>
         </div>
       );
