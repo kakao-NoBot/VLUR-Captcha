@@ -24,7 +24,6 @@ const INQUIRY_TYPE_TABS = [
 
 const INQUIRY_STATUS_OPTIONS = ['접수', '검토', '답변'];
 const MANAGE_STATUS_OPTIONS = ['활성', '점검', '비활성'];
-// 사용자 관리 탭의 "상태"는 계정 로그인 가능 여부가 아니라 API Key 활성 여부를 의미한다.
 const USER_STATUS_OPTIONS = ['활성', '비활성'];
 
 const INQUIRY_STATUS_TONE = {
@@ -54,7 +53,6 @@ const INQUIRY_STATUS_BACKEND_TO_LABEL = {
   spam: '접수',
 };
 
-// API Key 활성 상태 <-> 뱃지 라벨 매핑 (계정 상태 user_status와는 무관)
 const KEY_ACTIVE_TO_LABEL = {
   true: '활성',
   false: '비활성',
@@ -82,7 +80,6 @@ function SocialProviderLogo({ provider }) {
 }
 
 function mapAdminUser(row) {
-  // api_key_active: true/false(발급 후) 또는 null(발급 이력 자체가 없음) → 모두 "비활성"으로 표시
   const keyActive = row.api_key_active === true || row.api_key_active === 1;
   const shared = {
     internalId: row.user_id,
@@ -115,6 +112,7 @@ function mapInquiry(row) {
     email: row.email,
     message: row.message,
     receivedAt: row.created_at ? String(row.created_at).slice(0, 10) : '',
+    createdAtRaw: row.created_at || null,
     status: INQUIRY_STATUS_BACKEND_TO_LABEL[row.inquiry_status] || '접수',
   };
   if (row.inquiry_type === 'enterprise') {
@@ -186,7 +184,6 @@ function getPercent(used, limit) {
   return Math.min(100, Math.round((used / limit) * 100));
 }
 
-/* ── 상태 뱃지 (읽기 전용: 모달, 인증 로그 결과 등) ── */
 const STATUS_TONE_STYLE = {
   success: { color: '#1f8a54', background: 'rgba(46,163,107,0.14)', dot: '#2ea36b' },
   warning: { color: '#a5720f', background: 'rgba(224,165,44,0.16)', dot: '#e0a52c' },
@@ -194,8 +191,6 @@ const STATUS_TONE_STYLE = {
   neutral: { color: 'var(--ink-soft)', background: 'rgba(60,45,32,0.06)', dot: 'var(--muted)' },
 };
 
-// 다크모드에서만 CSS 변수(--status-badge-*)가 정의되어 네이비 배경·글씨색 링·글로우가 적용된다.
-// 라이트모드에서는 변수가 없어 기존 틴트 배경으로 폴백. (StatusBadge/StatusDropdown 공용)
 function toneBadgeStyle(tone, s) {
   return {
     color: `var(--status-badge-ink-${tone}, ${s.color})`,
@@ -221,7 +216,6 @@ function StatusBadge({ children, tone = 'neutral', style }) {
   );
 }
 
-/* ── 상태 변경 드롭다운 (문의/로그/사용자/사이트 공용, Portal 렌더링) ── */
 function StatusDropdown({ status, options, isOpen, onToggle, onSelect, resolveTone = getStatusTone, minWidth = 46 }) {
   const triggerRef = useRef(null);
   const [menuPos, setMenuPos] = useState(null);
@@ -308,7 +302,6 @@ function StatusDropdown({ status, options, isOpen, onToggle, onSelect, resolveTo
   );
 }
 
-/* ── 봇 차단 추이 꺾은선 그래프 (순수 SVG, 외부 라이브러리 불필요) ── */
 function BotTrendChart({ data }) {
   const [hoverIndex, setHoverIndex] = useState(null);
   const width = 640;
@@ -360,7 +353,6 @@ function BotTrendChart({ data }) {
             fill="var(--card)" stroke="var(--orange)" strokeWidth="2.5"
           />
         ))}
-        {/* 값 라벨은 커서를 올린 지점만 표시 */}
         {hovered && (
           <text x={hovered.x} y={hovered.y - 14} textAnchor="middle" fontSize="13" fill="var(--ink)">
             {hovered.value}%
@@ -376,7 +368,6 @@ function BotTrendChart({ data }) {
             {p.label}
           </text>
         ))}
-        {/* 호버 감지용 투명 슬롯 */}
         {points.map((p, i) => (
           <rect
             key={`${p.label}-hit`}
@@ -391,7 +382,6 @@ function BotTrendChart({ data }) {
   );
 }
 
-/* ── 검색창 (아이콘 + 알약형, 축소 버전) ── */
 function AdminSearchInput({ value, onChange, placeholder, ariaLabel }) {
   return (
     <div style={{ position: 'relative', minWidth: 190, maxWidth: 220 }}>
@@ -500,7 +490,6 @@ function ScoreGauge({ score, max = 100 }) {
   );
 }
 
-/* ── AdminModalShell: PrivacyModal.jsx와 완전히 동일한 셸 디자인 ── */
 function AdminModalShell({ eyebrow, title, onClose, children, footer, labelledBy }) {
   return (
     <div
@@ -523,7 +512,6 @@ function AdminModalShell({ eyebrow, title, onClose, children, footer, labelledBy
           boxShadow: '0 24px 60px -12px rgba(0,0,0,.35)',
         }}
       >
-        {/* Header */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '22px 28px 18px', borderBottom: '1px solid var(--line-soft)', flexShrink: 0,
@@ -552,12 +540,10 @@ function AdminModalShell({ eyebrow, title, onClose, children, footer, labelledBy
           >×</button>
         </div>
 
-        {/* Body */}
         <div className="admin-modal-scroll" style={{ overflowY: 'auto', padding: '24px 28px', flex: 1 }}>
           {children}
         </div>
 
-        {/* Footer */}
         {footer && (
           <div style={{
             padding: '16px 28px', borderTop: '1px solid var(--line-soft)',
@@ -729,13 +715,19 @@ export default function AdminPage() {
   const [selectedInquiryDetail, setSelectedInquiryDetail] = useState(null);
   const [openStatusMenu, setOpenStatusMenu] = useState(null);
 
+  // 문의 알림 관련: 마지막으로 "문의 관리" 탭을 연 시각(ms) → 그 이후 접수된 문의만 "새 문의"로 취급
+  const [inquiryLastSeen, setInquiryLastSeen] = useState(() => (
+    Number(localStorage.getItem('admin_inquiries_last_seen') || 0)
+  ));
+  const [showInquiryTip, setShowInquiryTip] = useState(false);
+
   const activeUsers = activeUserType === 'personal' ? personalUsers : businessUsers;
   const activeInquiries = activeInquiryType === 'general' ? generalInquiries : businessInquiries;
 
   useEffect(() => {
     let ignore = false;
 
-    (async () => {
+    const fetchInquiries = async () => {
       try {
         const { data } = await api.get('/admin/inquiries');
         const inquiries = data.inquiries || [];
@@ -748,10 +740,46 @@ export default function AdminPage() {
           setBusinessInquiries([]);
         }
       }
-    })();
+    };
 
-    return () => { ignore = true; };
+    fetchInquiries();
+    const interval = setInterval(fetchInquiries, 30000);
+
+    return () => { ignore = true; clearInterval(interval); };
   }, []);
+
+  // "문의 관리" 탭을 열면 현재 시각을 저장해 그 시점까지의 문의를 읽음 처리
+  useEffect(() => {
+    if (activeTab === 'inquiries') {
+      const now = Date.now();
+      localStorage.setItem('admin_inquiries_last_seen', String(now));
+      setInquiryLastSeen(now);
+    }
+  }, [activeTab]);
+
+  const unreadInquiryCount = useMemo(() => {
+    const isNew = (row) => {
+      const receivedAt = row.createdAtRaw ? new Date(row.createdAtRaw).getTime() : 0;
+      return receivedAt > inquiryLastSeen;
+    };
+    return [...generalInquiries, ...businessInquiries].filter(isNew).length;
+  }, [generalInquiries, businessInquiries, inquiryLastSeen]);
+
+  const unreadGeneralCount = useMemo(() => {
+    const isNew = (row) => {
+      const receivedAt = row.createdAtRaw ? new Date(row.createdAtRaw).getTime() : 0;
+      return receivedAt > inquiryLastSeen;
+    };
+    return generalInquiries.filter(isNew).length;
+  }, [generalInquiries, inquiryLastSeen]);
+
+  const unreadBusinessCount = useMemo(() => {
+    const isNew = (row) => {
+      const receivedAt = row.createdAtRaw ? new Date(row.createdAtRaw).getTime() : 0;
+      return receivedAt > inquiryLastSeen;
+    };
+    return businessInquiries.filter(isNew).length;
+  }, [businessInquiries, inquiryLastSeen]);
 
   useEffect(() => {
     let ignore = false;
@@ -854,7 +882,6 @@ export default function AdminPage() {
     setBusinessInquiries(updater);
   };
 
-  // 사용자 관리 탭에서 "상태"를 바꾸면 → 계정(user_status)이 아니라 그 사용자의 API Key만 켜고/끈다.
   const updateUserApiKeyStatus = async (type, internalId, nextStatus) => {
     const backendStatus = KEY_LABEL_TO_BACKEND[nextStatus];
     if (!backendStatus) return;
@@ -864,7 +891,6 @@ export default function AdminPage() {
       user.internalId === internalId ? { ...user, status: nextStatus } : user
     ));
 
-    // 낙관적 업데이트: 먼저 화면에 반영하고, 실패하면 되돌린다.
     let previousStatus = null;
     setUsers((users) => users.map((user) => {
       if (user.internalId === internalId) previousStatus = user.status;
@@ -876,7 +902,6 @@ export default function AdminPage() {
     try {
       await api.patch(`/admin/users/${internalId}/api-key-status`, { status: backendStatus });
     } catch (err) {
-      // 실패 시 원래 상태로 롤백
       setUsers((users) => users.map((user) => (
         user.internalId === internalId ? { ...user, status: previousStatus ?? user.status } : user
       )));
@@ -926,8 +951,6 @@ export default function AdminPage() {
         .admin-modal-scroll::-webkit-scrollbar-thumb { background: var(--line); border-radius: 999px; }
         .admin-modal-scroll::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 
-        /* ── 다크모드: admin-* 전용 클래스는 기존 CSS가 색을 하드코딩하고 있어서
-           라이트/다크 전환에 반응하지 않던 것들을 --card/--ink/--line 등 테마 변수로 강제 적용 ── */
         [data-theme="dark"] .admin-page {
           background: var(--bg, var(--paper)) !important;
           color: var(--ink) !important;
@@ -982,7 +1005,6 @@ export default function AdminPage() {
           background: var(--card) !important;
           border-color: var(--line) !important;
         }
-        /* 화면이 좁아져서 사이드바가 가로 탭바로 바뀔 때만 가운데 정렬 (넓은 화면은 그대로) */
         @media (max-width: 940px) {
           .admin-page .mp-sidebar {
             justify-content: center;
@@ -995,17 +1017,90 @@ export default function AdminPage() {
 
       <div className="mp-wrap" aria-label="관리자 기능">
         <div className="mp-sidebar" aria-label="관리자 메뉴">
-          {ADMIN_TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              className={`mp-nav-item${activeTab === tab.id ? ' active' : ''}`}
-              aria-current={activeTab === tab.id ? 'page' : undefined}
-              onClick={() => setActiveTab(tab.id)}
-            >
-              {tab.label}
-            </button>
-          ))}
+          {ADMIN_TABS.map((tab) => {
+            const isInquiries = tab.id === 'inquiries';
+            return (
+              <div
+                key={tab.id}
+                style={{ position: 'relative' }}
+                onMouseEnter={() => { if (isInquiries) setShowInquiryTip(true); }}
+                onMouseLeave={() => { if (isInquiries) setShowInquiryTip(false); }}
+              >
+                <button
+                  type="button"
+                  className={`mp-nav-item${activeTab === tab.id ? ' active' : ''}`}
+                  aria-current={activeTab === tab.id ? 'page' : undefined}
+                  onClick={() => setActiveTab(tab.id)}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                >
+                  {tab.label}
+                  {isInquiries && unreadInquiryCount > 0 && (
+                    <span
+                      aria-hidden="true"
+                      style={{ width: 7, height: 7, borderRadius: '50%', background: '#c0392b', flexShrink: 0 }}
+                    />
+                  )}
+                </button>
+
+                {isInquiries && showInquiryTip && unreadInquiryCount > 0 && (
+                  <div
+                    role="status"
+                    style={{
+                      position: 'absolute', top: 0, left: 'calc(100% + 12px)', zIndex: 500,
+                      background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12,
+                      boxShadow: '0 16px 32px -8px rgba(36,27,21,.18)', padding: '14px 16px',
+                      minWidth: 240, whiteSpace: 'nowrap',
+                    }}
+                  >
+                    <span
+                      aria-hidden="true"
+                      style={{
+                        position: 'absolute', top: 14, left: -6,
+                        width: 11, height: 11, background: 'var(--card)',
+                        borderLeft: '1px solid var(--line)', borderBottom: '1px solid var(--line)',
+                        transform: 'rotate(45deg)',
+                      }}
+                    />
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                      <span
+                        aria-hidden="true"
+                        style={{ width: 6, height: 6, borderRadius: '50%', background: '#c0392b', flexShrink: 0 }}
+                      />
+                      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', color: 'var(--muted)', textTransform: 'uppercase' }}>
+                        새 문의 알림
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {unreadGeneralCount > 0 && (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, fontSize: 13, color: 'var(--ink)' }}>
+                          <span>일반 사용자 문의</span>
+                          <span style={{
+                            fontSize: 12, fontWeight: 700, color: 'var(--orange)',
+                            background: 'rgba(224,120,44,0.12)', borderRadius: 999, padding: '2px 8px',
+                          }}>
+                            +{unreadGeneralCount}
+                          </span>
+                        </div>
+                      )}
+                      {unreadBusinessCount > 0 && (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, fontSize: 13, color: 'var(--ink)' }}>
+                          <span>기업/회사 문의</span>
+                          <span style={{
+                            fontSize: 12, fontWeight: 700, color: 'var(--orange)',
+                            background: 'rgba(224,120,44,0.12)', borderRadius: 999, padding: '2px 8px',
+                          }}>
+                            +{unreadBusinessCount}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
 
         <div className="admin-content">
