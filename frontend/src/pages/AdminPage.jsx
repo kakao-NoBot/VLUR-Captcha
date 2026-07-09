@@ -154,6 +154,29 @@ const PLAN_USAGE = [
   { plan: 'Enterprise', accounts: 86, used: 1120000, limit: 1500000 },
 ];
 
+const PLAN_USAGE_TABS = ['Basic', 'Pro', 'Enterprise'];
+const PLAN_USAGE_SORT_OPTIONS = [
+  { value: 'calls_desc', label: '호출량 많은 순' },
+  { value: 'usage_desc', label: '사용률 높은 순' },
+  { value: 'fail_rate_desc', label: '실패율 높은 순' },
+  { value: 'recent_desc', label: '최근 호출순' },
+];
+
+const PLAN_USAGE_DETAILS = [
+  { id: 1, plan: 'Basic', userName: '김준수', email: 'junsu@example.com', siteName: 'VLUR Demo Shop', monthlyCalls: 182000, monthlyLimit: 300000, successCount: 176500, failCount: 5500, botBlockedCount: 2100, lastCalledAt: '09:42' },
+  { id: 2, plan: 'Basic', userName: '한서연', email: 'seoyeon@example.com', siteName: 'Secure Board', monthlyCalls: 92000, monthlyLimit: 150000, successCount: 88700, failCount: 3300, botBlockedCount: 980, lastCalledAt: '09:16' },
+  { id: 3, plan: 'Basic', userName: '오지훈', email: 'jihun@example.com', siteName: 'Ticket Demo', monthlyCalls: 238000, monthlyLimit: 300000, successCount: 226900, failCount: 11100, botBlockedCount: 4100, lastCalledAt: '08:57' },
+  { id: 4, plan: 'Basic', userName: '문가영', email: 'gayoung@example.com', siteName: 'Commerce Lab', monthlyCalls: 51000, monthlyLimit: 100000, successCount: 49700, failCount: 1300, botBlockedCount: 430, lastCalledAt: '08:24' },
+  { id: 5, plan: 'Pro', userName: '이민지', email: 'minji@example.com', siteName: 'AI Study Portal', monthlyCalls: 684000, monthlyLimit: 900000, successCount: 660000, failCount: 24000, botBlockedCount: 8200, lastCalledAt: '09:38' },
+  { id: 6, plan: 'Pro', userName: '정하늘', email: 'haneul@example.com', siteName: 'K-Event', monthlyCalls: 742000, monthlyLimit: 900000, successCount: 713500, failCount: 28500, botBlockedCount: 9700, lastCalledAt: '09:31' },
+  { id: 7, plan: 'Pro', userName: '최유진', email: 'yujin@example.com', siteName: 'Demo Shop Plus', monthlyCalls: 412000, monthlyLimit: 700000, successCount: 399100, failCount: 12900, botBlockedCount: 5100, lastCalledAt: '08:44' },
+  { id: 8, plan: 'Pro', userName: '강태오', email: 'taeo@example.com', siteName: 'Secure Study', monthlyCalls: 595000, monthlyLimit: 800000, successCount: 573800, failCount: 21200, botBlockedCount: 7600, lastCalledAt: '08:13' },
+  { id: 9, plan: 'Enterprise', userName: '박도윤', email: 'doyoon@example.com', siteName: 'Mega Ticket', monthlyCalls: 1120000, monthlyLimit: 1500000, successCount: 1080000, failCount: 40000, botBlockedCount: 18000, lastCalledAt: '09:21' },
+  { id: 10, plan: 'Enterprise', userName: '서예린', email: 'yerin@example.com', siteName: 'Commerce Lab Global', monthlyCalls: 1340000, monthlyLimit: 1500000, successCount: 1289000, failCount: 51000, botBlockedCount: 22600, lastCalledAt: '09:02' },
+  { id: 11, plan: 'Enterprise', userName: '장민호', email: 'minho@example.com', siteName: 'K-Event Arena', monthlyCalls: 905000, monthlyLimit: 1500000, successCount: 879000, failCount: 26000, botBlockedCount: 12100, lastCalledAt: '08:51' },
+  { id: 12, plan: 'Enterprise', userName: '윤다정', email: 'dajeong@example.com', siteName: 'VLUR Secure Mall', monthlyCalls: 1482000, monthlyLimit: 1500000, successCount: 1420000, failCount: 62000, botBlockedCount: 30100, lastCalledAt: '08:29' },
+];
+
 const BOT_BLOCK_TREND = [
   { label: '6/27', value: 6.8 },
   { label: '6/28', value: 7.4 },
@@ -184,6 +207,18 @@ function getPercent(used, limit) {
   return Math.min(100, Math.round((used / limit) * 100));
 }
 
+function getPrecisePercent(used, limit) {
+  if (!limit) return 0;
+  return Math.min(100, (used / limit) * 100);
+}
+
+function getUsageStatus(percent) {
+  if (percent >= 80) return '위험';
+  if (percent >= 60) return '주의';
+  return '정상';
+}
+
+/* ── 상태 뱃지 (읽기 전용: 모달, 인증 로그 결과 등) ── */
 const STATUS_TONE_STYLE = {
   success: { color: '#1f8a54', background: 'rgba(46,163,107,0.14)', dot: '#2ea36b' },
   warning: { color: '#a5720f', background: 'rgba(224,165,44,0.16)', dot: '#e0a52c' },
@@ -699,6 +734,9 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [activeUserType, setActiveUserType] = useState('personal');
   const [userSearch, setUserSearch] = useState('');
+  const [activeUsagePlan, setActiveUsagePlan] = useState('Basic');
+  const [usagePlanSearch, setUsagePlanSearch] = useState('');
+  const [usagePlanSort, setUsagePlanSort] = useState('calls_desc');
   const [activeInquiryType, setActiveInquiryType] = useState('general');
   const [inquirySearch, setInquirySearch] = useState('');
   const [siteSearch, setSiteSearch] = useState('');
@@ -851,6 +889,53 @@ export default function AdminPage() {
       Object.values(log).some((value) => String(value).toLowerCase().includes(query))
     ));
   }, [logs, logSearch]);
+
+  const usagePlanRows = useMemo(() => {
+    const query = usagePlanSearch.trim().toLowerCase();
+    const baseRows = PLAN_USAGE_DETAILS.filter((row) => row.plan === activeUsagePlan);
+    const searchedRows = query
+      ? baseRows.filter((row) => (
+        row.userName.toLowerCase().includes(query)
+        || row.siteName.toLowerCase().includes(query)
+        || row.email.toLowerCase().includes(query)
+      ))
+      : baseRows;
+
+    return [...searchedRows].sort((a, b) => {
+      const aUsage = getPrecisePercent(a.monthlyCalls, a.monthlyLimit);
+      const bUsage = getPrecisePercent(b.monthlyCalls, b.monthlyLimit);
+      const aFailRate = a.monthlyCalls ? a.failCount / a.monthlyCalls : 0;
+      const bFailRate = b.monthlyCalls ? b.failCount / b.monthlyCalls : 0;
+      if (usagePlanSort === 'usage_desc') return bUsage - aUsage;
+      if (usagePlanSort === 'fail_rate_desc') return bFailRate - aFailRate;
+      if (usagePlanSort === 'recent_desc') return b.lastCalledAt.localeCompare(a.lastCalledAt);
+      return b.monthlyCalls - a.monthlyCalls;
+    });
+  }, [activeUsagePlan, usagePlanSearch, usagePlanSort]);
+
+  const usagePlanSummary = useMemo(() => {
+    const rows = usagePlanRows;
+    const totalCalls = rows.reduce((sum, row) => sum + row.monthlyCalls, 0);
+    const totalLimit = rows.reduce((sum, row) => sum + row.monthlyLimit, 0);
+    const averageUsage = rows.length
+      ? rows.reduce((sum, row) => sum + getPrecisePercent(row.monthlyCalls, row.monthlyLimit), 0) / rows.length
+      : 0;
+    const riskyAccounts = rows.filter((row) => getPrecisePercent(row.monthlyCalls, row.monthlyLimit) >= 80).length;
+    return {
+      accountCount: rows.length,
+      totalCalls,
+      totalLimit,
+      averageUsage,
+      riskyAccounts,
+    };
+  }, [usagePlanRows]);
+
+  const openUsagePlanDetail = (plan) => {
+    setActiveUsagePlan(plan);
+    setUsagePlanSearch('');
+    setUsagePlanSort('calls_desc');
+    setActiveTab('usage-plans');
+  };
 
   useEffect(() => {
     if (!openStatusMenu) return undefined;
@@ -1173,13 +1258,18 @@ export default function AdminPage() {
                   </div>
                   <div className="admin-plan-usage-list">
                     {PLAN_USAGE.map((plan) => (
-                      <div className="admin-plan-usage-row" key={plan.plan}>
+                      <button
+                        type="button"
+                        className="admin-plan-usage-row admin-plan-usage-button"
+                        key={plan.plan}
+                        onClick={() => openUsagePlanDetail(plan.plan)}
+                      >
                         <div>
                           <b>{plan.plan}</b>
                           <span>{formatNumber(plan.accounts)}개 계정</span>
                         </div>
                         <UsageMeter used={plan.used} limit={plan.limit} />
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </section>
@@ -1191,6 +1281,129 @@ export default function AdminPage() {
                   </div>
                   <BotTrendChart data={BOT_BLOCK_TREND} />
                 </section>
+              </div>
+            </section>
+          )}
+
+          {activeTab === 'usage-plans' && (
+            <section>
+              <div className="admin-section-head admin-usage-detail-head">
+                <div>
+                  <h2 className="pg-h2">요금제별 사용량</h2>
+                  <p className="admin-muted">요금제별 사용자 및 사이트의 CAPTCHA 호출량을 확인합니다.</p>
+                </div>
+                <button type="button" className="admin-mini-btn" onClick={() => setActiveTab('dashboard')}>
+                  대시보드로 돌아가기
+                </button>
+              </div>
+
+              <div className="admin-usage-summary-grid" aria-label="요금제별 사용량 요약">
+                <article>
+                  <span>총 계정 수</span>
+                  <strong>{formatNumber(usagePlanSummary.accountCount)}</strong>
+                </article>
+                <article>
+                  <span>총 월 호출량</span>
+                  <strong>{formatNumber(usagePlanSummary.totalCalls)}</strong>
+                </article>
+                <article>
+                  <span>평균 사용률</span>
+                  <strong>{usagePlanSummary.averageUsage.toFixed(1)}%</strong>
+                </article>
+                <article>
+                  <span>한도 위험 계정</span>
+                  <strong>{formatNumber(usagePlanSummary.riskyAccounts)}</strong>
+                </article>
+              </div>
+
+              <div className="admin-usage-detail-card">
+                <div className="admin-usage-detail-toolbar">
+                  <div className="admin-segmented admin-usage-plan-tabs" aria-label="요금제 선택">
+                    {PLAN_USAGE_TABS.map((plan) => (
+                      <button
+                        key={plan}
+                        type="button"
+                        className={activeUsagePlan === plan ? 'active' : ''}
+                        onClick={() => setActiveUsagePlan(plan)}
+                      >
+                        {plan}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="admin-usage-detail-controls">
+                    <AdminSearchInput
+                      value={usagePlanSearch}
+                      onChange={(event) => setUsagePlanSearch(event.target.value)}
+                      placeholder="사용자/사이트, 이메일 검색"
+                      ariaLabel="요금제별 사용량 검색"
+                    />
+                    <select
+                      className="admin-usage-sort-select"
+                      value={usagePlanSort}
+                      onChange={(event) => setUsagePlanSort(event.target.value)}
+                      aria-label="요금제별 사용량 정렬"
+                    >
+                      {PLAN_USAGE_SORT_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="admin-scroll-x admin-usage-detail-table-wrap">
+                  <table className="admin-table admin-usage-detail-table">
+                    <thead>
+                      <tr>
+                        <th>사이트명</th>
+                        <th>사용자</th>
+                        <th>이메일</th>
+                        <th>요금제</th>
+                        <th>월 호출량</th>
+                        <th>월 한도</th>
+                        <th>사용률</th>
+                        <th>성공</th>
+                        <th>실패</th>
+                        <th>봇 차단</th>
+                        <th>최근 호출</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {usagePlanRows.length ? usagePlanRows.map((row) => {
+                        const usagePercent = getPrecisePercent(row.monthlyCalls, row.monthlyLimit);
+                        const usageStatus = getUsageStatus(usagePercent);
+                        return (
+                          <tr key={row.id}>
+                            <td>{row.siteName}</td>
+                            <td>{row.userName}</td>
+                            <td>{row.email}</td>
+                            <td>{row.plan}</td>
+                            <td>{formatNumber(row.monthlyCalls)}</td>
+                            <td>{formatNumber(row.monthlyLimit)}</td>
+                            <td>
+                              <div className="admin-usage-percent-cell">
+                                <div className="admin-usage-percent-top">
+                                  <b>{usagePercent.toFixed(1)}%</b>
+                                  <span className={`admin-usage-status-badge ${usageStatus}`}>{usageStatus}</span>
+                                </div>
+                                <div className="admin-usage-progress" aria-hidden="true">
+                                  <span style={{ width: `${Math.min(100, usagePercent)}%` }} />
+                                </div>
+                              </div>
+                            </td>
+                            <td>{formatNumber(row.successCount)}</td>
+                            <td>{formatNumber(row.failCount)}</td>
+                            <td>{formatNumber(row.botBlockedCount)}</td>
+                            <td>{row.lastCalledAt}</td>
+                          </tr>
+                        );
+                      }) : (
+                        <tr>
+                          <td colSpan={11} className="admin-empty-cell">검색 결과가 없습니다.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </section>
           )}
