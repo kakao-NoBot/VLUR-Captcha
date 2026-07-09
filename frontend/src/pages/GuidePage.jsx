@@ -21,19 +21,23 @@ const STEPS = [
 
         <div>
           <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10 }}>발급 절차</div>
-          {[
-            { n: 1, label: '회원가입 / 로그인', desc: 'VLUR CAPTCHA 계정을 생성합니다.' },
-            { n: 2, label: '이용 신청', desc: '플랜을 선택하고 서비스를 신청합니다. (Free 플랜은 즉시 발급)' },
-            { n: 3, label: 'API Key 확인', desc: '마이페이지 → API Key 탭에서 키를 복사합니다.' },
-          ].map(s => (
-            <div key={s.n} style={{ display: 'flex', gap: 14, marginBottom: 10, alignItems: 'flex-start' }}>
-              <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--orange)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{s.n}</div>
-              <div>
-                <div style={{ fontWeight: 600, fontSize: 14 }}>{s.label}</div>
-                <div style={{ fontSize: 13, color: 'var(--ink-soft)', marginTop: 2 }}>{s.desc}</div>
+          <div className="guide-issue-step-list">
+            {[
+              { n: 1, label: '회원가입 / 로그인', desc: 'VLUR CAPTCHA 계정을 생성합니다.' },
+              { n: 2, label: '이용 신청', desc: '플랜을 선택하고 서비스를 신청합니다. (Free 플랜은 즉시 발급)' },
+              { n: 3, label: 'API Key 확인', desc: '마이페이지 → API Key 탭에서 키를 복사합니다.' },
+            ].map(s => (
+              <div key={s.n} className="guide-issue-step-row">
+                <div className="guide-issue-step-number-wrap">
+                  <div className="guide-issue-step-number">{s.n}</div>
+                </div>
+                <div className="guide-issue-step-copy">
+                  <div className="guide-issue-step-title">{s.label}</div>
+                  <div className="guide-issue-step-description">{s.desc}</div>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
 
         <div>
@@ -93,15 +97,17 @@ Authorization: Bearer $VLUR_API_KEY`}
 
         <div>
           <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10 }}>ui_type 종류</div>
-          {[
-            { type: 'choice', color: 'var(--orange)', desc: 'ASCII 아트 이미지를 보고 정답 항목을 선택하는 방식' },
-            { type: 'drag',   color: 'var(--ok)',     desc: '드래그 궤적을 분석해 사람 여부를 판별하는 방식' },
-          ].map(t => (
-            <div key={t.type} style={{ display: 'flex', gap: 12, marginBottom: 8, alignItems: 'flex-start' }}>
-              <span style={{ background: t.color, color: '#fff', borderRadius: 6, padding: '2px 10px', fontSize: 12, fontWeight: 700, flexShrink: 0, marginTop: 2 }}>{t.type}</span>
-              <span style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.6 }}>{t.desc}</span>
-            </div>
-          ))}
+          <div className="guide-ui-type-list">
+            {[
+              { type: 'choice', desc: 'ASCII 아트 이미지를 보고 정답 항목을 선택하는 방식' },
+              { type: 'drag', desc: '드래그 궤적을 분석해 사람 여부를 판별하는 방식' },
+            ].map(t => (
+              <div key={t.type} className="guide-ui-type-row">
+                <span className={`guide-ui-type-badge guide-ui-type-badge-${t.type}`}>{t.type}</span>
+                <span className="guide-ui-type-description">{t.desc}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
         <div style={{ background: 'rgba(244,166,42,.12)', border: '1px solid rgba(244,166,42,.45)', borderRadius: 10, padding: '14px 16px' }}>
