@@ -468,6 +468,89 @@ section.band {
 }
 .step h3 { margin: 0 0 8px; font-size: 18px; }
 .step p { margin: 0; color: var(--ink-soft); font-size: 14.5px; }
+.guide-issue-step-list {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  margin-top: 16px;
+}
+.guide-issue-step-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+.guide-issue-step-number {
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 42px;
+  border-radius: 50%;
+  background: var(--orange);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+}
+.guide-issue-step-number-wrap {
+  width: 56px;
+  display: flex;
+  justify-content: center;
+  flex: 0 0 56px;
+}
+.guide-issue-step-copy {
+  flex: 1;
+  min-width: 0;
+  padding-top: 2px;
+}
+.guide-issue-step-title {
+  margin: 0 0 6px;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+.guide-issue-step-description {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.guide-ui-type-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.guide-ui-type-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.guide-ui-type-badge {
+  min-width: 72px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 72px;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+.guide-ui-type-badge-choice {
+  background: var(--orange);
+}
+.guide-ui-type-badge-drag {
+  background: var(--ok);
+}
+.guide-ui-type-description {
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.55;
+}
 
 /* CTA BAND */
 .cta-band {
@@ -3397,3 +3480,74 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
 [data-theme="dark"] .pg-code { background: #0B0F16; }
 [data-theme="dark"] .api-panel { background: #0B0F16; }
 [data-theme="dark"] .pp-key-reveal { background: #0B0F16; }
+
+/* Guide modal API Key issue steps alignment override */
+.guide-modal .guide-issue-step-list,
+.guide-step-modal .guide-issue-step-list,
+.guide-issue-step-list {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  margin-top: 16px;
+}
+
+.guide-modal .guide-issue-step-row,
+.guide-step-modal .guide-issue-step-row,
+.guide-issue-step-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.guide-modal .guide-issue-step-number,
+.guide-step-modal .guide-issue-step-number,
+.guide-issue-step-number {
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 42px;
+  border-radius: 999px;
+  background: #f45b18;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.guide-modal .guide-issue-step-number-wrap,
+.guide-step-modal .guide-issue-step-number-wrap,
+.guide-issue-step-number-wrap {
+  width: 56px;
+  display: flex;
+  justify-content: center;
+  flex: 0 0 56px;
+}
+
+.guide-modal .guide-issue-step-copy,
+.guide-step-modal .guide-issue-step-copy,
+.guide-issue-step-copy {
+  flex: 1;
+  min-width: 0;
+  padding-top: 2px;
+}
+
+.guide-modal .guide-issue-step-title,
+.guide-step-modal .guide-issue-step-title,
+.guide-issue-step-title {
+  margin: 0 0 6px;
+  font-weight: 700;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.guide-modal .guide-issue-step-description,
+.guide-step-modal .guide-issue-step-description,
+.guide-issue-step-description {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.55;
+}
