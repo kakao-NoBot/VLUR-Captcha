@@ -594,7 +594,7 @@ export default function BoardPage({ user = null }) {
         <>
           <table className="pg-table board-table" style={{ marginBottom: 8 }}>
             <thead>
-              <tr><th style={{ width: 60 }}>번호</th><th>제목</th><th style={{ width: 130, textAlign: 'right' }}>작성일</th></tr>
+            <tr><th style={{ width: 60, textAlign: 'center' }}>번호</th><th>제목</th><th style={{ width: 130, textAlign: 'right' }}>작성일</th></tr>
             </thead>
             <tbody>
               {noticeSlice.map(n => (
@@ -612,12 +612,16 @@ export default function BoardPage({ user = null }) {
                     }
                   }}
                 >
-                  <td className="num">{noticeNumberById.get(n.id)}</td>
+                  <td className="num" style={{ textAlign: 'center' }}>{noticeNumberById.get(n.id)}</td>
                   <td>
-                    {n.badge && (
-                      <span className={`badge-notice${n.type === 'general' ? ' badge-general' : ''}`}>{n.badge}</span>
-                    )}
-                    {n.title}
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                      {n.badge && (
+                        <span className={`badge-notice${n.type === 'general' ? ' badge-general' : ''}`} style={{ verticalAlign: 'middle' }}>
+                          {n.badge}
+                        </span>
+                      )}
+                      <span>{n.title}</span>
+                    </span>
                   </td>
                   <td style={{ color: 'var(--muted)', textAlign: 'right' }}>{n.date}</td>
                 </tr>
@@ -648,7 +652,10 @@ export default function BoardPage({ user = null }) {
             {faqPosts.map(p => (
               <details key={p.id} className="pg-card" style={{ cursor: 'pointer' }}>
                 <summary style={{ fontWeight: 600, fontSize: 15, listStyle: 'none', display: 'flex', justifyContent: 'space-between' }}>
-                  <span><span className="badge-notice badge-faq">FAQ</span>{p.title}</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                    <span className="badge-notice badge-faq">FAQ</span>
+                    <span>{p.title}</span>
+                  </span>
                   <span style={{ color: 'var(--orange)' }}>+</span>
                 </summary>
                 <p style={{ margin: '12px 0 0', fontSize: 14, color: 'var(--ink-soft)', whiteSpace: 'pre-line' }}>{p.content}</p>
@@ -694,7 +701,7 @@ export default function BoardPage({ user = null }) {
       {tab === 'research' && (
         <>
           <table className="pg-table board-table" style={{ marginBottom: 8 }}>
-            <thead><tr><th style={{ width: 60 }}>번호</th><th>제목</th><th style={{ width: 130, textAlign: 'right' }}>작성일</th></tr></thead>
+            <tr><th style={{ width: 60, textAlign: 'center' }}>번호</th><th>제목</th><th style={{ width: 130, textAlign: 'right' }}>작성일</th></tr>
             <tbody>
               {researchSlice.map(r => (
                 <tr
@@ -711,8 +718,13 @@ export default function BoardPage({ user = null }) {
                     }
                   }}
                 >
-                  <td className="num">{researchNumberById.get(r.id)}</td>
-                  <td><span className="badge-notice badge-research">연구</span>{r.title}</td>
+                  <td className="num" style={{ textAlign: 'center' }}>{researchNumberById.get(r.id)}</td>
+                  <td>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                    <span className="badge-notice badge-research" style={{ verticalAlign: 'middle' }}>연구</span>
+                    <span>{r.title}</span>
+                  </span>
+                </td>
                   <td style={{ color: 'var(--muted)', textAlign: 'right' }}>{r.date}</td>
                 </tr>
               ))}
