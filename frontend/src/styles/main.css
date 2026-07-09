@@ -1009,13 +1009,7 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
   gap: 14px;
   margin-bottom: 16px;
 }
-.admin-card-head h3 {
-  margin: 0;
-  color: var(--ink);
-  font-family: var(--disp);
-  font-size: 17px;
-  letter-spacing: 0;
-}
+
 .admin-card-head span {
   color: var(--muted);
   font-size: 12px;
@@ -1053,20 +1047,16 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
 .admin-plan-usage-row {
   display: grid;
   gap: 10px;
-  padding: 12px;
-  border: 1px solid var(--line-soft);
-  border-radius: 12px;
-  background: rgba(255,255,255,.72);
 }
 .admin-plan-usage-row > div:first-child {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
   gap: 10px;
 }
 .admin-plan-usage-row b {
   color: var(--ink);
-  font-family: var(--disp);
+  font-family: var(--body);
   font-size: 15px;
   font-weight: 600;
 }
@@ -1080,14 +1070,11 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease, background .16s ease;
+  transition: background .16s ease;
 }
 .admin-plan-usage-button:hover,
 .admin-plan-usage-button:focus-visible {
-  transform: translateY(-1px);
-  border-color: rgba(234,122,42,.45);
-  background: #fff;
-  box-shadow: 0 10px 24px rgba(66,41,18,.08);
+  background: var(--paper);
 }
 .admin-usage-meter {
   min-width: 168px;
@@ -1103,8 +1090,9 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
 }
 .admin-usage-meter-text b {
   color: var(--orange-2);
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--body);
 }
 .admin-progress {
   width: 100%;
@@ -1153,10 +1141,10 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
   font-variant-numeric: tabular-nums;
 }
 .admin-usage-detail-card {
-  padding: 22px;
-  border: 1px solid var(--line);
-  border-radius: var(--r);
-  background: var(--card);
+  padding: 22px 0 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 .admin-usage-detail-toolbar {
   display: flex;
@@ -1175,38 +1163,89 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
   gap: 10px;
   flex-wrap: wrap;
 }
-.admin-usage-sort-select {
+.admin-sort-dropdown {
+  position: relative;
+}
+.admin-sort-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   width: 190px;
   min-height: 34px;
-  padding: 6px 30px 6px 12px;
+  padding: 6px 14px;
   border: 1px solid var(--line);
   border-radius: 999px;
-  background:
-    linear-gradient(45deg, transparent 50%, var(--orange-2) 50%) calc(100% - 16px) 50% / 5px 5px no-repeat,
-    linear-gradient(135deg, var(--orange-2) 50%, transparent 50%) calc(100% - 13px) 50% / 5px 5px no-repeat,
-    var(--card);
+  background: var(--card);
   color: var(--ink);
+  font-family: var(--body);
   font-size: 13px;
-  font-weight: 400;
-  line-height: 1.35;
-  box-shadow: 0 1px 2px rgba(36,27,21,.05);
-  appearance: none;
+  font-weight: 500;
   cursor: pointer;
+  box-shadow: 0 1px 2px rgba(36,27,21,.05);
   transition: border-color .16s ease, background-color .16s ease, box-shadow .16s ease;
 }
-.admin-usage-sort-select:hover {
-  border-color: rgba(234,122,42,.36);
-  background-color: #fff;
+.admin-sort-trigger:hover,
+.admin-sort-trigger.open {
+  border-color: rgba(234,122,42,.45);
+  background: #fff;
 }
-.admin-usage-sort-select:focus {
-  border-color: rgba(234,122,42,.58);
+.admin-sort-trigger.open {
+  box-shadow: 0 0 0 3px rgba(234,122,42,.10);
+}
+.admin-sort-trigger-arrow {
+  color: var(--orange-2);
+  font-size: 10px;
+  transition: transform .16s ease;
+}
+.admin-sort-trigger.open .admin-sort-trigger-arrow {
+  transform: rotate(180deg);
+}
+.admin-sort-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 30;
+  width: 190px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--card);
+  box-shadow: 0 16px 32px -12px rgba(36,27,21,.22);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.admin-sort-option {
+  width: 100%;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ink-soft);
+  font-family: var(--body);
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background .14s ease, color .14s ease;
+}
+.admin-sort-option:hover,
+.admin-sort-option:focus-visible {
+  background: var(--peach);
+  color: var(--orange-2);
   outline: none;
-  box-shadow: 0 0 0 3px rgba(234,122,42,.10), 0 1px 2px rgba(36,27,21,.05);
+}
+.admin-sort-option.selected {
+  color: var(--orange-2);
+  font-weight: 700;
+  background: var(--peach);
 }
 .admin-usage-detail-table-wrap {
-  border: 1px solid var(--line-soft);
-  border-radius: 16px;
-  background: var(--card);
+  min-width: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 .admin-usage-detail-table {
   min-width: 1160px;
@@ -1215,11 +1254,7 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
 }
 .admin-usage-detail-table th,
 .admin-usage-detail-table td {
-  border-bottom: 0;
   vertical-align: middle;
-}
-.admin-usage-detail-table thead th {
-  border-bottom: 1px solid rgba(236, 217, 195, .34);
 }
 .admin-usage-detail-table tbody tr:hover td {
   background: rgba(255, 247, 239, .72);
@@ -1794,17 +1829,18 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
 }
 .admin-mini-btn,
 .admin-filter-btn {
-  min-height: 32px;
-  padding: 7px 11px;
+  min-height: 34px;
+  padding: 8px 14px;
   border: 1px solid var(--line);
-  border-radius: 10px;
-  background: #fff;
+  border-radius: 999px;
+  background: var(--card);
   color: var(--ink-soft);
   font-family: var(--body);
-  font-size: 12.5px;
-  font-weight: 800;
+  font-size: 13px;
+  font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
+  box-shadow: 0 1px 2px rgba(36,27,21,.05);
   transition: color .16s ease, background .16s ease, border-color .16s ease;
 }
 .admin-mini-btn:hover,
@@ -2190,6 +2226,7 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
     align-self: flex-start;
   }
   .admin-content {
+    min-width: 0;
     padding: 22px 18px 28px;
   }
   .admin-search {
