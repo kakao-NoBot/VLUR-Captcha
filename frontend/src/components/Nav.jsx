@@ -115,57 +115,28 @@ export default function Nav({ openPage, isLoggedIn, onLogout, onHome, embedded =
         <nav className="nav-right" aria-label="주요 메뉴">
           <div className="nav-links">
             {DESKTOP_SECTION_LINKS.map((item) => (
-              <a
-                key={item.target}
-                href={`#${item.target}`}
-                onClick={(event) => handleSectionClick(event, item.target)}
-              >
-                {item.label}
-              </a>
+              <a key={item.target} href={`#${item.target}`} onClick={(event) => handleSectionClick(event, item.target)}>{item.label}</a>
             ))}
             <a href="#faq" onClick={handleNoticeClick}>공지사항</a>
           </div>
           <div className="nav-auth">
-            <button
-              type="button"
-              className="theme-toggle"
-              aria-label={dark ? '라이트 모드로 전환' : '다크 모드로 전환'}
-              title={dark ? '라이트 모드로 전환' : '다크 모드로 전환'}
-              onClick={() => applyTheme(!dark)}
-            >
+            <button type="button" className="theme-toggle" aria-label={dark ? '라이트 모드로 전환' : '다크 모드로 전환'} title={dark ? '라이트 모드로 전환' : '다크 모드로 전환'} onClick={() => applyTheme(!dark)}>
               {dark ? <MoonIcon /> : <SunIcon />}
             </button>
             {isLoggedIn ? (
               <>
-              <a
-                className="btn btn-ghost"
-                href="#"
-                onClick={e => {
-                  e.preventDefault();
-                  openPage(isAdmin ? 'admin' : 'mypage');
-                }}
-                style={{ textDecoration: 'underline', color: 'var(--ink-soft)' }}
-              >
-                {isAdmin ? '관리자 페이지' : `${user?.user_name || ''}님`}
-              </a>
-              <a className="btn btn-outline" href="#" onClick={e => { e.preventDefault(); onLogout(); }} style={{ padding: '7px 13px', fontSize: 13.5 }}>로그아웃</a>
+                <a className="btn btn-ghost" href="#" onClick={(e) => { e.preventDefault(); openPage(isAdmin ? 'admin' : 'mypage'); }} style={{ textDecoration: 'underline', color: 'var(--ink-soft)' }}>{isAdmin ? '관리자 페이지' : `${user?.user_name || ''}님`}</a>
+                <a className="btn btn-outline" href="#" onClick={(e) => { e.preventDefault(); onLogout(); }} style={{ padding: '7px 13px', fontSize: 13.5 }}>로그아웃</a>
               </>
             ) : (
               <>
-              <a className="btn btn-ghost" href="#" onClick={e => { e.preventDefault(); openPage('login'); }}>로그인</a>
-              <a className="btn btn-primary" href="#" onClick={e => { e.preventDefault(); openPage('signup'); }}>회원가입</a>
+                <a className="btn btn-ghost" href="#" onClick={(e) => { e.preventDefault(); openPage('login'); }}>로그인</a>
+                <a className="btn btn-primary" href="#" onClick={(e) => { e.preventDefault(); openPage('signup'); }}>회원가입</a>
               </>
             )}
           </div>
 
-          <button
-            className={`menu-toggle${mobileOpen ? ' open' : ''}`}
-            type="button"
-            aria-label={mobileOpen ? '메뉴 닫기' : '메뉴 열기'}
-            aria-expanded={mobileOpen}
-            aria-controls={mobileMenuId}
-            onClick={() => setMobileOpen((open) => !open)}
-          >
+          <button className={`menu-toggle${mobileOpen ? ' open' : ''}`} type="button" aria-label={mobileOpen ? '메뉴 닫기' : '메뉴 열기'} aria-expanded={mobileOpen} aria-controls={mobileMenuId} onClick={() => setMobileOpen((open) => !open)}>
             <span />
             <span />
             <span />
@@ -173,13 +144,11 @@ export default function Nav({ openPage, isLoggedIn, onLogout, onHome, embedded =
         </nav>
       </div>
 
-        <div className={`mobile-menu${mobileOpen ? ' open' : ''}`} id={mobileMenuId} ref={mobileMenuRef}>
+      <div className={`mobile-menu${mobileOpen ? ' open' : ''}`} id={mobileMenuId} ref={mobileMenuRef}>
         <a href="#faq" onClick={handleNoticeClick}>공지사항</a>
         {isLoggedIn ? (
           <>
-            <a href={isAdmin ? '#admin' : '#mypage'} onClick={(event) => handleMobilePageClick(event, isAdmin ? 'admin' : 'mypage')}>
-              {isAdmin ? '관리자 페이지' : '마이페이지'}
-            </a>
+            <a href={isAdmin ? '#admin' : '#mypage'} onClick={(event) => handleMobilePageClick(event, isAdmin ? 'admin' : 'mypage')}>{isAdmin ? '관리자 페이지' : '마이페이지'}</a>
             <a href="#logout" onClick={(event) => { event.preventDefault(); closeMobileMenu(); onLogout(); }}>로그아웃</a>
           </>
         ) : (
@@ -189,7 +158,6 @@ export default function Nav({ openPage, isLoggedIn, onLogout, onHome, embedded =
           </>
         )}
 
-        {/* 모바일 테마 전환 */}
         <button type="button" className="mobile-theme-row" onClick={() => applyTheme(!dark)}>
           {dark ? <MoonIcon /> : <SunIcon />}
           {dark ? '라이트 모드' : '다크 모드'}
