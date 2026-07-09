@@ -737,6 +737,7 @@ export default function AdminPage() {
   const [activeUsagePlan, setActiveUsagePlan] = useState('Basic');
   const [usagePlanSearch, setUsagePlanSearch] = useState('');
   const [usagePlanSort, setUsagePlanSort] = useState('calls_desc');
+  const [usagePlanSortOpen, setUsagePlanSortOpen] = useState(false);
   const [activeInquiryType, setActiveInquiryType] = useState('general');
   const [inquirySearch, setInquirySearch] = useState('');
   const [siteSearch, setSiteSearch] = useState('');
@@ -953,6 +954,13 @@ export default function AdminPage() {
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [openStatusMenu]);
+
+  useEffect(() => {
+  if (!usagePlanSortOpen) return undefined;
+  const close = () => setUsagePlanSortOpen(false);
+  document.addEventListener('click', close);
+  return () => document.removeEventListener('click', close);
+}, [usagePlanSortOpen]);
 
   const updateInquiryStatus = (type, key, nextStatus) => {
     const updater = (inquiries) => inquiries.map((inquiry) => (
@@ -1293,7 +1301,7 @@ export default function AdminPage() {
                   <p className="admin-muted">요금제별 사용자 및 사이트의 CAPTCHA 호출량을 확인합니다.</p>
                 </div>
                 <button type="button" className="admin-mini-btn" onClick={() => setActiveTab('dashboard')}>
-                  대시보드로 돌아가기
+                  대시보드
                 </button>
               </div>
 
@@ -1337,16 +1345,37 @@ export default function AdminPage() {
                       placeholder="사용자/사이트, 이메일 검색"
                       ariaLabel="요금제별 사용량 검색"
                     />
-                    <select
-                      className="admin-usage-sort-select"
-                      value={usagePlanSort}
-                      onChange={(event) => setUsagePlanSort(event.target.value)}
-                      aria-label="요금제별 사용량 정렬"
-                    >
-                      {PLAN_USAGE_SORT_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>{option.label}</option>
-                      ))}
-                    </select>
+                    <div className="admin-sort-dropdown" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        className={`admin-sort-trigger${usagePlanSortOpen ? ' open' : ''}`}
+                        onClick={() => setUsagePlanSortOpen((v) => !v)}
+                        aria-haspopup="listbox"
+                        aria-expanded={usagePlanSortOpen}
+                      >
+                        <span>{PLAN_USAGE_SORT_OPTIONS.find((o) => o.value === usagePlanSort)?.label}</span>
+                        <span className="admin-sort-trigger-arrow">▼</span>
+                      </button>
+                      {usagePlanSortOpen && (
+                        <div className="admin-sort-menu" role="listbox">
+                          {PLAN_USAGE_SORT_OPTIONS.map((option) => (
+                            <button
+                              key={option.value}
+                              type="button"
+                              role="option"
+                              aria-selected={usagePlanSort === option.value}
+                              className={`admin-sort-option${usagePlanSort === option.value ? ' selected' : ''}`}
+                              onClick={() => {
+                                setUsagePlanSort(option.value);
+                                setUsagePlanSortOpen(false);
+                              }}
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
