@@ -72,10 +72,9 @@ export default function Nav({ openPage, isLoggedIn, onLogout, onHome, embedded =
   };
 
   const handleHomeClick = (event) => {
-    closeMobileMenu();
-    if (!onHome) return;
     event.preventDefault();
-    onHome();
+    closeMobileMenu();
+    if (onHome) onHome();
     window.setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 0);
   };
 
