@@ -650,17 +650,17 @@ export default function BoardPage({ user = null }) {
         <>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {faqPosts.map(p => (
-              <details key={p.id} className="pg-card" style={{ cursor: 'pointer' }}>
-                <summary style={{ fontWeight: 600, fontSize: 15, listStyle: 'none', display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              <details key={p.id} className="pg-card board-faq-card">
+                <summary className="board-faq-summary">
+                  <span className="board-faq-title">
                     <span className="badge-notice badge-faq">FAQ</span>
                     <span>{p.title}</span>
                   </span>
-                  <span style={{ color: 'var(--orange)' }}>+</span>
+                  <span className="board-faq-toggle">+</span>
                 </summary>
-                <p style={{ margin: '12px 0 0', fontSize: 14, color: 'var(--ink-soft)', whiteSpace: 'pre-line' }}>{p.content}</p>
+                <p className="board-faq-content">{p.content}</p>
                 {isAdmin && (
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, marginTop: 10 }}>
+                  <div className="board-faq-admin-actions">
                     <button
                       type="button"
                       className="pg-btn"
