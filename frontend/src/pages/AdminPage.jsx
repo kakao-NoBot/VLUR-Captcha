@@ -28,6 +28,7 @@ const USER_STATUS_OPTIONS = ['활성', '비활성'];
 const PLAN_MONTHLY_LIMITS = {
   Basic: 100000,
   Pro: 500000,
+  Enterprise: 800000,
 };
 
 const INQUIRY_STATUS_TONE = {
@@ -45,7 +46,7 @@ const DASHBOARD_STATS = [
 ];
 
 const MOCK_SITES = [
-  { name: 'VLUR Demo Shop', domain: 'shop.vlur-demo.kr', owner: 'VLUR Commerce', plan: 'Enterprise', monthlyLimit: 500000, monthlyUsage: 312000, status: '활성', createdAt: '2026-06-03' },
+  { name: 'VLUR Demo Shop', domain: 'shop.vlur-demo.kr', owner: 'VLUR Commerce', plan: 'Enterprise', monthlyLimit: PLAN_MONTHLY_LIMITS.Enterprise, monthlyUsage: 312000, status: '활성', createdAt: '2026-06-03' },
   { name: 'AI Study Portal', domain: 'study.example.io', owner: 'AI Study Lab', plan: 'Pro', monthlyLimit: PLAN_MONTHLY_LIMITS.Pro, monthlyUsage: 68400, status: '활성', createdAt: '2026-06-12' },
   { name: 'Secure Board', domain: 'board.sample.kr', owner: 'Secure Board Inc.', plan: 'Basic', monthlyLimit: PLAN_MONTHLY_LIMITS.Basic, monthlyUsage: 12850, status: '비활성', createdAt: '2026-06-21' },
 ];
@@ -147,15 +148,15 @@ const SCORE_BREAKDOWN = [
 const MOCK_LOGS = [
   { time: '2026-07-03 09:42', site: 'VLUR Demo Shop', captchaType: 'type1_drag', result: '성공', duration: '1.8초', botScore: 8 },
   { time: '2026-07-03 09:38', site: 'AI Study Portal', captchaType: 'type2_identify', result: '성공', duration: '2.7초', botScore: 21 },
-  { time: '2026-07-03 09:34', site: 'VLUR Demo Shop', captchaType: 'type1_drag', result: '의심', duration: '0.9초', botScore: 72 },
-  { time: '2026-07-03 09:29', site: 'Secure Board', captchaType: 'type1_drag', result: '실패', duration: '4.2초', botScore: 58 },
-  { time: '2026-07-03 09:21', site: 'AI Study Portal', captchaType: 'type2_identify', result: '실패', duration: '3.4초', botScore: 43 },
+  { time: '2026-07-03 09:34', site: 'VLUR Demo Shop', captchaType: 'type1_drag', result: '실패', duration: '0.9초', botScore: 72 },
+  { time: '2026-07-03 09:29', site: 'Secure Board', captchaType: 'type1_drag', result: '의심', duration: '4.2초', botScore: 58 },
+  { time: '2026-07-03 09:21', site: 'AI Study Portal', captchaType: 'type2_identify', result: '의심', duration: '3.4초', botScore: 43 },
  ];
 
 const PLAN_USAGE = [
   { plan: 'Basic', accounts: 812, used: 92000, limit: PLAN_MONTHLY_LIMITS.Basic },
   { plan: 'Pro', accounts: 386, used: 492000, limit: PLAN_MONTHLY_LIMITS.Pro },
-  { plan: 'Enterprise', accounts: 86, used: 1120000, limit: 1500000 },
+  { plan: 'Enterprise', accounts: 86, used: 736000, limit: PLAN_MONTHLY_LIMITS.Enterprise },
 ];
 
 const PLAN_USAGE_TABS = ['Basic', 'Pro', 'Enterprise'];
@@ -175,10 +176,10 @@ const PLAN_USAGE_DETAILS = [
   { id: 6, plan: 'Pro', userName: '정하늘', email: 'haneul@example.com', siteName: 'K-Event', monthlyCalls: 492000, monthlyLimit: PLAN_MONTHLY_LIMITS.Pro, successCount: 471500, failCount: 20500, botBlockedCount: 7600, lastCalledAt: '2026-07-06' },
   { id: 7, plan: 'Pro', userName: '최유진', email: 'yujin@example.com', siteName: 'Demo Shop Plus', monthlyCalls: 412000, monthlyLimit: PLAN_MONTHLY_LIMITS.Pro, successCount: 399100, failCount: 12900, botBlockedCount: 5100, lastCalledAt: '2026-07-05' },
   { id: 8, plan: 'Pro', userName: '강태오', email: 'taeo@example.com', siteName: 'Secure Study', monthlyCalls: 395000, monthlyLimit: PLAN_MONTHLY_LIMITS.Pro, successCount: 380800, failCount: 14200, botBlockedCount: 5200, lastCalledAt: '2026-07-03' },
-  { id: 9, plan: 'Enterprise', userName: '박도윤', email: 'doyoon@example.com', siteName: 'Mega Ticket', monthlyCalls: 1120000, monthlyLimit: 1500000, successCount: 1080000, failCount: 40000, botBlockedCount: 18000, lastCalledAt: '2026-07-06' },
-  { id: 10, plan: 'Enterprise', userName: '서예린', email: 'yerin@example.com', siteName: 'Commerce Lab Global', monthlyCalls: 1340000, monthlyLimit: 1500000, successCount: 1289000, failCount: 51000, botBlockedCount: 22600, lastCalledAt: '2026-07-06' },
-  { id: 11, plan: 'Enterprise', userName: '장민호', email: 'minho@example.com', siteName: 'K-Event Arena', monthlyCalls: 905000, monthlyLimit: 1500000, successCount: 879000, failCount: 26000, botBlockedCount: 12100, lastCalledAt: '2026-07-05' },
-  { id: 12, plan: 'Enterprise', userName: '윤다정', email: 'dajeong@example.com', siteName: 'VLUR Secure Mall', monthlyCalls: 1482000, monthlyLimit: 1500000, successCount: 1420000, failCount: 62000, botBlockedCount: 30100, lastCalledAt: '2026-07-03' },
+  { id: 9, plan: 'Enterprise', userName: '박도윤', email: 'doyoon@example.com', siteName: 'Mega Ticket', monthlyCalls: 712000, monthlyLimit: PLAN_MONTHLY_LIMITS.Enterprise, successCount: 686000, failCount: 26000, botBlockedCount: 11800, lastCalledAt: '2026-07-06' },
+  { id: 10, plan: 'Enterprise', userName: '서예린', email: 'yerin@example.com', siteName: 'Commerce Lab Global', monthlyCalls: 764000, monthlyLimit: PLAN_MONTHLY_LIMITS.Enterprise, successCount: 734000, failCount: 30000, botBlockedCount: 13600, lastCalledAt: '2026-07-06' },
+  { id: 11, plan: 'Enterprise', userName: '장민호', email: 'minho@example.com', siteName: 'K-Event Arena', monthlyCalls: 605000, monthlyLimit: PLAN_MONTHLY_LIMITS.Enterprise, successCount: 587000, failCount: 18000, botBlockedCount: 8100, lastCalledAt: '2026-07-05' },
+  { id: 12, plan: 'Enterprise', userName: '윤다정', email: 'dajeong@example.com', siteName: 'VLUR Secure Mall', monthlyCalls: 782000, monthlyLimit: PLAN_MONTHLY_LIMITS.Enterprise, successCount: 748000, failCount: 34000, botBlockedCount: 16100, lastCalledAt: '2026-07-03' },
 ];
 
 const BOT_BLOCK_TREND = [
@@ -207,6 +208,10 @@ function clampUsageToLimit(used, limit) {
   const numericLimit = Number(limit || 0);
   if (!numericLimit) return numericUsed;
   return Math.min(numericUsed, numericLimit);
+}
+
+function getPlanMonthlyLimit(plan, fallbackLimit) {
+  return PLAN_MONTHLY_LIMITS[plan] ?? Number(fallbackLimit || 0);
 }
 
 function formatUsage(used, limit) {
@@ -1617,14 +1622,16 @@ export default function AdminPage() {
                 emptyMessage="검색 결과가 없습니다."
                 rows={filteredSites.map((site) => {
                   const menuKey = `site-${site.domain}`;
+                  const monthlyLimit = getPlanMonthlyLimit(site.plan, site.monthlyLimit);
+                  const monthlyUsage = clampUsageToLimit(site.monthlyUsage, monthlyLimit);
                   return (
                     <tr key={site.domain}>
                       <td>{site.name}</td>
                       <td>{site.domain}</td>
                       <td>{site.owner}</td>
                       <td>{site.plan}</td>
-                      <td>{formatNumber(site.monthlyLimit)}</td>
-                      <td><UsageMeter used={site.monthlyUsage} limit={site.monthlyLimit} /></td>
+                      <td>{formatNumber(monthlyLimit)}</td>
+                      <td><UsageMeter used={monthlyUsage} limit={monthlyLimit} /></td>
                       <td>
                         <StatusDropdown
                           status={site.status}
