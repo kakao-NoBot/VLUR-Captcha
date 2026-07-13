@@ -820,12 +820,43 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
 }
 @media (max-width: 520px) {
   .wrap { padding: 0 18px; }
+  /* 모바일에서는 연동 가이드가 화면 폭을 넘지 않도록 별도로 제한 */
+  #guide {
+    min-height: auto;
+    overflow-x: clip;
+  }
+  #guide .wrap {
+    width: 100%;
+    max-width: 430px;
+  }
+  #guide .flow {
+    gap: 16px;
+  }
+  #guide .step {
+    min-width: 0;
+    padding: 24px 20px;
+  }
   .mobile-menu {
     right: 18px;
     width: calc(100vw - 36px);
   }
   .tiles { gap: 8px; }
   .cta-band { padding: 36px 26px; }
+}
+
+/* 휴대폰 가로모드·태블릿에서도 상세 가이드의 긴 코드가 모달 밖으로 넘치지 않도록 처리 */
+@media (max-width: 768px) {
+  .guide-step-modal-backdrop { padding: 14px !important; }
+  .guide-step-modal { max-height: 88vh !important; min-width: 0; overflow: hidden; }
+  .guide-step-modal-body { min-width: 0; overflow-x: hidden; padding: 18px !important; }
+  .guide-step-modal-body pre {
+    max-width: 100%;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+  .guide-step-modal .guide-ui-type-row { min-width: 0; }
+  .guide-step-modal .guide-ui-type-description { min-width: 0; overflow-wrap: anywhere; }
 }
 @keyframes mobileMenuEnter {
   from { opacity: 0; transform: translateY(-8px) scale(.98); }

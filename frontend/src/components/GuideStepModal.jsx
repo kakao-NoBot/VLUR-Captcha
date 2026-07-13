@@ -16,7 +16,7 @@ export const GUIDE_STEPS = [
           <div className="guide-issue-step-list">
             {[
               { n: 1, label: '회원가입 / 로그인', desc: 'VLUR CAPTCHA 계정을 생성합니다.' },
-              { n: 2, label: '이용 신청', desc: '플랜을 선택하고 서비스를 신청합니다. (Free 플랜은 즉시 발급)' },
+              { n: 2, label: '이용 신청', desc: '플랜을 선택하고 서비스를 신청합니다. (Basic 플랜은 즉시 발급)' },
               { n: 3, label: 'API Key 확인', desc: '마이페이지 → API Key 탭에서 키를 복사합니다.' },
             ].map(s => (
               <div key={s.n} className="guide-issue-step-row">
@@ -171,10 +171,11 @@ export default function GuideStepModal({ stepIndex, onClose, onMove }) {
 
   return (
     <div
+      className="guide-step-modal-backdrop"
       style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(36,27,21,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div style={{ background: 'var(--card)', borderRadius: 'var(--r)', width: '100%', maxWidth: 580, maxHeight: '82vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,.4)' }}>
+      <div className="guide-step-modal" style={{ background: 'var(--card)', borderRadius: 'var(--r)', width: '100%', maxWidth: 580, maxHeight: '82vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,.4)' }}>
 
         {/* Header */}
         <div style={{ padding: '22px 24px 16px', borderBottom: '1px solid var(--line)', flexShrink: 0 }}>
@@ -202,7 +203,7 @@ export default function GuideStepModal({ stepIndex, onClose, onMove }) {
         </div>
 
         {/* Body */}
-        <div ref={bodyRef} style={{ overflowY: 'auto', padding: '20px 24px', flex: 1 }}>
+        <div className="guide-step-modal-body" ref={bodyRef} style={{ overflowY: 'auto', padding: '20px 24px', flex: 1 }}>
           {step.body}
         </div>
 

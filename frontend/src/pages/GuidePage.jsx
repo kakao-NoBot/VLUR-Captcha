@@ -193,10 +193,11 @@ function StepModal({ stepIndex, onClose, onMove }) {
 
   return (
     <div
+      className="guide-step-modal-backdrop"
       style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(36,27,21,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div style={{ background: 'var(--card)', borderRadius: 'var(--r)', width: '100%', maxWidth: 580, maxHeight: '82vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,.4)' }}>
+      <div className="guide-step-modal" style={{ background: 'var(--card)', borderRadius: 'var(--r)', width: '100%', maxWidth: 580, maxHeight: '82vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,.4)' }}>
 
         {/* Header */}
         <div style={{ padding: '22px 24px 16px', borderBottom: '1px solid var(--line)', flexShrink: 0 }}>
@@ -227,6 +228,7 @@ function StepModal({ stepIndex, onClose, onMove }) {
 
         {/* Body */}
         <div
+          className="guide-step-modal-body"
           ref={bodyRef}
           style={{ overflowY: 'auto', overflowAnchor: 'none', padding: '20px 24px', flex: 1 }}
         >
