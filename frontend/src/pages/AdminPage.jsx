@@ -20,6 +20,7 @@ const USER_TYPE_TABS = [
 const INQUIRY_TYPE_TABS = [
   { id: 'general', label: '일반 사용자 문의' },
   { id: 'business', label: '기업/회사 도입 문의' },
+  { id: 'completed', label: '답변 완료' },
 ];
 
 const INQUIRY_STATUS_OPTIONS = ['접수', '검토', '답변'];
@@ -422,7 +423,7 @@ function BotTrendChart({ data }) {
   const hovered = hoverIndex !== null ? points[hoverIndex] : null;
 
   return (
-    <div style={{ width: '100%', overflowX: 'auto' }}>
+    <div className="admin-scroll-x" style={{ width: '100%' }}>
       <svg
         viewBox={`0 0 ${width} ${height + 22}`}
         width="100%"
@@ -943,6 +944,28 @@ export default function AdminPage() {
     ));
   }, [activeInquiries, activeInquiryType, inquirySearch]);
 
+  // 일반/기업 문의 중 "답변" 상태인 것만 합쳐서 통합 답변완료 테이블에 사용
+  const completedInquiries = useMemo(() => {
+    const combined = [
+      ...generalInquiries
+        .filter((inquiry) => inquiry.status === '답변')
+        .map((inquiry) => ({ ...inquiry, sourceType: 'general', displayName: inquiry.requester })),
+      ...businessInquiries
+        .filter((inquiry) => inquiry.status === '답변')
+        .map((inquiry) => ({ ...inquiry, sourceType: 'business', displayName: inquiry.manager })),
+    ];
+
+    const query = inquirySearch.trim().toLowerCase();
+    const filtered = query
+      ? combined.filter((inquiry) => (
+        [inquiry.email, inquiry.displayName, inquiry.message]
+          .some((field) => String(field || '').toLowerCase().includes(query))
+      ))
+      : combined;
+
+    return filtered.sort((a, b) => (b.createdAtRaw || '').localeCompare(a.createdAtRaw || ''));
+  }, [generalInquiries, businessInquiries, inquirySearch]);
+
   const filteredSites = useMemo(() => {
     const query = siteSearch.trim().toLowerCase();
     if (!query) return sites;
@@ -1030,17 +1053,38 @@ export default function AdminPage() {
   return () => document.removeEventListener('click', close);
 }, [usagePlanSortOpen]);
 
-  const updateInquiryStatus = (type, key, nextStatus) => {
+  // 라벨 → 백엔드 값 역매핑 (INQUIRY_STATUS_BACKEND_TO_LABEL의 반대)
+  const INQUIRY_LABEL_TO_BACKEND = {
+    '접수': 'new',
+    '검토': 'in_progress',
+    '답변': 'done',
+  };
+
+  // 문의 상태 변경: PATCH /admin/inquiries/{id}/status 백엔드 엔드포인트 연동됨
+  const updateInquiryStatus = async (type, key, nextStatus) => {
+    const backendStatus = INQUIRY_LABEL_TO_BACKEND[nextStatus];
+    if (!backendStatus) return;
+
     const updater = (inquiries) => inquiries.map((inquiry) => (
       inquiry.id === key ? { ...inquiry, status: nextStatus } : inquiry
     ));
+    const setInquiries = type === 'general' ? setGeneralInquiries : setBusinessInquiries;
 
-    if (type === 'general') {
-      setGeneralInquiries(updater);
-      return;
+    let previousStatus = null;
+    setInquiries((inquiries) => inquiries.map((inquiry) => {
+      if (inquiry.id === key) previousStatus = inquiry.status;
+      return inquiry;
+    }));
+    setInquiries(updater); // 먼저 화면에 반영 (낙관적 업데이트)
+
+    try {
+      await api.patch(`/admin/inquiries/${key}/status`, { status: backendStatus });
+    } catch (err) {
+      // 실패하면 원래 상태로 롤백
+      setInquiries((inquiries) => inquiries.map((inquiry) => (
+        inquiry.id === key ? { ...inquiry, status: previousStatus ?? inquiry.status } : inquiry
+      )));
     }
-
-    setBusinessInquiries(updater);
   };
 
   const updateUserApiKeyStatus = async (type, internalId, nextStatus) => {
@@ -1074,6 +1118,136 @@ export default function AdminPage() {
     setSites((prev) => prev.map((site) => (
       site.domain === domain ? { ...site, status: nextStatus } : site
     )));
+  };
+
+  // 문의 행 렌더링 (진행 중 테이블 / 답변 완료 테이블 양쪽에서 재사용)
+  const renderGeneralInquiryRow = (inquiry) => {
+    const menuKey = `general-${inquiry.id}`;
+    return (
+      <tr
+        key={inquiry.id}
+        className="admin-inquiry-row"
+        onClick={() => setSelectedInquiryDetail({ type: 'general', inquiry })}
+      >
+        <td className="admin-nowrap-cell" title={inquiry.email}>{inquiry.email}</td>
+        <td className="admin-ellipsis-cell" title={inquiry.requester}>{inquiry.requester}</td>
+        <td className="admin-nowrap-cell" title={inquiry.type}>{inquiry.type}</td>
+        <td className="admin-message-cell" title={inquiry.message}>
+          <span>{inquiry.message}</span>
+        </td>
+        <td style={{ whiteSpace: 'nowrap' }}>{inquiry.receivedAt}</td>
+        <td onClick={(event) => event.stopPropagation()}>
+          <StatusDropdown
+            status={inquiry.status}
+            options={INQUIRY_STATUS_OPTIONS}
+            resolveTone={(status) => INQUIRY_STATUS_TONE[status] || 'neutral'}
+            isOpen={openStatusMenu === menuKey}
+            onToggle={() => setOpenStatusMenu(openStatusMenu === menuKey ? null : menuKey)}
+            onSelect={(option) => {
+              updateInquiryStatus('general', inquiry.id, option);
+              setOpenStatusMenu(null);
+            }}
+          />
+        </td>
+      </tr>
+    );
+  };
+
+  const renderBusinessInquiryRow = (inquiry) => {
+    const menuKey = `business-${inquiry.id}`;
+    return (
+      <tr
+        key={inquiry.id}
+        className="admin-inquiry-row"
+        onClick={() => setSelectedInquiryDetail({ type: 'business', inquiry })}
+      >
+        <td className="admin-ellipsis-cell" title={inquiry.company}>{inquiry.company}</td>
+        <td className="admin-ellipsis-cell" title={inquiry.manager}>{inquiry.manager}</td>
+        <td className="admin-nowrap-cell" title={inquiry.phone}>{inquiry.phone}</td>
+        <td className="admin-nowrap-cell" title={inquiry.email}>{inquiry.email}</td>
+        <td className="admin-nowrap-cell" title={inquiry.estimatedCalls}>{inquiry.estimatedCalls}</td>
+        <td className="admin-message-cell" title={inquiry.message}>
+          <span>{inquiry.message}</span>
+        </td>
+        <td style={{ whiteSpace: 'nowrap' }}>{inquiry.receivedAt}</td>
+        <td onClick={(event) => event.stopPropagation()}>
+          <StatusDropdown
+            status={inquiry.status}
+            options={INQUIRY_STATUS_OPTIONS}
+            resolveTone={(status) => INQUIRY_STATUS_TONE[status] || 'neutral'}
+            isOpen={openStatusMenu === menuKey}
+            onToggle={() => setOpenStatusMenu(openStatusMenu === menuKey ? null : menuKey)}
+            onSelect={(option) => {
+              updateInquiryStatus('business', inquiry.id, option);
+              setOpenStatusMenu(null);
+            }}
+          />
+        </td>
+      </tr>
+    );
+  };
+
+  const GENERAL_INQUIRY_COLUMNS = [
+    { key: 'email', label: '회신 이메일' },
+    { key: 'requester', label: '이름' },
+    { key: 'type', label: '유형' },
+    { key: 'message', label: '문의 내용' },
+    { key: 'receivedAt', label: '접수일' },
+    { key: 'status', label: '상태' },
+  ];
+
+  const BUSINESS_INQUIRY_COLUMNS = [
+    { key: 'company', label: '회사/서비스명' },
+    { key: 'manager', label: '담당자명' },
+    { key: 'phone', label: '전화번호' },
+    { key: 'email', label: '이메일' },
+    { key: 'estimatedCalls', label: '예상 월 호출량' },
+    { key: 'message', label: '문의 내용' },
+    { key: 'receivedAt', label: '접수일' },
+    { key: 'status', label: '상태' },
+  ];
+
+  // 일반/기업 문의를 합쳐서 보여주는 "답변 완료" 통합 테이블용 컬럼·행 렌더러
+  const COMPLETED_INQUIRY_COLUMNS = [
+    { key: 'typeLabel', label: '구분' },
+    { key: 'email', label: '이메일' },
+    { key: 'name', label: '이름 / 담당자' },
+    { key: 'message', label: '문의 내용' },
+    { key: 'receivedAt', label: '접수일' },
+    { key: 'status', label: '상태' },
+  ];
+
+  const renderCompletedInquiryRow = (inquiry) => {
+    const isBusiness = inquiry.sourceType === 'business';
+    const menuKey = `${inquiry.sourceType}-${inquiry.id}`;
+    return (
+      <tr
+        key={`completed-${inquiry.sourceType}-${inquiry.id}`}
+        className="admin-inquiry-row"
+        onClick={() => setSelectedInquiryDetail({ type: inquiry.sourceType, inquiry })}
+      >
+        <td className="admin-nowrap-cell">{isBusiness ? '기업' : '일반'}</td>
+        <td className="admin-nowrap-cell" title={inquiry.email}>{inquiry.email}</td>
+        <td className="admin-ellipsis-cell" title={inquiry.displayName}>{inquiry.displayName}</td>
+        <td className="admin-message-cell" title={inquiry.message}>
+          <span>{inquiry.message}</span>
+        </td>
+        <td style={{ whiteSpace: 'nowrap' }}>{inquiry.receivedAt}</td>
+        <td onClick={(event) => event.stopPropagation()}>
+          <StatusDropdown
+            status={inquiry.status}
+            options={INQUIRY_STATUS_OPTIONS}
+            resolveTone={(status) => INQUIRY_STATUS_TONE[status] || 'neutral'}
+            isOpen={openStatusMenu === menuKey}
+            onToggle={() => setOpenStatusMenu(openStatusMenu === menuKey ? null : menuKey)}
+            onSelect={(option) => {
+              updateInquiryStatus(inquiry.sourceType, inquiry.id, option);
+              setOpenStatusMenu(null);
+            }}
+          />
+        </td>
+      </tr>
+    );
   };
 
   return (
@@ -1364,9 +1538,6 @@ export default function AdminPage() {
                 <div>
                   <h2 className="pg-h2">요금제별 사용량</h2>
                 </div>
-                <button type="button" className="admin-mini-btn" onClick={() => setActiveTab('dashboard')}>
-                  대시보드
-                </button>
               </div>
 
               <div className="admin-usage-summary-grid" aria-label="요금제별 사용량 요약">
@@ -1720,101 +1891,40 @@ export default function AdminPage() {
                 />
               </div>
 
-              {activeInquiryType === 'general' ? (
+              {activeInquiryType === 'general' && (
                 <AdminTable
                   wrapperClassName="admin-inquiry-table-wrap"
                   tableClassName="admin-readable-table admin-general-inquiry-table"
                   tableStyle={{ tableLayout: 'auto', width: 'max-content', minWidth: '100%' }}
-                  columns={[
-                    { key: 'email', label: '회신 이메일' },
-                    { key: 'requester', label: '이름' },
-                    { key: 'type', label: '유형' },
-                    { key: 'message', label: '문의 내용' },
-                    { key: 'receivedAt', label: '접수일' },
-                    { key: 'status', label: '상태' },
-                  ]}
+                  columns={GENERAL_INQUIRY_COLUMNS}
                   emptyMessage="검색 결과가 없습니다."
-                  rows={filteredInquiries.map((inquiry) => {
-                    const menuKey = `general-${inquiry.id}`;
-                    return (
-                      <tr
-                        key={inquiry.id}
-                        className="admin-inquiry-row"
-                        onClick={() => setSelectedInquiryDetail({ type: 'general', inquiry })}
-                      >
-                        <td className="admin-nowrap-cell" title={inquiry.email}>{inquiry.email}</td>
-                        <td className="admin-ellipsis-cell" title={inquiry.requester}>{inquiry.requester}</td>
-                        <td className="admin-nowrap-cell" title={inquiry.type}>{inquiry.type}</td>
-                        <td className="admin-message-cell" title={inquiry.message}>
-                          <span>{inquiry.message}</span>
-                        </td>
-                        <td style={{ whiteSpace: 'nowrap' }}>{inquiry.receivedAt}</td>
-                        <td onClick={(event) => event.stopPropagation()}>
-                          <StatusDropdown
-                            status={inquiry.status}
-                            options={INQUIRY_STATUS_OPTIONS}
-                            resolveTone={(status) => INQUIRY_STATUS_TONE[status] || 'neutral'}
-                            isOpen={openStatusMenu === menuKey}
-                            onToggle={() => setOpenStatusMenu(openStatusMenu === menuKey ? null : menuKey)}
-                            onSelect={(option) => {
-                              updateInquiryStatus('general', inquiry.id, option);
-                              setOpenStatusMenu(null);
-                            }}
-                          />
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  rows={filteredInquiries
+                    .filter((inquiry) => inquiry.status !== '답변')
+                    .map(renderGeneralInquiryRow)}
                 />
-              ) : (
+              )}
+
+              {activeInquiryType === 'business' && (
                 <AdminTable
                   wrapperClassName="admin-inquiry-table-wrap"
                   tableClassName="admin-readable-table admin-business-inquiry-table"
                   tableStyle={{ tableLayout: 'auto', width: 'max-content', minWidth: '100%' }}
-                  columns={[
-                    { key: 'company', label: '회사/서비스명' },
-                    { key: 'manager', label: '담당자명' },
-                    { key: 'phone', label: '전화번호' },
-                    { key: 'email', label: '이메일' },
-                    { key: 'estimatedCalls', label: '예상 월 호출량' },
-                    { key: 'message', label: '문의 내용' },
-                    { key: 'receivedAt', label: '접수일' },
-                    { key: 'status', label: '상태' },
-                  ]}
+                  columns={BUSINESS_INQUIRY_COLUMNS}
                   emptyMessage="검색 결과가 없습니다."
-                  rows={filteredInquiries.map((inquiry) => {
-                    const menuKey = `business-${inquiry.id}`;
-                    return (
-                      <tr
-                        key={inquiry.id}
-                        className="admin-inquiry-row"
-                        onClick={() => setSelectedInquiryDetail({ type: 'business', inquiry })}
-                      >
-                        <td className="admin-ellipsis-cell" title={inquiry.company}>{inquiry.company}</td>
-                        <td className="admin-ellipsis-cell" title={inquiry.manager}>{inquiry.manager}</td>
-                        <td className="admin-nowrap-cell" title={inquiry.phone}>{inquiry.phone}</td>
-                        <td className="admin-nowrap-cell" title={inquiry.email}>{inquiry.email}</td>
-                        <td className="admin-nowrap-cell" title={inquiry.estimatedCalls}>{inquiry.estimatedCalls}</td>
-                        <td className="admin-message-cell" title={inquiry.message}>
-                          <span>{inquiry.message}</span>
-                        </td>
-                        <td style={{ whiteSpace: 'nowrap' }}>{inquiry.receivedAt}</td>
-                        <td onClick={(event) => event.stopPropagation()}>
-                          <StatusDropdown
-                            status={inquiry.status}
-                            options={INQUIRY_STATUS_OPTIONS}
-                            resolveTone={(status) => INQUIRY_STATUS_TONE[status] || 'neutral'}
-                            isOpen={openStatusMenu === menuKey}
-                            onToggle={() => setOpenStatusMenu(openStatusMenu === menuKey ? null : menuKey)}
-                            onSelect={(option) => {
-                              updateInquiryStatus('business', inquiry.id, option);
-                              setOpenStatusMenu(null);
-                            }}
-                          />
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  rows={filteredInquiries
+                    .filter((inquiry) => inquiry.status !== '답변')
+                    .map(renderBusinessInquiryRow)}
+                />
+              )}
+
+              {activeInquiryType === 'completed' && (
+                <AdminTable
+                  wrapperClassName="admin-inquiry-table-wrap"
+                  tableClassName="admin-readable-table admin-completed-inquiry-table"
+                  tableStyle={{ tableLayout: 'auto', width: 'max-content', minWidth: '100%' }}
+                  columns={COMPLETED_INQUIRY_COLUMNS}
+                  emptyMessage="답변 완료된 문의가 없습니다."
+                  rows={completedInquiries.map(renderCompletedInquiryRow)}
                 />
               )}
             </section>
@@ -1861,7 +1971,7 @@ export default function AdminPage() {
                       <td>{log.captchaType}</td>
                       <td><StatusBadge tone={getStatusTone(log.result)}>{log.result}</StatusBadge></td>
                       <td>{log.duration}</td>
-                      <td style={{ color: 'var(--orange-2)', fontWeight: 700 }}>{log.botScore}점</td>
+                      <td style={{ color: 'var(--orange-2)' }}>{log.botScore}점</td>
                     </tr>
                   );
                 })}

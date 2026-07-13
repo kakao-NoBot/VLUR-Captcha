@@ -1,7 +1,8 @@
 # contact.py
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+from typing import Literal
 from auth.deps import get_current_admin
 from db import get_conn
 
@@ -17,6 +18,10 @@ class ContactRequest(BaseModel):
     phone: str | None = None
     service_url: str | None = None
     plan_interest: str | None = None
+
+
+class InquiryStatusUpdate(BaseModel):
+    status: Literal["new", "in_progress", "done", "spam"]
 
 
 @router.post("/contact", status_code=201)
@@ -51,3 +56,23 @@ def list_inquiries(admin: dict = Depends(get_current_admin)):
             )
             rows = cur.fetchall()
     return {"inquiries": rows}
+
+
+@router.patch("/admin/inquiries/{inquiry_id}/status")
+def update_inquiry_status(
+    inquiry_id: int,
+    body: InquiryStatusUpdate,
+    admin: dict = Depends(get_current_admin),
+):
+    """관리자 전용 — 문의 상태 변경 (접수/검토/답변/스팸)"""
+    conn = get_conn()
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE contact_inquiries SET inquiry_status = %s WHERE inquiry_id = %s",
+                (body.status, inquiry_id),
+            )
+            if cur.rowcount == 0:
+                raise HTTPException(status_code=404, detail="해당 문의를 찾을 수 없습니다.")
+        conn.commit()
+    return {"message": "문의 상태가 변경되었습니다.", "inquiry_id": inquiry_id, "status": body.status}
