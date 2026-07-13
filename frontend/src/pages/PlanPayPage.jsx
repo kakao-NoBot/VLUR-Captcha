@@ -92,6 +92,36 @@ export default function PlanPayPage({ planName = 'Pro', initialSuccess = false, 
   ];
   const stepLabels = method === 'kakao' ? kakaoSteps : tossSteps;
 
+  // ── 상단 진행 스텝(1~4) 상태 계산 ──
+  // 1: 요금제 선택 — 이 페이지에 왔다는 것 자체로 항상 완료
+  // 2: 결제 수단 선택 — 이 페이지에 왔다는 것 자체로 항상 완료(체크마크)
+  // 3: 결제 인증 — 실제로 결제 버튼을 눌러 요청이 시작된 뒤(steps 존재)에만 active, 그 전엔 pending
+  // 4: 요금제 활성화 — success가 되어야 done
+  const progressSteps = (() => {
+    if (success) {
+      return [
+        { label: '요금제 선택', state: 'done' },
+        { label: '결제 수단 선택', state: 'done' },
+        { label: '결제 인증', state: 'done' },
+        { label: '요금제 활성화', state: 'done' },
+      ];
+    }
+    if (steps) {
+      return [
+        { label: '요금제 선택', state: 'done' },
+        { label: '결제 수단 선택', state: 'done' },
+        { label: '결제 인증', state: 'active' },
+        { label: '요금제 활성화', state: 'pending' },
+      ];
+    }
+    return [
+      { label: '요금제 선택', state: 'done' },
+      { label: '결제 수단 선택', state: 'done' },
+      { label: '결제 인증', state: 'pending' },
+      { label: '요금제 활성화', state: 'pending' },
+    ];
+  })();
+
   const startFreePlan = async () => {
     if (!localStorage.getItem('access_token')) {
       openPage('login');
@@ -183,12 +213,7 @@ export default function PlanPayPage({ planName = 'Pro', initialSuccess = false, 
 
       {/* Progress steps */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 28, flexWrap: 'wrap' }}>
-      {[
-        { label: '요금제 선택', state: 'done' },
-        { label: '결제 수단 선택', state: 'active' },
-        { label: '결제 인증', state: 'pending' },
-        { label: '요금제 활성화', state: 'pending' },
-      ].map((s, i, arr) => (
+      {progressSteps.map((s, i, arr) => (
         <React.Fragment key={i}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <StepCircle state={s.state} index={i + 1} />
