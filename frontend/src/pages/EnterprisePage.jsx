@@ -114,9 +114,8 @@ export default function EnterprisePage({ closePage }) {
 
   return (
     <div className="po-body" style={{ maxWidth: 600 }}>
-      <div className="pg-eyebrow">Enterprise · 도입 문의</div>
       <h1 className="pg-h1">서비스 도입 문의</h1>
-      <p className="pg-sub">아래 양식을 작성해 주시면 담당자가 맞춤 견적과 함께 연락드립니다.</p>
+      <p className="pg-sub" style={{ textAlign: 'center' }}>아래 양식을 작성해 주시면 담당자가 맞춤 견적과 함께 연락드립니다.</p>
 
       <div className="pg-card" style={{ marginBottom: 16 }}>
         <div className="pg-label">기업 정보</div>
