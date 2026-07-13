@@ -2669,9 +2669,9 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
 /* mypage sidebar */
 .mp-wrap {
   display: grid; grid-template-columns: 220px 1fr; gap: 0; min-height: 600px;
-  border: 1px solid var(--line); border-radius: var(--r); background: var(--card); overflow: hidden;
+  border: 1px solid var(--line); border-radius: var(--r); background: var(--card); overflow: visible;
 }
-.mp-sidebar { background: var(--peach); border-right: 1px solid var(--line); padding: 20px 0; }
+.mp-sidebar { background: var(--peach); border-right: 1px solid var(--line); padding: 20px 0; border-radius: var(--r) 0 0 var(--r); }
 .mp-nav-item {
   display: block; width: 100%; text-align: left; padding: 13px 22px; font-size: 14.5px;
   font-weight: 500; color: var(--ink-soft); background: none; border: none; cursor: pointer; transition: .15s;
@@ -2899,6 +2899,22 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
   .usage-actions { width: 100%; justify-content: flex-start; margin-top: 12px; }
   .usage-date-panel { left: 0; right: auto; width: min(384px, calc(100vw - 36px)); }
   .usage-date-buttons { align-items: stretch; }
+}
+
+/* 마이페이지 컨테이너의 둥근 모서리용 overflow가 달력 팝업을 자르지 않도록 처리 */
+@media (max-width: 940px) {
+  .po-body.mp-po-body { padding-top: 18px; }
+  .mp-wrap { overflow: visible; }
+  .mp-content { overflow-x: visible; }
+  .usage-date-panel {
+    left: -20px;
+    right: auto;
+    width: 340px;
+    max-width: calc(100vw - 48px);
+    box-sizing: border-box;
+  }
+  .usage-calendar-day { height: 34px; }
+  .usage-date-buttons { flex-wrap: wrap; }
 }
 
 /* board table */
@@ -3278,8 +3294,12 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
 }
 .warn-box strong { display: block; font-size: 15px; margin-bottom: 8px; }
 
-@media (max-width: 760px) {
+/* 헤더가 모바일 메뉴로 전환되는 폭에서는 마이페이지도 한 열 레이아웃으로 전환 */
+@media (max-width: 940px) {
   .mp-wrap { grid-template-columns: 1fr; }
+  .mp-content { min-width: 0; padding: 12px 20px 24px; overflow-x: visible; }
+  .mp-api-key-title { margin-top: -80px !important; }
+  .mp-billing-title { margin-top: -208px !important; }
   .mp-sidebar {
     display: flex;
     align-items: center;
@@ -3289,6 +3309,7 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
     padding: 12px;
     border-right: none;
     border-bottom: 1px solid var(--line);
+    border-radius: var(--r) var(--r) 0 0;
   }
   .mp-sidebar::-webkit-scrollbar { height: 6px; }
   .mp-sidebar::-webkit-scrollbar-thumb { background: var(--line); border-radius: 999px; }
@@ -3305,6 +3326,16 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
   .mp-nav-item.danger.active { border-bottom-color: #c0392b; }
   .api-panel-wrap, .flow-steps { grid-template-columns: 1fr; }
   .flow-step { border-right: none; border-bottom: 1px solid var(--line); }
+  .api-key-card { width: 100%; min-width: 0; padding: 22px; }
+  .api-key-card-header,
+  .api-key-meta,
+  .api-key-actions,
+  .api-key-controls { flex-wrap: wrap; }
+  .api-key-meta { gap: 6px 14px !important; }
+  .key-box { min-width: 0; flex-wrap: wrap; gap: 10px; padding: 12px 14px; }
+  .key-box > span { max-width: 100%; }
+  .api-key-warning,
+  .api-key-help { overflow-wrap: anywhere; word-break: keep-all; }
 }
 
 /* PRICING */
