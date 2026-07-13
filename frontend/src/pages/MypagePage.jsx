@@ -595,7 +595,7 @@ function ApiKeyTab({ closePage }) {
   if (loading) {
     return (
       <>
-        <h2 className="pg-h2" style={{ marginBottom: 20 }}>API Key 관리</h2>
+        <h2 className="pg-h2 mp-api-key-title" style={{ marginBottom: 20 }}>API Key 관리</h2>
         <p style={{ color: 'var(--muted)', fontSize: 14 }}>API Key 정보를 확인하는 중입니다...</p>
       </>
     );
@@ -605,7 +605,7 @@ function ApiKeyTab({ closePage }) {
   if (!plan && actionError) {
     return (
       <>
-        <h2 className="pg-h2" style={{ marginBottom: 20 }}>API Key 관리</h2>
+        <h2 className="pg-h2 mp-api-key-title" style={{ marginBottom: 20 }}>API Key 관리</h2>
         <div className="pg-card" style={{ maxWidth: 640, textAlign: 'center', padding: '48px 24px' }}>
           <strong style={{ display: 'block', fontSize: 16, marginBottom: 8 }}>API Key 정보를 불러오지 못했습니다</strong>
           <p style={{ margin: 0, fontSize: 13.5, color: 'var(--bad)' }}>{actionError}</p>
@@ -617,7 +617,7 @@ function ApiKeyTab({ closePage }) {
   if (!plan) {
     return (
       <>
-        <h2 className="pg-h2" style={{ marginBottom: 20 }}>API Key 관리</h2>
+        <h2 className="pg-h2 mp-api-key-title" style={{ marginBottom: 20 }}>API Key 관리</h2>
         <div className="pg-card" style={{ maxWidth: 640, textAlign: 'center', padding: '48px 24px' }}>
           <strong style={{ display: 'block', fontSize: 16, marginBottom: 8 }}>요금제 활성화 후 이용 가능합니다</strong>
           <p style={{ margin: '0 0 20px', fontSize: 13.5, color: 'var(--muted)' }}>
@@ -632,7 +632,7 @@ function ApiKeyTab({ closePage }) {
   if (!apiKey) {
     return (
       <>
-        <h2 className="pg-h2" style={{ marginBottom: 20 }}>API Key 관리</h2>
+        <h2 className="pg-h2 mp-api-key-title" style={{ marginBottom: 20 }}>API Key 관리</h2>
         <div className="pg-card" style={{ maxWidth: 640, textAlign: 'center', padding: '48px 24px' }}>
           <strong style={{ display: 'block', fontSize: 16, marginBottom: 8 }}>API Key를 발급해 주세요</strong>
           <p style={{ margin: '0 0 20px', fontSize: 13.5, color: 'var(--muted)' }}>
@@ -654,9 +654,9 @@ function ApiKeyTab({ closePage }) {
 
   return (
     <>
-      <h2 className="pg-h2" style={{ marginBottom: 20 }}>API Key 관리</h2>
-      <div className="pg-card" style={{ maxWidth: 720 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+      <h2 className="pg-h2 mp-api-key-title" style={{ marginBottom: 20 }}>API Key 관리</h2>
+      <div className="pg-card api-key-card" style={{ maxWidth: 720 }}>
+        <div className="api-key-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <span className="pg-h3">현재 API Key</span>
           <span
             className="pill"
@@ -667,7 +667,7 @@ function ApiKeyTab({ closePage }) {
         </div>
         <div className="key-box">
           <span style={{ fontFamily: 'monospace', fontSize: 13 }}>{displayedKey}</span>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div className="api-key-controls" style={{ display: 'flex', gap: 8 }}>
             <button
               className="pg-btn"
               style={{ padding: '7px 12px', fontSize: 13 }}
@@ -679,21 +679,21 @@ function ApiKeyTab({ closePage }) {
             <button className="pg-btn" style={{ padding: '7px 12px', fontSize: 13 }} onClick={copy} disabled={!plainKey}>{copyLabel}</button>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 20, margin: '14px 0', fontSize: 13, color: 'var(--ink-soft)' }}>
+        <div className="api-key-meta" style={{ display: 'flex', gap: 20, margin: '14px 0', fontSize: 13, color: 'var(--ink-soft)' }}>
           <span>발급일: {issuedAt}</span><span>만료일: {expiresAt}</span><span>요금제: {plan.name}</span>
         </div>
         {!isKeyActive && (
-          <p style={{ fontSize: 12.5, color: 'var(--bad)', margin: '0 0 12px' }}>
+          <p className="api-key-warning" style={{ fontSize: 12.5, color: 'var(--bad)', margin: '0 0 12px' }}>
             이 계정은 현재 비활성화 상태라 이 API Key로는 CAPTCHA 요청이 처리되지 않습니다.
           </p>
         )}
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div className="api-key-actions" style={{ display: 'flex', gap: 10 }}>
           <button className="pg-btn primary" onClick={() => setShowReissueConfirm(true)} disabled={actionPending}>
             {actionPending ? '처리 중...' : '재발급'}
           </button>
           <button className="pg-btn" onClick={() => setGuideStep(0)}>사용 가이드 보기</button>
         </div>
-        <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 12 }}>
+        <p className="api-key-help" style={{ fontSize: 12, color: 'var(--muted)', marginTop: 12 }}>
           {plainKey ? '지금 원문 키를 복사해 보관하세요. 페이지를 벗어나면 다시 조회할 수 없습니다.' : '원문 키는 저장되지 않습니다. 새 원문이 필요하면 재발급해 주세요.'}
         </p>
       </div>
@@ -1400,7 +1400,7 @@ function BillingTab({ closePage, profile, onProfileRefresh }) {
 
   return (
     <>
-      <h2 className="pg-h2" style={{ marginBottom: 20 }}>결제 내역</h2>
+      <h2 className="pg-h2 mp-billing-title" style={{ marginBottom: 20 }}>결제 내역</h2>
 
       <div className="pg-card" style={{ maxWidth: 720, marginBottom: 20 }}>
         {hasPlan ? (
@@ -1928,10 +1928,10 @@ export default function MypagePage({ openPage, closePage, initialTab = 'info', u
           text-align: center !important;
         }
 
-        /* 화면이 좁아져서 사이드바가 가로 탭바로 바뀔 때만 가운데 정렬 (넓은 화면은 그대로) */
+        /* 좁은 화면에서는 첫 탭부터 보이도록 가로 탭을 왼쪽 기준으로 배치 */
         @media (max-width: 940px) {
           .mp-wrap .mp-sidebar {
-            justify-content: center;
+            justify-content: flex-start;
           }
         }
       `}</style>
