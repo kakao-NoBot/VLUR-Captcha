@@ -3327,6 +3327,7 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
   .mp-content { min-width: 0; padding: 12px 20px 24px; overflow-x: visible; }
   .mp-api-key-title { margin-top: -80px !important; }
   .mp-billing-title { margin-top: -208px !important; }
+  .mp-deactivate-title { margin-top: -148px !important; }
   .mp-sidebar {
     display: flex;
     align-items: center;

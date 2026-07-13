@@ -43,6 +43,7 @@ export default function SignupPage({ openPage, onLogin }) {
   const [emailResendKey, setEmailResendKey] = useState(0);
   const [emailSending, setEmailSending] = useState(false);
   const [emailApiError, setEmailApiError] = useState('');
+  const [emailFieldError, setEmailFieldError] = useState('');
 
   const [phone, setPhone] = useState('');
   const [agreed, setAgreed] = useState(false);
@@ -105,6 +106,7 @@ export default function SignupPage({ openPage, onLogin }) {
     setEmailCodeAttempted(false);
     setEmailTimeLeft(EMAIL_CODE_TTL);
     setEmailApiError('');
+    setEmailFieldError('');
   }, [finalEmail]);
 
   // 인증코드 발송 후, 인증 완료 전까지 1초마다 남은 시간 감소 (재발송 시 emailResendKey로 타이머 재시작)
@@ -122,6 +124,7 @@ export default function SignupPage({ openPage, onLogin }) {
     // 재발송은 타이머 상태와 무관하게 언제든 가능 (서버에서 30초 쿨다운 적용)
     setEmailSending(true);
     setEmailApiError('');
+    setEmailFieldError('');
     try {
       const { data } = await api.post('/auth/email/send-code', { email: finalEmail });
       setEmailSent(true);
@@ -131,7 +134,12 @@ export default function SignupPage({ openPage, onLogin }) {
       setEmailTimeLeft(data.ttl || EMAIL_CODE_TTL);
       setEmailResendKey((k) => k + 1);
     } catch (err) {
-      setEmailApiError(err.response?.data?.detail || '인증 메일 발송에 실패했습니다. 잠시 후 다시 시도해주세요.');
+      const detail = err.response?.data?.detail || '인증 메일 발송에 실패했습니다. 잠시 후 다시 시도해주세요.';
+      if (detail === '이미 사용 중인 이메일입니다.') {
+        setEmailFieldError(detail);
+      } else {
+        setEmailApiError(detail);
+      }
     } finally {
       setEmailSending(false);
     }
@@ -322,7 +330,8 @@ export default function SignupPage({ openPage, onLogin }) {
             <div style={{ flex: 1 }}>
               <EmailInput
                 onChange={setFinalEmail}
-                error={showEmailError}
+                error={showEmailError || Boolean(emailFieldError)}
+                errorMessage={emailFieldError || undefined}
                 onKeyDown={e => {
                   if (e.key === 'Tab' && !e.shiftKey && !isEmailValid) {
                     e.preventDefault();

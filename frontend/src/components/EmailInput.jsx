@@ -13,7 +13,7 @@ const DOMAIN_OPTIONS = [
   { value: 'custom',      label: '직접 입력' },
 ];
 
-export default function EmailInput({ onChange, error, initialEmail = '', ...inputProps }) {
+export default function EmailInput({ onChange, error, errorMessage, initialEmail = '', ...inputProps }) {
   const [value, setValue] = useState(initialEmail);
   const [blurred, setBlurred] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -140,7 +140,9 @@ export default function EmailInput({ onChange, error, initialEmail = '', ...inpu
       )}
       </div>
       {(error || showFormatWarn) && (
-        <p style={{ margin: '6px 0 0', fontSize: 12.5, color: '#c0392b' }}>올바른 이메일 주소를 입력해 주세요.</p>
+        <p style={{ margin: '6px 0 0', fontSize: 12.5, color: '#c0392b' }}>
+          {errorMessage || '올바른 이메일 주소를 입력해 주세요.'}
+        </p>
       )}
     </div>
   );

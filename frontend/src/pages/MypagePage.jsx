@@ -1733,7 +1733,7 @@ function DeactivateTab({ closePage, onLogout, profile, user }) {
 
   return (
     <>
-      <h2 className="pg-h2" style={{ marginBottom: 20 }}>계정 탈퇴</h2>
+      <h2 className="pg-h2 mp-deactivate-title" style={{ marginBottom: 20 }}>계정 탈퇴</h2>
       <div className="warn-box" style={{ maxWidth: 520, marginBottom: 20 }}>
         <strong>⚠ 탈퇴 시 안내</strong>
         계정 정보, API Key, 결제/사용량 이력이 모두 삭제되며 복구할 수 없습니다.<br/>
