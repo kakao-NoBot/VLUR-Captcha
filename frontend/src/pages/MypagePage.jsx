@@ -1931,7 +1931,7 @@ export default function MypagePage({ openPage, closePage, initialTab = 'info', u
         /* 좁은 화면에서는 첫 탭부터 보이도록 가로 탭을 왼쪽 기준으로 배치 */
         @media (max-width: 940px) {
           .mp-wrap .mp-sidebar {
-            justify-content: flex-start;
+            justify-content: center;
           }
         }
       `}</style>
