@@ -7,6 +7,10 @@ database/init/*.sql은 MySQL 볼륨이 비어 있을 때만 1회 실행되므로
 from db import get_conn
 
 BOARD_TYPE_ENUM = "ENUM('notice','qna','inquiry','general','faq','research')"
+PLAN_LIMITS = {
+    "Basic": (100000, 100000),
+    "Pro": (500000, 500000),
+}
 
 JULY_USAGE_SEED = (
     ("testuser", "2026-07-01", 820, 786),
@@ -52,6 +56,21 @@ def run_migrations() -> None:
     conn = get_conn()
     with conn:
         with conn.cursor() as cur:
+            # 0) 기존 볼륨의 요금제 한도 보정
+            plan_limit_updates = [
+                (api_limit, captcha_limit, plan_name, api_limit, captcha_limit)
+                for plan_name, (api_limit, captcha_limit) in PLAN_LIMITS.items()
+            ]
+            cur.executemany(
+                """UPDATE plans
+                   SET api_limit = %s, captcha_limit = %s
+                   WHERE plan_name = %s
+                     AND (api_limit <> %s OR captcha_limit <> %s)""",
+                plan_limit_updates,
+            )
+            if cur.rowcount:
+                print("[migrate] Basic/Pro 요금제 한도 보정")
+
             # 1) boards.view_count — 게시글 조회수
             if not _column_exists(cur, "boards", "view_count"):
                 cur.execute(

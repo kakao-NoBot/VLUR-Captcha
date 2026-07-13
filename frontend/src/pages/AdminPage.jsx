@@ -25,6 +25,11 @@ const INQUIRY_TYPE_TABS = [
 const INQUIRY_STATUS_OPTIONS = ['접수', '검토', '답변'];
 const MANAGE_STATUS_OPTIONS = ['활성', '점검', '비활성'];
 const USER_STATUS_OPTIONS = ['활성', '비활성'];
+const PLAN_MONTHLY_LIMITS = {
+  Basic: 100000,
+  Pro: 500000,
+  Enterprise: 800000,
+};
 
 const INQUIRY_STATUS_TONE = {
   '접수': 'neutral',
@@ -41,9 +46,9 @@ const DASHBOARD_STATS = [
 ];
 
 const MOCK_SITES = [
-  { name: 'VLUR Demo Shop', domain: 'shop.vlur-demo.kr', owner: 'VLUR Commerce', plan: 'Enterprise', monthlyLimit: 500000, monthlyUsage: 312000, status: '활성', createdAt: '2026-06-03' },
-  { name: 'AI Study Portal', domain: 'study.example.io', owner: 'AI Study Lab', plan: 'Pro', monthlyLimit: 100000, monthlyUsage: 68400, status: '활성', createdAt: '2026-06-12' },
-  { name: 'Secure Board', domain: 'board.sample.kr', owner: 'Secure Board Inc.', plan: 'Basic', monthlyLimit: 50000, monthlyUsage: 12850, status: '비활성', createdAt: '2026-06-21' },
+  { name: 'VLUR Demo Shop', domain: 'shop.vlur-demo.kr', owner: 'VLUR Commerce', plan: 'Enterprise', monthlyLimit: PLAN_MONTHLY_LIMITS.Enterprise, monthlyUsage: 312000, status: '활성', createdAt: '2026-06-03' },
+  { name: 'AI Study Portal', domain: 'study.example.io', owner: 'AI Study Lab', plan: 'Pro', monthlyLimit: PLAN_MONTHLY_LIMITS.Pro, monthlyUsage: 68400, status: '활성', createdAt: '2026-06-12' },
+  { name: 'Secure Board', domain: 'board.sample.kr', owner: 'Secure Board Inc.', plan: 'Basic', monthlyLimit: PLAN_MONTHLY_LIMITS.Basic, monthlyUsage: 12850, status: '비활성', createdAt: '2026-06-21' },
 ];
 
 const INQUIRY_STATUS_BACKEND_TO_LABEL = {
@@ -143,15 +148,15 @@ const SCORE_BREAKDOWN = [
 const MOCK_LOGS = [
   { time: '2026-07-03 09:42', site: 'VLUR Demo Shop', captchaType: 'type1_drag', result: '성공', duration: '1.8초', botScore: 8 },
   { time: '2026-07-03 09:38', site: 'AI Study Portal', captchaType: 'type2_identify', result: '성공', duration: '2.7초', botScore: 21 },
-  { time: '2026-07-03 09:34', site: 'VLUR Demo Shop', captchaType: 'type1_drag', result: '의심', duration: '0.9초', botScore: 72 },
-  { time: '2026-07-03 09:29', site: 'Secure Board', captchaType: 'type1_drag', result: '실패', duration: '4.2초', botScore: 58 },
-  { time: '2026-07-03 09:21', site: 'AI Study Portal', captchaType: 'type2_identify', result: '실패', duration: '3.4초', botScore: 43 },
+  { time: '2026-07-03 09:34', site: 'VLUR Demo Shop', captchaType: 'type1_drag', result: '실패', duration: '0.9초', botScore: 72 },
+  { time: '2026-07-03 09:29', site: 'Secure Board', captchaType: 'type1_drag', result: '의심', duration: '4.2초', botScore: 58 },
+  { time: '2026-07-03 09:21', site: 'AI Study Portal', captchaType: 'type2_identify', result: '의심', duration: '3.4초', botScore: 43 },
  ];
 
 const PLAN_USAGE = [
-  { plan: 'Basic', accounts: 812, used: 182000, limit: 300000 },
-  { plan: 'Pro', accounts: 386, used: 684000, limit: 900000 },
-  { plan: 'Enterprise', accounts: 86, used: 1120000, limit: 1500000 },
+  { plan: 'Basic', accounts: 812, used: 92000, limit: PLAN_MONTHLY_LIMITS.Basic },
+  { plan: 'Pro', accounts: 386, used: 492000, limit: PLAN_MONTHLY_LIMITS.Pro },
+  { plan: 'Enterprise', accounts: 86, used: 736000, limit: PLAN_MONTHLY_LIMITS.Enterprise },
 ];
 
 const PLAN_USAGE_TABS = ['Basic', 'Pro', 'Enterprise'];
@@ -163,18 +168,18 @@ const PLAN_USAGE_SORT_OPTIONS = [
 ];
 
 const PLAN_USAGE_DETAILS = [
-  { id: 1, plan: 'Basic', userName: '김준수', email: 'junsu@example.com', siteName: 'VLUR Demo Shop', monthlyCalls: 182000, monthlyLimit: 300000, successCount: 176500, failCount: 5500, botBlockedCount: 2100, lastCalledAt: '2026-07-06' },
-  { id: 2, plan: 'Basic', userName: '한서연', email: 'seoyeon@example.com', siteName: 'Secure Board', monthlyCalls: 92000, monthlyLimit: 150000, successCount: 88700, failCount: 3300, botBlockedCount: 980, lastCalledAt: '2026-07-06' },
-  { id: 3, plan: 'Basic', userName: '오지훈', email: 'jihun@example.com', siteName: 'Ticket Demo', monthlyCalls: 238000, monthlyLimit: 300000, successCount: 226900, failCount: 11100, botBlockedCount: 4100, lastCalledAt: '2026-07-05' },
-  { id: 4, plan: 'Basic', userName: '문가영', email: 'gayoung@example.com', siteName: 'Commerce Lab', monthlyCalls: 51000, monthlyLimit: 100000, successCount: 49700, failCount: 1300, botBlockedCount: 430, lastCalledAt: '2026-07-03' },
-  { id: 5, plan: 'Pro', userName: '이민지', email: 'minji@example.com', siteName: 'AI Study Portal', monthlyCalls: 684000, monthlyLimit: 900000, successCount: 660000, failCount: 24000, botBlockedCount: 8200, lastCalledAt: '2026-07-06' },
-  { id: 6, plan: 'Pro', userName: '정하늘', email: 'haneul@example.com', siteName: 'K-Event', monthlyCalls: 742000, monthlyLimit: 900000, successCount: 713500, failCount: 28500, botBlockedCount: 9700, lastCalledAt: '2026-07-06' },
-  { id: 7, plan: 'Pro', userName: '최유진', email: 'yujin@example.com', siteName: 'Demo Shop Plus', monthlyCalls: 412000, monthlyLimit: 700000, successCount: 399100, failCount: 12900, botBlockedCount: 5100, lastCalledAt: '2026-07-05' },
-  { id: 8, plan: 'Pro', userName: '강태오', email: 'taeo@example.com', siteName: 'Secure Study', monthlyCalls: 595000, monthlyLimit: 800000, successCount: 573800, failCount: 21200, botBlockedCount: 7600, lastCalledAt: '2026-07-03' },
-  { id: 9, plan: 'Enterprise', userName: '박도윤', email: 'doyoon@example.com', siteName: 'Mega Ticket', monthlyCalls: 1120000, monthlyLimit: 1500000, successCount: 1080000, failCount: 40000, botBlockedCount: 18000, lastCalledAt: '2026-07-06' },
-  { id: 10, plan: 'Enterprise', userName: '서예린', email: 'yerin@example.com', siteName: 'Commerce Lab Global', monthlyCalls: 1340000, monthlyLimit: 1500000, successCount: 1289000, failCount: 51000, botBlockedCount: 22600, lastCalledAt: '2026-07-06' },
-  { id: 11, plan: 'Enterprise', userName: '장민호', email: 'minho@example.com', siteName: 'K-Event Arena', monthlyCalls: 905000, monthlyLimit: 1500000, successCount: 879000, failCount: 26000, botBlockedCount: 12100, lastCalledAt: '2026-07-05' },
-  { id: 12, plan: 'Enterprise', userName: '윤다정', email: 'dajeong@example.com', siteName: 'VLUR Secure Mall', monthlyCalls: 1482000, monthlyLimit: 1500000, successCount: 1420000, failCount: 62000, botBlockedCount: 30100, lastCalledAt: '2026-07-03' },
+  { id: 1, plan: 'Basic', userName: '김준수', email: 'junsu@example.com', siteName: 'VLUR Demo Shop', monthlyCalls: 82000, monthlyLimit: PLAN_MONTHLY_LIMITS.Basic, successCount: 79500, failCount: 2500, botBlockedCount: 1100, lastCalledAt: '2026-07-06' },
+  { id: 2, plan: 'Basic', userName: '한서연', email: 'seoyeon@example.com', siteName: 'Secure Board', monthlyCalls: 92000, monthlyLimit: PLAN_MONTHLY_LIMITS.Basic, successCount: 88700, failCount: 3300, botBlockedCount: 980, lastCalledAt: '2026-07-06' },
+  { id: 3, plan: 'Basic', userName: '오지훈', email: 'jihun@example.com', siteName: 'Ticket Demo', monthlyCalls: 78000, monthlyLimit: PLAN_MONTHLY_LIMITS.Basic, successCount: 73900, failCount: 4100, botBlockedCount: 1400, lastCalledAt: '2026-07-05' },
+  { id: 4, plan: 'Basic', userName: '문가영', email: 'gayoung@example.com', siteName: 'Commerce Lab', monthlyCalls: 51000, monthlyLimit: PLAN_MONTHLY_LIMITS.Basic, successCount: 49700, failCount: 1300, botBlockedCount: 430, lastCalledAt: '2026-07-03' },
+  { id: 5, plan: 'Pro', userName: '이민지', email: 'minji@example.com', siteName: 'AI Study Portal', monthlyCalls: 484000, monthlyLimit: PLAN_MONTHLY_LIMITS.Pro, successCount: 466000, failCount: 18000, botBlockedCount: 6500, lastCalledAt: '2026-07-06' },
+  { id: 6, plan: 'Pro', userName: '정하늘', email: 'haneul@example.com', siteName: 'K-Event', monthlyCalls: 492000, monthlyLimit: PLAN_MONTHLY_LIMITS.Pro, successCount: 471500, failCount: 20500, botBlockedCount: 7600, lastCalledAt: '2026-07-06' },
+  { id: 7, plan: 'Pro', userName: '최유진', email: 'yujin@example.com', siteName: 'Demo Shop Plus', monthlyCalls: 412000, monthlyLimit: PLAN_MONTHLY_LIMITS.Pro, successCount: 399100, failCount: 12900, botBlockedCount: 5100, lastCalledAt: '2026-07-05' },
+  { id: 8, plan: 'Pro', userName: '강태오', email: 'taeo@example.com', siteName: 'Secure Study', monthlyCalls: 395000, monthlyLimit: PLAN_MONTHLY_LIMITS.Pro, successCount: 380800, failCount: 14200, botBlockedCount: 5200, lastCalledAt: '2026-07-03' },
+  { id: 9, plan: 'Enterprise', userName: '박도윤', email: 'doyoon@example.com', siteName: 'Mega Ticket', monthlyCalls: 712000, monthlyLimit: PLAN_MONTHLY_LIMITS.Enterprise, successCount: 686000, failCount: 26000, botBlockedCount: 11800, lastCalledAt: '2026-07-06' },
+  { id: 10, plan: 'Enterprise', userName: '서예린', email: 'yerin@example.com', siteName: 'Commerce Lab Global', monthlyCalls: 764000, monthlyLimit: PLAN_MONTHLY_LIMITS.Enterprise, successCount: 734000, failCount: 30000, botBlockedCount: 13600, lastCalledAt: '2026-07-06' },
+  { id: 11, plan: 'Enterprise', userName: '장민호', email: 'minho@example.com', siteName: 'K-Event Arena', monthlyCalls: 605000, monthlyLimit: PLAN_MONTHLY_LIMITS.Enterprise, successCount: 587000, failCount: 18000, botBlockedCount: 8100, lastCalledAt: '2026-07-05' },
+  { id: 12, plan: 'Enterprise', userName: '윤다정', email: 'dajeong@example.com', siteName: 'VLUR Secure Mall', monthlyCalls: 782000, monthlyLimit: PLAN_MONTHLY_LIMITS.Enterprise, successCount: 748000, failCount: 34000, botBlockedCount: 16100, lastCalledAt: '2026-07-03' },
 ];
 
 const BOT_BLOCK_TREND = [
@@ -198,18 +203,29 @@ function formatNumber(value) {
   return new Intl.NumberFormat('ko-KR').format(value);
 }
 
+function clampUsageToLimit(used, limit) {
+  const numericUsed = Number(used || 0);
+  const numericLimit = Number(limit || 0);
+  if (!numericLimit) return numericUsed;
+  return Math.min(numericUsed, numericLimit);
+}
+
+function getPlanMonthlyLimit(plan, fallbackLimit) {
+  return PLAN_MONTHLY_LIMITS[plan] ?? Number(fallbackLimit || 0);
+}
+
 function formatUsage(used, limit) {
-  return `${formatNumber(used)} / ${formatNumber(limit)}`;
+  return `${formatNumber(clampUsageToLimit(used, limit))} / ${formatNumber(limit)}`;
 }
 
 function getPercent(used, limit) {
   if (!limit) return 0;
-  return Math.min(100, Math.round((used / limit) * 100));
+  return Math.round((clampUsageToLimit(used, limit) / limit) * 100);
 }
 
 function getPrecisePercent(used, limit) {
   if (!limit) return 0;
-  return Math.min(100, (used / limit) * 100);
+  return (clampUsageToLimit(used, limit) / limit) * 100;
 }
 
 function getUsageStatus(percent) {
@@ -910,29 +926,31 @@ export default function AdminPage() {
   }, [logs, logSearch]);
 
   const usagePlanRows = useMemo(() => {
-  const query = usagePlanSearch.trim().toLowerCase();
-  const baseRows = PLAN_USAGE_DETAILS.filter((row) => row.plan === activeUsagePlan);
-  const searchedRows = query
-    ? baseRows.filter((row) => (
-      Object.values(row).some((value) => String(value).toLowerCase().includes(query))
-    ))
-    : baseRows;
+    const query = usagePlanSearch.trim().toLowerCase();
+    const baseRows = PLAN_USAGE_DETAILS.filter((row) => row.plan === activeUsagePlan);
+    const searchedRows = query
+      ? baseRows.filter((row) => (
+        Object.values(row).some((value) => String(value).toLowerCase().includes(query))
+      ))
+      : baseRows;
 
-  return [...searchedRows].sort((a, b) => {
+    return [...searchedRows].sort((a, b) => {
+      const aMonthlyCalls = clampUsageToLimit(a.monthlyCalls, a.monthlyLimit);
+      const bMonthlyCalls = clampUsageToLimit(b.monthlyCalls, b.monthlyLimit);
       const aUsage = getPrecisePercent(a.monthlyCalls, a.monthlyLimit);
       const bUsage = getPrecisePercent(b.monthlyCalls, b.monthlyLimit);
-      const aFailRate = a.monthlyCalls ? a.failCount / a.monthlyCalls : 0;
-      const bFailRate = b.monthlyCalls ? b.failCount / b.monthlyCalls : 0;
+      const aFailRate = aMonthlyCalls ? a.failCount / aMonthlyCalls : 0;
+      const bFailRate = bMonthlyCalls ? b.failCount / bMonthlyCalls : 0;
       if (usagePlanSort === 'usage_desc') return bUsage - aUsage;
       if (usagePlanSort === 'fail_rate_desc') return bFailRate - aFailRate;
       if (usagePlanSort === 'recent_desc') return b.lastCalledAt.localeCompare(a.lastCalledAt);
-      return b.monthlyCalls - a.monthlyCalls;
+      return bMonthlyCalls - aMonthlyCalls;
     });
-}, [activeUsagePlan, usagePlanSearch, usagePlanSort]);
+  }, [activeUsagePlan, usagePlanSearch, usagePlanSort]);
 
   const usagePlanSummary = useMemo(() => {
     const rows = usagePlanRows;
-    const totalCalls = rows.reduce((sum, row) => sum + row.monthlyCalls, 0);
+    const totalCalls = rows.reduce((sum, row) => sum + clampUsageToLimit(row.monthlyCalls, row.monthlyLimit), 0);
     const totalLimit = rows.reduce((sum, row) => sum + row.monthlyLimit, 0);
     const averageUsage = rows.length
       ? rows.reduce((sum, row) => sum + getPrecisePercent(row.monthlyCalls, row.monthlyLimit), 0) / rows.length
@@ -1411,6 +1429,7 @@ export default function AdminPage() {
                   ]}
                   emptyMessage="검색 결과가 없습니다."
                   rows={usagePlanRows.map((row) => {
+                    const monthlyCalls = clampUsageToLimit(row.monthlyCalls, row.monthlyLimit);
                     const usagePercent = getPrecisePercent(row.monthlyCalls, row.monthlyLimit);
                     const usageStatus = getUsageStatus(usagePercent);
                     return (
@@ -1419,7 +1438,7 @@ export default function AdminPage() {
                         <td>{row.userName}</td>
                         <td>{row.email}</td>
                         <td>{row.plan}</td>
-                        <td>{formatNumber(row.monthlyCalls)}</td>
+                        <td>{formatNumber(monthlyCalls)}</td>
                         <td>{formatNumber(row.monthlyLimit)}</td>
                         <td>
                           <div className="admin-usage-percent-cell">
@@ -1603,14 +1622,16 @@ export default function AdminPage() {
                 emptyMessage="검색 결과가 없습니다."
                 rows={filteredSites.map((site) => {
                   const menuKey = `site-${site.domain}`;
+                  const monthlyLimit = getPlanMonthlyLimit(site.plan, site.monthlyLimit);
+                  const monthlyUsage = clampUsageToLimit(site.monthlyUsage, monthlyLimit);
                   return (
                     <tr key={site.domain}>
                       <td>{site.name}</td>
                       <td>{site.domain}</td>
                       <td>{site.owner}</td>
                       <td>{site.plan}</td>
-                      <td>{formatNumber(site.monthlyLimit)}</td>
-                      <td><UsageMeter used={site.monthlyUsage} limit={site.monthlyLimit} /></td>
+                      <td>{formatNumber(monthlyLimit)}</td>
+                      <td><UsageMeter used={monthlyUsage} limit={monthlyLimit} /></td>
                       <td>
                         <StatusDropdown
                           status={site.status}

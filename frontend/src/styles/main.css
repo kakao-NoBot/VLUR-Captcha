@@ -2897,6 +2897,26 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
 .board-write-button {
   grid-column: 3; justify-self: end; margin-right: 14px; padding: 9px 16px; border-radius: 10px; font-size: 13px;
 }
+.board-faq-card { padding: 0; cursor: pointer; overflow: hidden; }
+.board-faq-summary {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 28px; list-style: none; font-size: 15px; font-weight: 600; color: var(--ink);
+}
+.board-faq-card[open] .board-faq-summary { padding-bottom: 12px; }
+.board-faq-summary::-webkit-details-marker { display: none; }
+.board-faq-summary::marker { content: ''; }
+.board-faq-summary:focus { outline: none; }
+.board-faq-summary:focus-visible { background: var(--paper); box-shadow: inset 3px 0 var(--orange); }
+.board-faq-title { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+.board-faq-title > span:last-child { min-width: 0; overflow-wrap: anywhere; }
+.board-faq-toggle { flex: 0 0 auto; color: var(--orange); }
+.board-faq-content {
+  margin: 0; padding: 0 28px 28px; font-size: 14px; line-height: 1.7;
+  color: var(--ink-soft); white-space: pre-line;
+}
+.board-faq-admin-actions {
+  display: flex; justify-content: flex-end; gap: 6px; margin-top: -18px; padding: 0 28px 28px;
+}
 
 /* board layout */
 .board-page-shell { min-height: calc(100vh - 72px); background: var(--paper); }
