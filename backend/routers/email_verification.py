@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
+from db import get_conn
 from services import email_verify, smtp_mailer
 
 router = APIRouter(prefix="/auth/email", tags=["email-verification"])
@@ -25,6 +26,15 @@ async def send_code(body: SendCodeRequest):
     email = body.email.strip().lower()
     if not EMAIL_RE.match(email):
         raise HTTPException(status_code=400, detail="올바른 이메일 형식이 아닙니다.")
+
+    # 가입된 주소에는 인증번호를 발송하지 않는다. 회원가입 마지막 단계까지
+    # 진행한 뒤에야 중복을 알게 되는 흐름을 막는다.
+    conn = get_conn()
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT 1 FROM users WHERE email = %s", (email,))
+            if cur.fetchone():
+                raise HTTPException(status_code=409, detail="이미 사용 중인 이메일입니다.")
 
     try:
         code = email_verify.issue_code(email)
