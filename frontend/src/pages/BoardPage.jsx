@@ -701,7 +701,9 @@ export default function BoardPage({ user = null }) {
       {tab === 'research' && (
         <>
           <table className="pg-table board-table" style={{ marginBottom: 8 }}>
-            <tr><th style={{ width: 60, textAlign: 'center' }}>번호</th><th>제목</th><th style={{ width: 130, textAlign: 'right' }}>작성일</th></tr>
+            <thead>
+              <tr><th style={{ width: 60, textAlign: 'center' }}>번호</th><th>제목</th><th style={{ width: 130, textAlign: 'right' }}>작성일</th></tr>
+            </thead>
             <tbody>
               {researchSlice.map(r => (
                 <tr
