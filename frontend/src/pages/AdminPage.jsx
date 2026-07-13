@@ -136,22 +136,53 @@ function mapInquiry(row) {
   };
 }
 
-const SCORE_BREAKDOWN = [
-  { label: '드래그 궤적 자연스러움', score: 18, max: 30 },
-  { label: '이동 속도 변화', score: 12, max: 20 },
-  { label: '반응 시간', score: 15, max: 20 },
-  { label: '실패 횟수', score: 10, max: 15 },
-  { label: '정답 위치 정확도', score: 8, max: 10 },
-  { label: '반복 패턴', score: 9, max: 10 },
+/* ── 봇 점수 판정 기준 ──
+   botScore(0~100, 봇 의심 점수)를 기준으로 판정 결과와 세부 채점표를 계산한다.
+   기준 하나만 바꾸면 목데이터/판정/세부 채점표가 모두 같이 움직이도록 구성. */
+const BOT_SCORE_THRESHOLD = { FAIL: 70, SUSPECT: 40 };
+
+function getResultFromScore(score) {
+  if (score >= BOT_SCORE_THRESHOLD.FAIL) return '실패';
+  if (score >= BOT_SCORE_THRESHOLD.SUSPECT) return '의심';
+  return '성공';
+}
+
+// 카테고리별 배점 비중 (총 100점 만점 — ScoreGauge의 100점 만점과 통일)
+const SCORE_CATEGORY_WEIGHTS = [
+  { label: '드래그 궤적 자연스러움', max: 25 },
+  { label: '이동 속도 변화', max: 20 },
+  { label: '반응 시간', max: 20 },
+  { label: '실패 횟수', max: 15 },
+  { label: '정답 위치 정확도', max: 10 },
+  { label: '반복 패턴', max: 10 },
 ];
 
+// botScore를 카테고리별로 비례 배분해서, 항상 세부 채점표 합계 === botScore가 되도록 계산
+function getScoreBreakdown(botScore) {
+  const clamped = Math.min(100, Math.max(0, botScore));
+  const raw = SCORE_CATEGORY_WEIGHTS.map((cat) => ({
+    ...cat,
+    score: Math.round((clamped * cat.max) / 100),
+  }));
+
+  // 반올림 오차 보정: 합계와 botScore 차이를 가장 배점이 큰 카테고리에서 흡수
+  const diff = clamped - raw.reduce((sum, c) => sum + c.score, 0);
+  if (diff !== 0) {
+    const idx = raw.reduce((best, c, i) => (c.max > raw[best].max ? i : best), 0);
+    raw[idx].score = Math.min(raw[idx].max, Math.max(0, raw[idx].score + diff));
+  }
+
+  return raw;
+}
+
+// duration과 botScore가 서로 설명되도록 구성 (반응이 너무 빠르거나 느릴수록 점수 상승)
 const MOCK_LOGS = [
-  { time: '2026-07-03 09:42', site: 'VLUR Demo Shop', captchaType: 'type1_drag', result: '성공', duration: '1.8초', botScore: 8 },
-  { time: '2026-07-03 09:38', site: 'AI Study Portal', captchaType: 'type2_identify', result: '성공', duration: '2.7초', botScore: 21 },
-  { time: '2026-07-03 09:34', site: 'VLUR Demo Shop', captchaType: 'type1_drag', result: '실패', duration: '0.9초', botScore: 72 },
-  { time: '2026-07-03 09:29', site: 'Secure Board', captchaType: 'type1_drag', result: '의심', duration: '4.2초', botScore: 58 },
-  { time: '2026-07-03 09:21', site: 'AI Study Portal', captchaType: 'type2_identify', result: '의심', duration: '3.4초', botScore: 43 },
- ];
+  { time: '2026-07-03 09:42', site: 'VLUR Demo Shop',   captchaType: 'type1_drag',     duration: '1.8초', botScore: 8  },
+  { time: '2026-07-03 09:38', site: 'AI Study Portal',  captchaType: 'type2_identify', duration: '2.3초', botScore: 15 },
+  { time: '2026-07-03 09:34', site: 'Secure Board',     captchaType: 'type1_drag',     duration: '3.9초', botScore: 46 }, // 느린 반응 → 의심
+  { time: '2026-07-03 09:29', site: 'VLUR Demo Shop',   captchaType: 'type1_drag',     duration: '0.6초', botScore: 61 }, // 빠른 반응 → 의심
+  { time: '2026-07-03 09:21', site: 'AI Study Portal',  captchaType: 'type2_identify', duration: '0.3초', botScore: 84 }, // 비정상 반응속도 → 실패
+].map((log) => ({ ...log, result: getResultFromScore(log.botScore) }));
 
 const PLAN_USAGE = [
   { plan: 'Basic', accounts: 812, used: 92000, limit: PLAN_MONTHLY_LIMITS.Basic },
@@ -637,6 +668,9 @@ function ScoreDetailModal({ log, onClose }) {
 
   if (!log) return null;
 
+  // 로그의 botScore 기준으로 세부 채점표를 매번 계산 → 게이지/판정/채점표가 항상 일치
+  const breakdown = getScoreBreakdown(log.botScore);
+
   return (
     <AdminModalShell
       eyebrow="BOT SCORE DETAIL"
@@ -662,7 +696,7 @@ function ScoreDetailModal({ log, onClose }) {
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
-        {SCORE_BREAKDOWN.map((item) => {
+        {breakdown.map((item) => {
           const percent = getPercent(item.score, item.max);
           return (
             <div key={item.label} style={{ border: '1px solid var(--line)', borderRadius: 12, padding: '12px 14px' }}>
@@ -1444,7 +1478,12 @@ export default function AdminPage() {
                           <div className="admin-usage-percent-cell">
                             <div className="admin-usage-percent-top">
                               <b>{usagePercent.toFixed(1)}%</b>
-                              <StatusBadge tone={getUsageStatusTone(usageStatus)}>{usageStatus}</StatusBadge>
+                              <StatusBadge
+                                tone={getUsageStatusTone(usageStatus)}
+                                style={{ minWidth: 0, padding: '2px 8px', fontSize: 11 }}
+                              >
+                                {usageStatus}
+                              </StatusBadge>
                             </div>
                             <div className="admin-usage-progress" aria-hidden="true">
                               <span style={{ width: `${Math.min(100, usagePercent)}%` }} />
