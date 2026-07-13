@@ -12,34 +12,34 @@ import aircraftAscii from '../assets/Aircraft_ascii.png';
 const GLYPHS = {
   radish: (
     <svg viewBox="0 0 48 48" fill="none">
-      <circle cx="24" cy="30" r="11" fill="#F4F0E8" stroke="#241B15" strokeWidth="2"/>
+      <circle cx="24" cy="30" r="11" fill="#F4F0E8" stroke="var(--ink)" strokeWidth="2"/>
       <path d="M24 19c1-4 4-7 8-8-1 4-4 7-8 8Zm0 0c-1-4-4-7-8-8 1 4 4 7 8 8Z" fill="#7FB069"/>
       <path d="M24 19v-9" stroke="#7FB069" strokeWidth="2" strokeLinecap="round"/>
     </svg>
   ),
   banana: (
     <svg viewBox="0 0 48 48" fill="none">
-      <path d="M10 13c2 13 11 23 26 24-3 4-9 6-15 4C12 38 7 27 9 15c0-1 1-2 1-2Z" fill="#F4A62A" stroke="#241B15" strokeWidth="2" strokeLinejoin="round"/>
-      <path d="M10 13c-1-2 0-4 2-4" stroke="#241B15" strokeWidth="2" strokeLinecap="round"/>
+      <path d="M10 13c2 13 11 23 26 24-3 4-9 6-15 4C12 38 7 27 9 15c0-1 1-2 1-2Z" fill="#F4A62A" stroke="var(--ink)" strokeWidth="2" strokeLinejoin="round"/>
+      <path d="M10 13c-1-2 0-4 2-4" stroke="var(--ink)" strokeWidth="2" strokeLinecap="round"/>
     </svg>
   ),
   carrot: (
     <svg viewBox="0 0 48 48" fill="none">
-      <path d="M12 36 31 17l-1 9 8-2-20 19c-2 2-6 1-7-2-1-2 0-4 1-5Z" fill="#F0691E" stroke="#241B15" strokeWidth="2" strokeLinejoin="round"/>
+      <path d="M12 36 31 17l-1 9 8-2-20 19c-2 2-6 1-7-2-1-2 0-4 1-5Z" fill="#F0691E" stroke="var(--ink)" strokeWidth="2" strokeLinejoin="round"/>
       <path d="M31 17c1-4 4-6 8-6m-8 6c0-4-2-7-5-8m5 8c4-1 6 1 7 4" stroke="#7FB069" strokeWidth="2" strokeLinecap="round"/>
     </svg>
   ),
   pumpkin: (
     <svg viewBox="0 0 48 48" fill="none">
-      <ellipse cx="24" cy="29" rx="15" ry="12" fill="#F0691E" stroke="#241B15" strokeWidth="2"/>
-      <path d="M24 18v22M16 19c-3 4-3 16 0 21M32 19c3 4 3 16 0 21" stroke="#241B15" strokeWidth="1.6"/>
+      <ellipse cx="24" cy="29" rx="15" ry="12" fill="#F0691E" stroke="var(--ink)" strokeWidth="2"/>
+      <path d="M24 18v22M16 19c-3 4-3 16 0 21M32 19c3 4 3 16 0 21" stroke="var(--ink)" strokeWidth="1.6"/>
       <path d="M24 17c0-3 2-5 5-5" stroke="#7FB069" strokeWidth="2" strokeLinecap="round"/>
     </svg>
   ),
   cat: (
     <svg viewBox="0 0 48 48" fill="none">
-      <circle cx="24" cy="28" r="11" fill="#F4F0E8" stroke="#241B15" strokeWidth="2"/>
-      <path d="M15 20l2-8 6 6Zm18 0l-2-8-6 6Z" fill="#F4F0E8" stroke="#241B15" strokeWidth="2" strokeLinejoin="round"/>
+      <circle cx="24" cy="28" r="11" fill="#F4F0E8" stroke="var(--ink)" strokeWidth="2"/>
+      <path d="M15 20l2-8 6 6Zm18 0l-2-8-6 6Z" fill="#F4F0E8" stroke="var(--ink)" strokeWidth="2" strokeLinejoin="round"/>
       <circle cx="20" cy="28" r="1.4" fill="#241B15"/>
       <circle cx="28" cy="28" r="1.4" fill="#241B15"/>
       <path d="M20 33c1.5 1.5 6.5 1.5 8 0" stroke="#241B15" strokeWidth="1.6" strokeLinecap="round"/>
@@ -47,9 +47,9 @@ const GLYPHS = {
   ),
   dog: (
     <svg viewBox="0 0 48 48" fill="none">
-      <circle cx="24" cy="28" r="11" fill="#F4F0E8" stroke="#241B15" strokeWidth="2"/>
-      <path d="M14 22c-3 2-4 8-1 11 1-4 2-7 4-9Z" fill="#C88B4A" stroke="#241B15" strokeWidth="2" strokeLinejoin="round"/>
-      <path d="M34 22c3 2 4 8 1 11-1-4-2-7-4-9Z" fill="#C88B4A" stroke="#241B15" strokeWidth="2" strokeLinejoin="round"/>
+      <circle cx="24" cy="28" r="11" fill="#F4F0E8" stroke="var(--ink)" strokeWidth="2"/>
+      <path d="M14 22c-3 2-4 8-1 11 1-4 2-7 4-9Z" fill="#C88B4A" stroke="var(--ink)" strokeWidth="2" strokeLinejoin="round"/>
+      <path d="M34 22c3 2 4 8 1 11-1-4-2-7-4-9Z" fill="#C88B4A" stroke="var(--ink)" strokeWidth="2" strokeLinejoin="round"/>
       <circle cx="20" cy="28" r="1.4" fill="#241B15"/>
       <circle cx="28" cy="28" r="1.4" fill="#241B15"/>
       <ellipse cx="24" cy="33" rx="2" ry="1.4" fill="#241B15"/>
@@ -57,10 +57,10 @@ const GLYPHS = {
   ),
   bear: (
     <svg viewBox="0 0 48 48" fill="none">
-      <circle cx="15" cy="16" r="5" fill="#8B5E34" stroke="#241B15" strokeWidth="2"/>
-      <circle cx="33" cy="16" r="5" fill="#8B5E34" stroke="#241B15" strokeWidth="2"/>
-      <circle cx="24" cy="27" r="12" fill="#8B5E34" stroke="#241B15" strokeWidth="2"/>
-      <circle cx="24" cy="30" r="5" fill="#F4F0E8" stroke="#241B15" strokeWidth="1.6"/>
+      <circle cx="15" cy="16" r="5" fill="#8B5E34" stroke="var(--ink)" strokeWidth="2"/>
+      <circle cx="33" cy="16" r="5" fill="#8B5E34" stroke="var(--ink)" strokeWidth="2"/>
+      <circle cx="24" cy="27" r="12" fill="#8B5E34" stroke="var(--ink)" strokeWidth="2"/>
+      <circle cx="24" cy="30" r="5" fill="#F4F0E8" stroke="var(--ink)" strokeWidth="1.6"/>
       <circle cx="19" cy="25" r="1.4" fill="#241B15"/>
       <circle cx="29" cy="25" r="1.4" fill="#241B15"/>
       <circle cx="24" cy="30" r="1.6" fill="#241B15"/>
@@ -68,30 +68,30 @@ const GLYPHS = {
   ),
   bicycle: (
     <svg viewBox="0 0 48 48" fill="none">
-      <circle cx="13" cy="33" r="7" stroke="#241B15" strokeWidth="2"/>
-      <circle cx="35" cy="33" r="7" stroke="#241B15" strokeWidth="2"/>
-      <path d="M13 33 20 17h8l7 16M20 17l6 16M13 33h22" stroke="#241B15" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <circle cx="13" cy="33" r="7" stroke="var(--ink)" strokeWidth="2"/>
+      <circle cx="35" cy="33" r="7" stroke="var(--ink)" strokeWidth="2"/>
+      <path d="M13 33 20 17h8l7 16M20 17l6 16M13 33h22" stroke="var(--ink)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
       <path d="M28 17h4" stroke="#7FB069" strokeWidth="2" strokeLinecap="round"/>
     </svg>
   ),
   airplane: (
     <svg viewBox="0 0 48 48" fill="none">
-      <path d="M24 8v16m0 0-13 8v3l13-4 13 4v-3l-13-8Zm0 16-2 8h4l-2-8Z" fill="#B7C4D6" stroke="#241B15" strokeWidth="2" strokeLinejoin="round"/>
+      <path d="M24 8v16m0 0-13 8v3l13-4 13 4v-3l-13-8Zm0 16-2 8h4l-2-8Z" fill="#B7C4D6" stroke="var(--ink)" strokeWidth="2" strokeLinejoin="round"/>
     </svg>
   ),
   car: (
     <svg viewBox="0 0 48 48" fill="none">
-      <path d="M9 30v-4l4-8h22l4 8v4" fill="#E4573D" stroke="#241B15" strokeWidth="2" strokeLinejoin="round"/>
-      <path d="M9 30h30v3H9z" fill="#E4573D" stroke="#241B15" strokeWidth="2"/>
-      <circle cx="15" cy="33" r="3" fill="#241B15"/>
-      <circle cx="33" cy="33" r="3" fill="#241B15"/>
-      <path d="M15 18h18" stroke="#241B15" strokeWidth="1.6"/>
+      <path d="M9 30v-4l4-8h22l4 8v4" fill="#E4573D" stroke="var(--ink)" strokeWidth="2" strokeLinejoin="round"/>
+      <path d="M9 30h30v3H9z" fill="#E4573D" stroke="var(--ink)" strokeWidth="2"/>
+      <circle cx="15" cy="33" r="3" fill="var(--ink)"/>
+      <circle cx="33" cy="33" r="3" fill="var(--ink)"/>
+      <path d="M15 18h18" stroke="var(--ink)" strokeWidth="1.6"/>
     </svg>
   ),
   apple: (
     <svg viewBox="0 0 48 48" fill="none">
-      <path d="M24 20c-5-4-13-1-13 8 0 8 6 13 9 13 2 0 3-1 4-1s2 1 4 1c3 0 9-5 9-13 0-9-8-12-13-8Z" fill="#E4573D" stroke="#241B15" strokeWidth="2" strokeLinejoin="round"/>
-      <path d="M24 20v-4" stroke="#241B15" strokeWidth="2" strokeLinecap="round"/>
+      <path d="M24 20c-5-4-13-1-13 8 0 8 6 13 9 13 2 0 3-1 4-1s2 1 4 1c3 0 9-5 9-13 0-9-8-12-13-8Z" fill="#E4573D" stroke="var(--ink)" strokeWidth="2" strokeLinejoin="round"/>
+      <path d="M24 20v-4" stroke="var(--ink)" strokeWidth="2" strokeLinecap="round"/>
       <path d="M24 16c1-3 4-4 6-3" stroke="#7FB069" strokeWidth="2" strokeLinecap="round"/>
     </svg>
   ),
