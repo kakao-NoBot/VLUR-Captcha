@@ -1481,17 +1481,15 @@ export default function AdminPage() {
                           }}
                           style={{
                             cursor: 'pointer',
-                            display: 'grid',
-                            gridTemplateColumns: '52px 1fr 100px 56px',
+                            display: 'flex',
                             alignItems: 'center',
-                            justifyItems: 'start',
                             gap: 12,
                           }}
                         >
-                          <span>{log.time.slice(11)}</span>
-                          <b style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{log.site}</b>
-                          <StatusBadge tone={getStatusTone(log.result)} style={{ justifySelf: 'start' }}>{log.result}</StatusBadge>
-                          <span style={{ color: 'var(--orange-2)', fontWeight: 500, textAlign: 'right' }}>{log.botScore}점</span>
+                          <span style={{ flex: '0 0 44px' }}>{log.time.slice(11)}</span>
+                          <b style={{ flex: '1 1 0%', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{log.site}</b>
+                          <StatusBadge tone={getStatusTone(log.result)} style={{ flex: '0 0 auto' }}>{log.result}</StatusBadge>
+                          <span style={{ flex: '0 0 44px', color: 'var(--orange-2)', fontWeight: 500, textAlign: 'right' }}>{log.botScore}점</span>
                         </div>
                       );
                     })}
