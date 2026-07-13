@@ -135,7 +135,15 @@ export default function EnterprisePage({ closePage }) {
               onChange={set('name')}
               style={attempted && !form.name ? errorStyle : {}}
             />
-            <input className="pg-input" placeholder="전화번호 (선택)" value={form.phone} onChange={set('phone')} />
+            <input
+              className="pg-input"
+              type="tel"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              placeholder="전화번호 (선택)"
+              value={form.phone}
+              onChange={e => setForm(f => ({ ...f, phone: e.target.value.replace(/[^0-9]/g, '') }))}
+            />
           </div>
           <EmailInput
             onChange={val => setForm(f => ({ ...f, email: val }))}
