@@ -224,6 +224,13 @@ const BOT_BLOCK_TREND = [
   { label: '7/3', value: 8.7 },
 ];
 
+function parseSafeDate(value) {
+  if (!value) return 0;
+  const normalized = String(value).replace(' ', 'T') + 'Z';
+  const time = new Date(normalized).getTime();
+  return Number.isNaN(time) ? 0 : time;
+}
+
 function getStatusTone(status) {
   if (status === '활성' || status === '성공' || status === '정상' || status === '답변') return 'success';
   if (status === '의심' || status === '점검' || status === '검토') return 'warning';
@@ -866,26 +873,17 @@ export default function AdminPage() {
   }, [activeTab]);
 
   const unreadInquiryCount = useMemo(() => {
-    const isNew = (row) => {
-      const receivedAt = row.createdAtRaw ? new Date(row.createdAtRaw).getTime() : 0;
-      return receivedAt > inquiryLastSeen;
-    };
+    const isNew = (row) => parseSafeDate(row.createdAtRaw) > inquiryLastSeen;
     return [...generalInquiries, ...businessInquiries].filter(isNew).length;
   }, [generalInquiries, businessInquiries, inquiryLastSeen]);
 
   const unreadGeneralCount = useMemo(() => {
-    const isNew = (row) => {
-      const receivedAt = row.createdAtRaw ? new Date(row.createdAtRaw).getTime() : 0;
-      return receivedAt > inquiryLastSeen;
-    };
+    const isNew = (row) => parseSafeDate(row.createdAtRaw) > inquiryLastSeen;
     return generalInquiries.filter(isNew).length;
   }, [generalInquiries, inquiryLastSeen]);
 
   const unreadBusinessCount = useMemo(() => {
-    const isNew = (row) => {
-      const receivedAt = row.createdAtRaw ? new Date(row.createdAtRaw).getTime() : 0;
-      return receivedAt > inquiryLastSeen;
-    };
+    const isNew = (row) => parseSafeDate(row.createdAtRaw) > inquiryLastSeen;
     return businessInquiries.filter(isNew).length;
   }, [businessInquiries, inquiryLastSeen]);
 
