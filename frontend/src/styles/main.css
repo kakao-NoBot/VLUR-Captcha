@@ -684,6 +684,7 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
 .contact-textarea-wrap { position: relative; }
 .contact-modal-content textarea {
   min-height: 150px; padding-bottom: 32px; resize: vertical;
+  overflow-wrap: anywhere;
 }
 .contact-textarea-wrap small {
   position: absolute; right: 12px; bottom: 8px; color: var(--muted); font-size: 11px;
@@ -2256,6 +2257,7 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
   font-weight: 650;
   line-height: 1.75;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 @keyframes overlayFadeIn {
   from { opacity: 0; }
@@ -2985,6 +2987,7 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
 .board-faq-content {
   margin: 0; padding: 0 28px 28px; font-size: 14px; line-height: 1.7;
   color: var(--ink-soft); white-space: pre-line;
+  overflow-wrap: anywhere;
 }
 .board-faq-admin-actions {
   display: flex; justify-content: flex-end; gap: 6px; margin-top: -18px; padding: 0 28px 28px;
@@ -3148,6 +3151,7 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
 .board-detail-header h1 {
   width: 100%; margin: 0; color: var(--ink); font-family: var(--body); text-align: left !important;
   font-size: clamp(18px, 2.4vw, 22px); font-weight: 700; line-height: 1.4; letter-spacing: -.025em;
+  overflow-wrap: anywhere;
 }
 .board-detail-meta {
   grid-column: 1; grid-row: 2;
@@ -3167,7 +3171,11 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
   color: var(--ink-soft); background: var(--card); border: 1px solid var(--line);
   border-radius: 0; font-size: 13px; line-height: 1.8;
 }
-.board-detail-content p { margin: 0; white-space: pre-wrap; }
+.board-detail-content p {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 .board-detail-actions {
   grid-column: 2; grid-row: 2; align-self: center;
   display: flex; justify-content: flex-end; gap: 7px; margin: 0;
@@ -3325,9 +3333,7 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
 @media (max-width: 940px) {
   .mp-wrap { grid-template-columns: 1fr; }
   .mp-content { min-width: 0; padding: 12px 20px 24px; overflow-x: visible; }
-  .mp-info-title,
   .mp-api-key-title,
-  .mp-usage-title-row,
   .mp-billing-title,
   .mp-deactivate-title { margin-top: 0 !important; }
   .mp-sidebar {
