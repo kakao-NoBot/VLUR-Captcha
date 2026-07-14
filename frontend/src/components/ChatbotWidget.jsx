@@ -214,7 +214,6 @@ export default function ChatbotWidget() {
           position: 'fixed',
           right: 24,
           bottom: 96,
-          top: 100,
           zIndex: 200,
           width: 360,
           maxWidth: 'calc(100vw - 48px)',
