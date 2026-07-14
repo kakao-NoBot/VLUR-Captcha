@@ -1303,7 +1303,7 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
 .admin-sort-trigger:hover,
 .admin-sort-trigger.open {
   border-color: rgba(234,122,42,.45);
-  background: #fff;
+  background: var(--card);
 }
 .admin-sort-trigger.open {
   box-shadow: 0 0 0 3px rgba(234,122,42,.10);
@@ -1372,7 +1372,7 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
   vertical-align: middle;
 }
 .admin-usage-detail-table tbody tr:hover td {
-  background: rgba(255, 247, 239, .72);
+  background: var(--paper);
 }
 .admin-usage-percent-cell {
   display: grid;
@@ -3325,9 +3325,11 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
 @media (max-width: 940px) {
   .mp-wrap { grid-template-columns: 1fr; }
   .mp-content { min-width: 0; padding: 12px 20px 24px; overflow-x: visible; }
-  .mp-api-key-title { margin-top: -80px !important; }
-  .mp-billing-title { margin-top: -208px !important; }
-  .mp-deactivate-title { margin-top: -148px !important; }
+  .mp-info-title,
+  .mp-api-key-title,
+  .mp-usage-title-row,
+  .mp-billing-title,
+  .mp-deactivate-title { margin-top: 0 !important; }
   .mp-sidebar {
     display: flex;
     align-items: center;
