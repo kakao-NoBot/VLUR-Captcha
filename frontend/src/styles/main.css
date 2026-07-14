@@ -1307,7 +1307,7 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--card);
-  color: var(--ink);
+  color: var(--ink-soft);
   font-family: var(--body);
   font-size: 13px;
   font-weight: 500;
@@ -2847,6 +2847,15 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
 .usage-calendar-day.in-range {
   color: var(--orange-2);
 }
+.usage-calendar-day.future {
+  color: rgba(146,128,113,.35);
+  cursor: not-allowed;
+}
+.usage-calendar-day.future:hover,
+.usage-calendar-day.future:focus-visible {
+  background: transparent;
+  color: rgba(146,128,113,.35);
+}
 /* 범위 배경은 셀 사이 간격(4px)까지 덮는 하나의 연속 띠로 그린다 */
 .usage-calendar-day.in-range::before {
   content: "";
@@ -2923,10 +2932,15 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
   .mp-wrap { overflow: visible; }
   .mp-content { overflow-x: visible; }
   .usage-date-panel {
-    left: -20px;
+    position: fixed;
+    top: calc(50% + 40px);
+    left: 50%;
     right: auto;
-    width: 340px;
+    transform: translate(-50%, -50%);
+    width: min(384px, calc(100vw - 48px));
     max-width: calc(100vw - 48px);
+    max-height: calc(100vh - 48px);
+    overflow-y: auto;
     box-sizing: border-box;
   }
   .usage-calendar-day { height: 34px; }
