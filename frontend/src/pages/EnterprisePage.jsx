@@ -161,14 +161,20 @@ export default function EnterprisePage({ closePage }) {
             onChange={val => setForm(f => ({ ...f, volume: val }))}
             placeholder="예상 월 호출량 선택"
           />
-          <textarea
-            className="pg-input"
-            placeholder="도입 목적 및 문의 내용을 자유롭게 작성해 주세요. *"
-            value={form.message}
-            onChange={set('message')}
-            rows={5}
-            style={{ resize: 'vertical', lineHeight: 1.6, ...(attempted && !form.message.trim() ? errorStyle : {}) }}
-          />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <textarea
+              className="pg-input"
+              placeholder="도입 목적 및 문의 내용을 자유롭게 작성해 주세요. *"
+              value={form.message}
+              onChange={set('message')}
+              maxLength={2000}
+              rows={5}
+              style={{ resize: 'vertical', lineHeight: 1.6, ...(attempted && !form.message.trim() ? errorStyle : {}) }}
+            />
+            <div aria-live="polite" style={{ color: 'var(--muted)', fontSize: 12, textAlign: 'right' }}>
+              {form.message.length.toLocaleString()} / 2,000자
+            </div>
+          </div>
         </div>
       </div>
 
