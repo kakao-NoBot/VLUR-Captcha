@@ -1,9 +1,9 @@
 import React from 'react';
 
 const metricsData = [
-  { value: '98.6', unit: '%', cap: '분류 정확도', desc: 'ImageNet 8-class 전이학습 검증 정확도', bar: 98.6 },
-  { value: '120',  unit: 'ms', cap: '평균 검증 응답', desc: '정답 키 + 궤적 채점까지의 서버 응답', bar: 88 },
-  { value: '99.2', unit: '%', cap: '봇 차단율', desc: '합성·스크립트 궤적 탐지 기준', bar: 99.2 },
+  { value: '-', unit: '', cap: '분류 정확도', desc: 'ImageNet 8-class 전이학습 검증 정확도', bar: 0 },
+  { value: '-', unit: '', cap: '평균 검증 응답', desc: '정답 키 + 궤적 채점까지의 서버 응답', bar: 0 },
+  { value: '-', unit: '', cap: '봇 차단율', desc: '합성·스크립트 궤적 탐지 기준', bar: 0 },
 ];
 
 export default function Metrics() {
