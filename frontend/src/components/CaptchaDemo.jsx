@@ -194,6 +194,10 @@ function ClickCaptcha() {
 /* ══════════════════════════════════════
    드래그-투-타깃 CAPTCHA
 ══════════════════════════════════════ */
+
+// 타일과 드롭존 사이 여백(px) — 이 값을 키우면 드래그 거리가 길어짐
+const DRAG_GAP_PX = 140;
+
 function DragCaptcha() {
   const [state, setState] = useState(() => {
     const qi = Math.floor(Math.random() * QUESTIONS_TYPE1.length);
@@ -303,6 +307,9 @@ function DragCaptcha() {
         ))}
       </div>
 
+      {/* 타일과 드롭존 사이 간격 — 장거리 드래그 유도 */}
+      <div style={{ height: DRAG_GAP_PX }} />
+
       <div className={dropClass} id="captcha-drop-drag" onClick={() => { if (selected && !solved) submit(selected); }}>
         <div className="cart">
           <svg viewBox="0 0 24 24" fill="none" stroke="#F0691E" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -313,7 +320,7 @@ function DragCaptcha() {
         <div className="dtxt">
           {dropState === 'done'
             ? <><b style={{ color: 'var(--ok)' }}>사람 확인 완료 ✓</b><span>드래그 궤적 정상 · 토큰 발급됨</span></>
-            : <><b>여기로 드롭</b><span>맞는 타일을 장바구니에 담아주세요</span></>}
+            : <><b>여기로 드롭</b><span>천천히, 자연스럽게 끌어주세요</span></>}
         </div>
       </div>
 

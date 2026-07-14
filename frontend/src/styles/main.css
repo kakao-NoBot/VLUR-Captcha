@@ -263,7 +263,7 @@ h1 .hl::after {
 /* CAPTCHA DEMO */
 .demo {
     width: 100%;
-    max-width: 850px;
+    max-width: 570px;
     margin: 0 auto;
 
     background: var(--card);
@@ -283,7 +283,15 @@ h1 .hl::after {
   margin-left: auto; font-family: var(--disp); font-size: 11px; font-weight: 600;
   letter-spacing: .14em; color: var(--muted); text-transform: uppercase;
 }
-.demo-body { padding: 20px; }
+.demo-body {
+  padding: 20px;
+  min-height: 620px;
+  display: flex;
+  flex-direction: column;
+}
+.demo-body .demo-foot {
+  margin-top: auto;
+}
 .demo-q {
   position: relative; display: flex; align-items: center; justify-content: center; gap: 10px;
   background: var(--peach); border: 1px dashed var(--peach-deep); border-radius: 14px;
