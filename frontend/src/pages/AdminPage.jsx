@@ -267,18 +267,6 @@ function getPrecisePercent(used, limit) {
   return (clampUsageToLimit(used, limit) / limit) * 100;
 }
 
-function getUsageStatus(percent) {
-  if (percent >= 80) return '위험';
-  if (percent >= 60) return '주의';
-  return '정상';
-}
-
-function getUsageStatusTone(status) {
-  if (status === '위험') return 'danger';
-  if (status === '주의') return 'warning';
-  return 'success';
-}
-
 const STAT_VALUE_STYLE = {
   fontFamily: 'var(--disp)',
   fontSize: 30,
@@ -1655,7 +1643,6 @@ export default function AdminPage() {
                   rows={usagePlanRows.map((row) => {
                     const monthlyCalls = clampUsageToLimit(row.monthlyCalls, row.monthlyLimit);
                     const usagePercent = getPrecisePercent(row.monthlyCalls, row.monthlyLimit);
-                    const usageStatus = getUsageStatus(usagePercent);
                     return (
                       <tr key={row.id}>
                         <td>{row.siteName}</td>
@@ -1668,12 +1655,6 @@ export default function AdminPage() {
                           <div className="admin-usage-percent-cell">
                             <div className="admin-usage-percent-top">
                               <b>{usagePercent.toFixed(1)}%</b>
-                              <StatusBadge
-                                tone={getUsageStatusTone(usageStatus)}
-                                style={{ minWidth: 0, padding: '2px 8px', fontSize: 11 }}
-                              >
-                                {usageStatus}
-                              </StatusBadge>
                             </div>
                             <div className="admin-usage-progress" aria-hidden="true">
                               <span style={{ width: `${Math.min(100, usagePercent)}%` }} />
