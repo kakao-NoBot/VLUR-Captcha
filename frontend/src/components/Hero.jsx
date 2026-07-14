@@ -26,13 +26,13 @@ export default function Hero({ openPage }) {
             }}
           >
             <span className="eyebrow">Secure Access, Verified Humans</span>
-            <h1>지능형 사용자 <span className="hl">검증</span>으로,<br/>봇을 <span className="hl">차단</span>하는 보안 솔루션</h1>
+            <h1>지능형 사용자 <span className="hl">검증</span>으로,<br/>봇을 <span className="hl">차단</span>하는 <span style={{ whiteSpace: 'nowrap' }}>보안 솔루션</span></h1>
             <p className="lead">
               ASCII 아트 기반 이미지 선택과 드래그 궤적 분석을 통해 자동화 공격으로부터 서비스를 보호하세요.
             </p>
             <div className="hero-cta" style={{ justifyContent: 'center', position: 'relative', zIndex: 10 }}>
-              <button className="btn btn-primary btn-lg" onClick={() => setDemoOpen(true)}>지금 체험하기</button>
               <a className="btn btn-outline btn-lg" href="#pricing" onClick={e => { e.preventDefault(); document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' }); }}>요금제 보기</a>
+              <button className="btn btn-primary btn-lg" onClick={() => setDemoOpen(true)}>지금 체험하기</button>
             </div>
             <div className="hero-meta">
               <div><span className="n">1.4s</span><span className="l">평균 통과 시간</span></div>

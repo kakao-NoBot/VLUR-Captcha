@@ -9,7 +9,7 @@ const STEPS = [
   {
     n: '01',
     color: 'var(--orange)',
-    shadow: '0 0 0 1px rgba(240,105,30,.22), 0 12px 36px rgba(240,105,30,.32)',
+    shadow: '0 12px 36px rgba(240,105,30,.32)',
     title: 'API Key 발급',
     desc: '마이페이지 또는 이용신청에서 API Key를 발급받으세요.',
     body: (
@@ -47,7 +47,7 @@ const STEPS = [
           </pre>
         </div>
 
-        <div style={{ background: 'var(--peach)', border: '1px solid var(--line)', borderRadius: 10, padding: '14px 16px' }}>
+        <div className="guide-warn-box" style={{ background: 'var(--peach)', border: '1px solid var(--line)', borderRadius: 10, padding: '14px 16px' }}>
           <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--orange)', marginBottom: 8 }}>⚠ 보안 주의사항</div>
           <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.8 }}>
             <li>API Key는 서버 환경변수(.env)에만 저장하세요.</li>
@@ -65,7 +65,7 @@ VLUR_API_KEY=vlur_live_sk_AbC1dEfG...`}
   {
     n: '02',
     color: 'var(--gold)',
-    shadow: '0 0 0 1px rgba(202,138,4,.22), 0 12px 36px rgba(202,138,4,.32)',
+    shadow: '0 12px 36px rgba(202,138,4,.32)',
     title: 'CAPTCHA 요청',
     desc: '엔드포인트 + API Key로 ASCII 아트 CAPTCHA 문제를 요청합니다.',
     body: (
@@ -110,7 +110,7 @@ Authorization: Bearer $VLUR_API_KEY`}
           </div>
         </div>
 
-        <div style={{ background: 'rgba(244,166,42,.12)', border: '1px solid rgba(244,166,42,.45)', borderRadius: 10, padding: '14px 16px' }}>
+        <div className="guide-tip-box" style={{ background: 'rgba(244,166,42,.12)', border: '1px solid rgba(244,166,42,.45)', borderRadius: 10, padding: '14px 16px' }}>
           <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--gold)', marginBottom: 6 }}>💡 권장 구현</div>
           <p style={{ margin: 0, fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.7 }}>
             CAPTCHA 문제는 사용자 행동이 필요한 시점 직전에 요청하세요.<br/>
@@ -123,7 +123,7 @@ Authorization: Bearer $VLUR_API_KEY`}
   {
     n: '03',
     color: 'var(--ok)',
-    shadow: '0 0 0 1px rgba(34,197,94,.22), 0 12px 36px rgba(34,197,94,.32)',
+    shadow: '0 12px 36px rgba(34,197,94,.32)',
     title: '검증 / Token',
     desc: '사용자 응답 전송 후 일회성 통과 Token을 수신합니다.',
     body: (
@@ -167,7 +167,7 @@ Content-Type: application/json
           </pre>
         </div>
 
-        <div style={{ background: 'rgba(46,158,107,.12)', border: '1px solid rgba(46,158,107,.4)', borderRadius: 10, padding: '14px 16px' }}>
+        <div className="guide-token-box" style={{ background: 'rgba(46,158,107,.12)', border: '1px solid rgba(46,158,107,.4)', borderRadius: 10, padding: '14px 16px' }}>
           <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--ok)', marginBottom: 6 }}>✓ Token 규칙</div>
           <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.8 }}>
             <li>1회 사용 후 즉시 만료됩니다.</li>
@@ -290,8 +290,13 @@ export default function GuidePage({ openPage }) {
                 data-reveal-delay={i * 200}
                 onClick={() => setModalStep(i)}
                 style={{
-                  borderTop: `3px solid ${s.color}`,
-                  transition: 'opacity 0.6s cubic-bezier(0.25, 0.10, 0.25, 1.00), transform 0.18s ease, box-shadow 0.18s ease',
+                  borderTopWidth: 3,
+                  borderTopStyle: 'solid',
+                  borderTopColor: s.color,
+                  borderLeftColor: isHovered ? s.color : undefined,
+                  borderRightColor: isHovered ? s.color : undefined,
+                  borderBottomColor: isHovered ? s.color : undefined,
+                  transition: 'opacity 0.6s cubic-bezier(0.25, 0.10, 0.25, 1.00), transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease',
                   transform: isHovered ? 'scale(1.04)' : 'scale(1)',
                   boxShadow: isHovered ? s.shadow : undefined,
                   cursor: 'pointer',

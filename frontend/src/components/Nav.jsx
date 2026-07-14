@@ -106,7 +106,7 @@ export default function Nav({ openPage, isLoggedIn, onLogout, onHome, embedded =
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 38, height: 38, flexShrink: 0 }}>
             <img src={vlurLogo} alt="VLUR" style={{ width: 52, height: 52, objectFit: 'contain', display: 'block' }} />
           </div>
-          <span style={{ fontFamily: 'var(--disp)', fontWeight: 800, fontSize: 18, letterSpacing: '-.01em', color: 'var(--ink)' }}>
+          <span className="brand-text" style={{ fontFamily: 'var(--disp)', fontWeight: 800, fontSize: 18, letterSpacing: '-.01em', color: 'var(--ink)' }}>
             VLUR <span style={{ color: 'var(--orange)' }}>CAPTCHA</span>
           </span>
         </a>
