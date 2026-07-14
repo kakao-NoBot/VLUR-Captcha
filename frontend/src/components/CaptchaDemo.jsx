@@ -183,8 +183,8 @@ function ClickCaptcha() {
         ))}
       </div>
 
-      <div className="demo-foot">
-        <div className="status">보기 중 정답을 클릭하세요.</div>
+      {/* 하단 안내 문구 제거, 새로운 문제 버튼만 유지 */}
+      <div className="demo-foot" style={{ justifyContent: 'flex-end' }}>
         <button className="reset" onClick={reset}>새로운 문제</button>
       </div>
     </div>
@@ -193,10 +193,11 @@ function ClickCaptcha() {
 
 /* ══════════════════════════════════════
    드래그-투-타깃 CAPTCHA
+   (순수 드래그만 인정 — 클릭 선택 후 드롭존 클릭 방식 제거)
 ══════════════════════════════════════ */
 
 // 타일과 드롭존 사이 여백(px) — 이 값을 키우면 드래그 거리가 길어짐
-const DRAG_GAP_PX = 140;
+const DRAG_GAP_PX = 180; // 260 → 180으로 축소, 장바구니를 위로 당김
 
 function DragCaptcha() {
   const [state, setState] = useState(() => {
@@ -206,7 +207,6 @@ function DragCaptcha() {
   const [selected, setSelected] = useState(null);
   const [solved, setSolved] = useState(false);
   const [dropState, setDropState] = useState('idle');
-  const [status, setStatus] = useState({ msg: '타일을 끌어다 놓거나, 클릭해서 선택하세요.', cls: '' });
   const [ghost, setGhost] = useState(null);
   const [screen, setScreen] = useState(null); // null | 'success' | 'fail'
 
@@ -225,14 +225,12 @@ function DragCaptcha() {
     setSelected(null);
     setSolved(false);
     setDropState('idle');
-    setStatus({ msg: '타일을 끌어다 놓거나, 클릭해서 선택하세요.', cls: '' });
     setScreen(null);
   }, []);
 
   const selectTile = useCallback((key) => {
     if (solvedRef.current) return;
     setSelected(key);
-    setStatus({ msg: '선택됨 — 장바구니를 눌러 담으세요.', cls: '' });
   }, []);
 
   const submit = useCallback((tileKey) => {
@@ -248,6 +246,7 @@ function DragCaptcha() {
     }
   }, [question]);
 
+  // 드래그(포인터 다운→이동→드롭)로만 제출 가능. 클릭으로 선택 후 드롭존 클릭하는 경로는 제거됨.
   const onPointerDown = useCallback((e, key) => {
     if (solvedRef.current) return;
     selectTile(key);
@@ -300,17 +299,21 @@ function DragCaptcha() {
             type="button"
             aria-label={item.name + ' 선택'}
             onPointerDown={e => onPointerDown(e, item.key)}
-            onClick={() => selectTile(item.key)}
+            // onClick 선택 로직 제거 — 드래그로만 선택/제출 가능
           >
             {GLYPHS[item.key]}
           </button>
         ))}
       </div>
 
-      {/* 타일과 드롭존 사이 간격 — 장거리 드래그 유도 */}
+      {/* 타일과 드롭존 사이 간격 — 장거리 드래그 유도, 위로 당겨서 축소 */}
       <div style={{ height: DRAG_GAP_PX }} />
 
-      <div className={dropClass} id="captcha-drop-drag" onClick={() => { if (selected && !solved) submit(selected); }}>
+      <div
+        className={dropClass}
+        id="captcha-drop-drag"
+        // onClick 제거 — 드롭존 클릭으로 제출되는 경로 차단, 드래그로 놓아야만 제출됨
+      >
         <div className="cart">
           <svg viewBox="0 0 24 24" fill="none" stroke="#F0691E" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="9" cy="21" r="1"/><circle cx="18" cy="21" r="1"/>
@@ -324,8 +327,8 @@ function DragCaptcha() {
         </div>
       </div>
 
-      <div className="demo-foot">
-        <div className={`status${status.cls ? ' ' + status.cls : ''}`}>{status.msg}</div>
+      {/* 하단 안내 문구 제거, 새로운 문제 버튼만 유지 */}
+      <div className="demo-foot" style={{ justifyContent: 'flex-end' }}>
         <button className="reset" onClick={reset}>새로운 문제</button>
       </div>
 
