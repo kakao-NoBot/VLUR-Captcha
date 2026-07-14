@@ -344,11 +344,11 @@ function DragCaptcha() {
 /* ══════════════════════════════════════
    메인 래퍼 — 유형 탭 토글
 ══════════════════════════════════════ */
-export default function CaptchaDemo() {
+export default function CaptchaDemo({ onClick }) {
   const [type, setType] = useState(1);
 
   return (
-    <div className="demo" id="demo">
+    <div className="demo" id="demo" onClick={onClick}>
       <div className="demo-top">
         <div className="dots">
           <i style={{ background: type === 1 ? 'var(--orange)' : 'var(--line)' }}/>

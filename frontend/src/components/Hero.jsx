@@ -56,16 +56,7 @@ export default function Hero({ openPage }) {
             zIndex: 9999,
           }}
         >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-                width: '85%',
-                maxWidth: '900px',
-                position: 'relative',
-            }}
-          >
-            <CaptchaDemo />
-          </div>
+          <CaptchaDemo onClick={(e) => e.stopPropagation()} />
         </div>,
         document.body
       )}
