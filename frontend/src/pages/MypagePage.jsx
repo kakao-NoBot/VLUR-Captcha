@@ -950,6 +950,7 @@ function UsageTab() {
   };
 
   const selectCalendarDate = (dateString) => {
+    if (dateString > TODAY_DATE) return;
     setDateError('');
 
     if (!startDate || endDate) {
@@ -974,21 +975,23 @@ function UsageTab() {
   };
 
   const getDateCellClassName = (day) => {
-    const hasRange = startDate && endDate;
-    const isStart = day.date === startDate;
-    const isEnd = day.date === endDate;
-    const isInRange = hasRange && day.date >= startDate && day.date <= endDate;
+  const hasRange = startDate && endDate;
+  const isStart = day.date === startDate;
+  const isEnd = day.date === endDate;
+  const isInRange = hasRange && day.date >= startDate && day.date <= endDate;
+  const isFuture = day.date > TODAY_DATE;
 
-    return [
-      'usage-calendar-day',
-      !day.isCurrentMonth ? 'muted' : '',
-      day.date === TODAY_DATE ? 'today' : '',
-      isInRange ? 'in-range' : '',
-      isStart || isEnd ? 'selected' : '',
-      isStart ? 'range-start' : '',
-      isEnd ? 'range-end' : '',
-    ].filter(Boolean).join(' ');
-  };
+  return [
+    'usage-calendar-day',
+    !day.isCurrentMonth ? 'muted' : '',
+    day.date === TODAY_DATE ? 'today' : '',
+    isInRange ? 'in-range' : '',
+    isStart || isEnd ? 'selected' : '',
+    isStart ? 'range-start' : '',
+    isEnd ? 'range-end' : '',
+    isFuture ? 'future' : '',
+  ].filter(Boolean).join(' ');
+};
 
   const applyDateRange = () => {
     if (!startDate) {
@@ -1103,6 +1106,7 @@ function UsageTab() {
                       aria-label={`${day.date} 선택`}
                       aria-pressed={day.date === startDate || day.date === endDate}
                       onClick={() => selectCalendarDate(day.date)}
+                      disabled={day.date > TODAY_DATE}
                     >
                       {day.day}
                     </button>
@@ -1585,7 +1589,7 @@ function BillingTab({ closePage, profile, onProfileRefresh }) {
           </p>
         )}
       </div>
-      
+
       {loading ? (
         <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--muted)', fontSize: 14 }}>
           불러오는 중...
