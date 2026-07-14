@@ -795,10 +795,21 @@ function InquiryDetailModal({ detail, onClose }) {
 
       <div>
         <span style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600 }}>문의 내용</span>
-        <p style={{
-          margin: '8px 0 0', fontSize: 14, color: 'var(--ink)', lineHeight: 1.6,
-          background: 'var(--paper)', borderRadius: 12, padding: '14px 16px',
-        }}>
+        <p
+          style={{
+            margin: '8px 0 0',
+            fontSize: 14,
+            color: 'var(--ink)',
+            lineHeight: 1.6,
+            background: 'var(--paper)',
+            borderRadius: 12,
+            padding: '14px 16px',
+
+            whiteSpace: 'pre-wrap',
+            overflowWrap: 'anywhere',
+            wordBreak: 'break-word',
+          }}
+        >
           {inquiry.message}
         </p>
       </div>
@@ -1131,7 +1142,11 @@ export default function AdminPage() {
         <td className="admin-ellipsis-cell" title={inquiry.requester}>{inquiry.requester}</td>
         <td className="admin-nowrap-cell" title={inquiry.type}>{inquiry.type}</td>
         <td className="admin-message-cell" title={inquiry.message}>
-          <span>{inquiry.message}</span>
+          <span>
+            {inquiry.message.length > 10
+              ? `${inquiry.message.slice(0, 10)}...`
+              : inquiry.message}
+          </span>
         </td>
         <td style={{ whiteSpace: 'nowrap' }}>{inquiry.receivedAt}</td>
         <td onClick={(event) => event.stopPropagation()}>
@@ -1165,7 +1180,11 @@ export default function AdminPage() {
         <td className="admin-nowrap-cell" title={inquiry.email}>{inquiry.email}</td>
         <td className="admin-nowrap-cell" title={inquiry.estimatedCalls}>{inquiry.estimatedCalls}</td>
         <td className="admin-message-cell" title={inquiry.message}>
-          <span>{inquiry.message}</span>
+          <span>
+            {inquiry.message.length > 10
+              ? `${inquiry.message.slice(0, 10)}...`
+              : inquiry.message}
+          </span>
         </td>
         <td style={{ whiteSpace: 'nowrap' }}>{inquiry.receivedAt}</td>
         <td onClick={(event) => event.stopPropagation()}>
@@ -1228,7 +1247,11 @@ export default function AdminPage() {
         <td className="admin-nowrap-cell" title={inquiry.email}>{inquiry.email}</td>
         <td className="admin-ellipsis-cell" title={inquiry.displayName}>{inquiry.displayName}</td>
         <td className="admin-message-cell" title={inquiry.message}>
-          <span>{inquiry.message}</span>
+          <span>
+            {inquiry.message.length > 10
+              ? `${inquiry.message.slice(0, 10)}...`
+              : inquiry.message}
+          </span>
         </td>
         <td style={{ whiteSpace: 'nowrap' }}>{inquiry.receivedAt}</td>
         <td onClick={(event) => event.stopPropagation()}>
