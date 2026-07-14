@@ -1064,8 +1064,8 @@ function UsageTab() {
             {isDatePickerOpen && (
               <div className="usage-date-panel" id="usage-date-picker-panel">
                 <div className="usage-date-chips">
-                  <span><b>시작일</b>{startDate || '미선택'}</span>
-                  <span><b>종료일</b>{endDate || '미선택'}</span>
+                  <span><b>시작일</b>{startDate || '-'}</span>
+                  <span><b>종료일</b>{endDate || '-'}</span>
                 </div>
 
                 <div className="usage-calendar-header">
@@ -1400,71 +1400,192 @@ function BillingTab({ closePage, profile, onProfileRefresh }) {
 
   return (
     <>
-      <h2 className="pg-h2 mp-billing-title" style={{ marginBottom: 20 }}>결제 내역</h2>
+      <h2 className="pg-h2 mp-billing-title" style={{ marginBottom: 20 }}>
+        결제 내역
+      </h2>
 
       <div className="pg-card" style={{ maxWidth: 720, marginBottom: 20 }}>
         {hasPlan ? (
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+              flexWrap: 'wrap',
+              gap: 12,
+            }}
+          >
+            {/* 왼쪽 */}
             <div>
-              <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 4 }}>현재 구독 중</div>
+              <div
+                style={{
+                  fontSize: 12,
+                  color: 'var(--muted)',
+                  fontWeight: 600,
+                  letterSpacing: '.08em',
+                  textTransform: 'uppercase',
+                  marginBottom: 4,
+                }}
+              >
+                현재 구독 중
+              </div>
+
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--disp)', color: 'var(--ink)' }}>
+                <span
+                  style={{
+                    fontSize: 18,
+                    fontWeight: 700,
+                    fontFamily: 'var(--disp)',
+                    color: 'var(--ink)',
+                  }}
+                >
                   {profile.plan_name} 플랜
                 </span>
-                {pendingCancellation && (
-                  <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: 'rgba(216,73,47,.15)', color: 'var(--bad)' }}>
-                    해지 예정
-                  </span>
-                )}
-                {!pendingCancellation && pendingDowngrade && (
-                  <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: 'var(--peach)', color: 'var(--orange-2)' }}>
-                    {pendingDowngrade.effectiveDate}부터 Basic 전환 예정
-                  </span>
-                )}
               </div>
+
               {isPro && (
-                <div style={{ fontSize: 13, color: 'var(--ink-soft)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  {pendingCancellation
-                    ? <>{pendingCancellation.effectiveDate}까지 Pro 요금제를 이용하실 수 있으며, 이후 자동으로 해지됩니다.</>
-                    : latestPayment
-                      ? <>최근 결제일: <strong>{latestPayment.date}</strong> <PayBadge provider={latestPayment.provider} fallback={latestPayment.method} /></>
-                      : '결제 내역을 확인하는 중입니다.'}
-                </div>
+                <>
+                  {/* 상태 배지 */}
+                  {pendingCancellation ? (
+                    <div style={{ marginTop: 8, marginBottom: 6 }}>
+                      <span
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 600,
+                          padding: '3px 10px',
+                          borderRadius: 20,
+                          background: 'rgba(216,73,47,.15)',
+                          color: 'var(--bad)',
+                        }}
+                      >
+                        해지 예정
+                      </span>
+                    </div>
+                  ) : (
+                    pendingDowngrade && (
+                      <div style={{ marginTop: 8, marginBottom: 6 }}>
+                        <span
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 600,
+                            padding: '3px 10px',
+                            borderRadius: 20,
+                            background: 'var(--peach)',
+                            color: 'var(--orange-2)',
+                          }}
+                        >
+                          {pendingDowngrade.effectiveDate}부터 Basic 전환 예정
+                        </span>
+                      </div>
+                    )
+                  )}
+
+                  {/* 안내 / 최근 결제일 */}
+                  <div
+                    style={{
+                      fontSize: 13,
+                      color: 'var(--ink-soft)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    {pendingCancellation ? (
+                      <>
+                        {pendingCancellation.effectiveDate}까지 Pro 요금제를
+                        이용하실 수 있으며, 이후 자동으로 해지됩니다.
+                      </>
+                    ) : latestPayment ? (
+                      <>
+                        최근 결제일: <strong>{latestPayment.date}</strong>
+                        <PayBadge
+                          provider={latestPayment.provider}
+                          fallback={latestPayment.method}
+                        />
+                      </>
+                    ) : (
+                      '결제 내역을 확인하는 중입니다.'
+                    )}
+                  </div>
+                </>
               )}
             </div>
+
+            {/* 오른쪽 버튼 */}
             <div style={{ display: 'flex', gap: 8 }}>
               {!pendingCancellation && (
-                <button className="pg-btn" style={{ fontSize: 13, padding: '9px 16px' }} onClick={goToPricing}>
+                <button
+                  className="pg-btn"
+                  style={{ fontSize: 13, padding: '9px 16px' }}
+                  onClick={goToPricing}
+                >
                   요금제 변경
                 </button>
               )}
-              {isPro && (
-                pendingCancellation ? (
-                  <button className="pg-btn" style={{ fontSize: 13, padding: '9px 16px' }} onClick={handleResumeSubscription} disabled={cancelPending}>
+
+              {isPro &&
+                (pendingCancellation ? (
+                  <button
+                    className="pg-btn"
+                    style={{ fontSize: 13, padding: '9px 16px' }}
+                    onClick={handleResumeSubscription}
+                    disabled={cancelPending}
+                  >
                     {cancelPending ? '처리 중...' : '재구독'}
                   </button>
                 ) : (
-                  <button className="pg-btn danger" style={{ fontSize: 13, padding: '9px 16px' }} onClick={() => setShowCancelModal(true)}>
+                  <button
+                    className="pg-btn danger"
+                    style={{ fontSize: 13, padding: '9px 16px' }}
+                    onClick={() => setShowCancelModal(true)}
+                  >
                     구독 해지
                   </button>
-                )
-              )}
+                ))}
             </div>
           </div>
         ) : (
           <div style={{ textAlign: 'center', padding: '20px 0' }}>
-            <strong style={{ display: 'block', fontSize: 16, marginBottom: 8 }}>구독 중인 요금제가 없습니다</strong>
-            <p style={{ margin: '0 0 16px', fontSize: 13.5, color: 'var(--muted)' }}>
+            <strong
+              style={{
+                display: 'block',
+                fontSize: 16,
+                marginBottom: 8,
+              }}
+            >
+              구독 중인 요금제가 없습니다
+            </strong>
+
+            <p
+              style={{
+                margin: '0 0 16px',
+                fontSize: 13.5,
+                color: 'var(--muted)',
+              }}
+            >
               API Key를 사용하려면 요금제를 다시 선택해주세요.
             </p>
-            <button className="pg-btn primary" onClick={goToPricing}>요금제 선택하기</button>
+
+            <button className="pg-btn primary" onClick={goToPricing}>
+              요금제 선택하기
+            </button>
           </div>
         )}
+
         {cancelError && (
-          <p style={{ color: 'var(--bad)', fontSize: 13, marginTop: 12 }}>{cancelError}</p>
+          <p
+            style={{
+              color: 'var(--bad)',
+              fontSize: 13,
+              marginTop: 12,
+            }}
+          >
+            {cancelError}
+          </p>
         )}
       </div>
-
+      
       {loading ? (
         <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--muted)', fontSize: 14 }}>
           불러오는 중...
