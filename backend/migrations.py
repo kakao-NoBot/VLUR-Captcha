@@ -4,6 +4,8 @@ database/init/*.sql은 MySQL 볼륨이 비어 있을 때만 1회 실행되므로
 이미 데이터가 있는 DB(팀원 로컬 환경 등)에는 이후의 스키마 변경이 반영되지 않는다.
 여기서 시작 시마다 검사해 누락된 변경만 적용한다. 모든 단계는 멱등이어야 한다.
 """
+from datetime import date, timedelta
+
 from db import get_conn
 
 BOARD_TYPE_ENUM = "ENUM('notice','qna','inquiry','general','faq','research')"
@@ -12,16 +14,56 @@ PLAN_LIMITS = {
     "Pro": (500000, 500000),
 }
 
-JULY_USAGE_SEED = (
-    ("testuser", "2026-07-01", 820, 786),
-    ("testuser", "2026-07-02", 1100, 1063),
-    ("testuser", "2026-07-03", 950, 920),
-    ("testuser", "2026-07-04", 1240, 1203),
-    ("testuser", "2026-07-05", 1380, 1341),
-    ("testuser", "2026-07-06", 990, 954),
-    ("testuser", "2026-07-07", 670, 649),
-    ("testuser", "2026-07-08", 1050, 1017),
-)
+def _first_day_months_ago(target: date, months: int) -> date:
+    """target 기준 `months`개월 전 달의 1일을 반환한다."""
+    year = target.year
+    month = target.month - months
+    while month <= 0:
+        year -= 1
+        month += 12
+    return date(year, month, 1)
+
+
+def _build_testuser_usage_seed(today: date | None = None) -> tuple[tuple[str, str, int, int], ...]:
+    """사용량 화면 확인용 testuser의 최근 12개월 일별 더미 데이터를 만든다."""
+    today = today or date.today()
+    start_date = _first_day_months_ago(today, 11)
+    total_days = (today - start_date).days + 1
+    rows = []
+
+    for index in range(total_days):
+        usage_date = start_date + timedelta(days=index)
+        issued = 900 + ((index * 173) % 1000) + ((usage_date.day % 5) * 55)
+        if usage_date.weekday() >= 5:
+            issued = max(700, round(issued * 0.72))
+        verified = issued - (12 + (index % 36))
+        rows.append(("testuser", usage_date.isoformat(), issued, verified))
+
+    return tuple(rows)
+
+
+def _build_testuser_payment_seed(today: date | None = None) -> tuple[tuple[str, str, int, str, str, str, str], ...]:
+    """결제 내역 화면 확인용 testuser의 최근 20개월 더미 데이터를 만든다."""
+    today = today or date.today()
+    rows = []
+
+    for index in range(20):
+        payment_month = _first_day_months_ago(today, 19 - index)
+        paid_day = min(5, today.day) if payment_month == today.replace(day=1) else 5
+        paid_at = payment_month.replace(day=paid_day).isoformat() + " 10:00:00"
+        provider = "toss" if index % 2 == 0 else "kakao"
+        payment_key = f"seed-payment-{payment_month.strftime('%Y%m')}"
+        rows.append((
+            "testuser",
+            "Pro",
+            89000,
+            provider,
+            f"seed-order-{payment_month.strftime('%Y%m')}",
+            payment_key,
+            paid_at,
+        ))
+
+    return tuple(rows)
 
 
 def _table_exists(cur, table: str) -> bool:
@@ -134,12 +176,35 @@ def run_migrations() -> None:
                                CHECK (verified_count <= issued_count)
                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"""
                 )
-                cur.executemany(
-                    """INSERT INTO usage_daily_stats
-                           (user_id, usage_date, issued_count, verified_count)
-                       SELECT %s, %s, %s, %s
-                       WHERE EXISTS (SELECT 1 FROM users WHERE user_id = %s)""",
-                    [(*row, row[0]) for row in JULY_USAGE_SEED],
-                )
-                print("[migrate] usage_daily_stats 테이블 및 2026년 7월 시드 추가")
+                print("[migrate] usage_daily_stats 테이블 추가")
+
+            # 6) 사용량 화면 확인용 testuser 더미 데이터.
+            # 이미 기록된 날짜는 보존해 실제 사용량을 덮어쓰지 않는다.
+            cur.executemany(
+                """INSERT IGNORE INTO usage_daily_stats
+                       (user_id, usage_date, issued_count, verified_count)
+                   SELECT %s, %s, %s, %s
+                   WHERE EXISTS (SELECT 1 FROM users WHERE user_id = %s)""",
+                [(*row, row[0]) for row in _build_testuser_usage_seed()],
+            )
+            if cur.rowcount:
+                print("[migrate] testuser 사용량 더미 데이터 추가")
+
+            # 7) 결제 내역 화면 확인용 testuser 더미 데이터.
+            # pg_payment_key의 고유 제약을 이용해 기존 결제 이력은 보존한다.
+            cur.executemany(
+                """INSERT IGNORE INTO payments
+                       (user_id, plan_id, amount, pg_provider, pg_provider_id,
+                        pg_payment_key, payment_status, paid_at)
+                   SELECT %s, plan_id, %s, %s, %s, %s, 'paid', %s
+                   FROM plans
+                   WHERE plan_name = %s
+                     AND EXISTS (SELECT 1 FROM users WHERE user_id = %s)""",
+                [
+                    (*row[:1], row[2], row[3], row[4], row[5], row[6], row[1], row[0])
+                    for row in _build_testuser_payment_seed()
+                ],
+            )
+            if cur.rowcount:
+                print("[migrate] testuser 결제 더미 데이터 추가")
         conn.commit()
