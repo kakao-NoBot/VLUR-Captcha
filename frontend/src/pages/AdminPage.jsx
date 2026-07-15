@@ -1227,7 +1227,6 @@ const usagePlanSummary = useMemo(() => {
     '답변': 'done',
   };
 
-  // 문의 상태 변경: PATCH /admin/inquiries/{id}/status 백엔드 엔드포인트 연동됨
   const updateInquiryStatus = async (type, key, nextStatus) => {
     const backendStatus = INQUIRY_LABEL_TO_BACKEND[nextStatus];
     if (!backendStatus) return;
@@ -1238,16 +1237,30 @@ const usagePlanSummary = useMemo(() => {
     const setInquiries = type === 'general' ? setGeneralInquiries : setBusinessInquiries;
 
     let previousStatus = null;
+    let alreadyDone = false;
     setInquiries((inquiries) => inquiries.map((inquiry) => {
-      if (inquiry.id === key) previousStatus = inquiry.status;
+      if (inquiry.id === key) {
+        previousStatus = inquiry.status;
+        alreadyDone = inquiry.status === '답변';
+      }
       return inquiry;
     }));
     setInquiries(updater); // 먼저 화면에 반영 (낙관적 업데이트)
+
+    // 기업 문의를 '답변'으로 바꾸는 경우, 서버 응답을 기다리지 않고 미리 안내 토스트를 띄운다.
+    // (이미 '답변' 상태였던 문의는 계정이 이미 만들어졌을 가능성이 높아 제외)
+    const willAutoProvision = type === 'business' && nextStatus === '답변' && !alreadyDone;
+    if (willAutoProvision) {
+      setToast({ type: 'success', message: '기업 계정을 생성하고 안내 메일을 발송하는 중입니다...' });
+    }
 
     try {
       const { data } = await api.patch(`/admin/inquiries/${key}/status`, { status: backendStatus });
       if (data?.account_created) {
         setToast({ type: 'success', message: '기업 계정이 자동 생성되어 안내 메일이 발송되었습니다.' });
+      } else if (willAutoProvision) {
+        // 이미 가입된 이메일 등으로 계정이 생성되지 않은 경우, 조용히 토스트를 닫는다.
+        setToast(null);
       }
     } catch (err) {
       // 실패하면 원래 상태로 롤백
