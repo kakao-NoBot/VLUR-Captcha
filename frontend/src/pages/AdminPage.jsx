@@ -871,6 +871,7 @@ function InquiryDetailModal({ detail, onClose, onStatusChange }) {
 
 const INQUIRY_PAGE_SIZE = 10;
 const USAGE_PLAN_PAGE_SIZE = 5;
+const COMPLETED_INQUIRY_PAGE_SIZE = 10;
 
 function Pagination({ page, totalPages, onChange }) {
   if (totalPages <= 1) return null;
@@ -2143,8 +2144,11 @@ const usagePlanSummary = useMemo(() => {
               })()}
 
               {activeInquiryType === 'completed' && (() => {
-                const totalPages = Math.max(1, Math.ceil(completedInquiries.length / INQUIRY_PAGE_SIZE));
-                const pageRows = completedInquiries.slice((completedPage - 1) * INQUIRY_PAGE_SIZE, completedPage * INQUIRY_PAGE_SIZE);
+                const totalPages = Math.max(1, Math.ceil(completedInquiries.length / COMPLETED_INQUIRY_PAGE_SIZE));
+                const pageRows = completedInquiries.slice(
+                  (completedPage - 1) * COMPLETED_INQUIRY_PAGE_SIZE,
+                  completedPage * COMPLETED_INQUIRY_PAGE_SIZE
+                );
                 return (
                   <>
                     <AdminTable
