@@ -466,6 +466,38 @@ section.band {
 .metric .desc { margin-top: 5px; font-size: 13.5px; color: var(--muted); }
 .metric .bar { margin-top: 18px; height: 6px; border-radius: 99px; background: var(--peach); overflow: hidden; }
 .metric .bar i { display: block; height: 100%; background: linear-gradient(90deg,var(--gold),var(--orange)); border-radius: 99px; }
+/* METRICS — 4개 카드 2x2 그리드 */
+.metrics--grid4 {
+  grid-template-columns: repeat(4,1fr);
+}
+@media (max-width: 940px) {
+  .metrics--grid4 { grid-template-columns: repeat(2,1fr); }
+}
+@media (max-width: 520px) {
+  .metrics--grid4 { grid-template-columns: 1fr; }
+}
+
+/* SECTION 배경 블롭 (band 공용) */
+section.band { position: relative; overflow: hidden; }
+.band-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: .16;
+  pointer-events: none;
+  z-index: 0;
+}
+.band-blob--1 {
+  width: 440px; height: 440px;
+  background: radial-gradient(circle, var(--orange), transparent 70%);
+  top: -140px; right: -120px;
+}
+.band-blob--2 {
+  width: 340px; height: 340px;
+  background: radial-gradient(circle, var(--gold), transparent 70%);
+  bottom: -110px; left: -90px;
+}
+section.band > .wrap { position: relative; z-index: 1; }
 
 /* FLOW */
 .flow { display: grid; grid-template-columns: repeat(3,1fr); gap: 20px; counter-reset: step; }
