@@ -1448,13 +1448,6 @@ const usagePlanSummary = useMemo(() => {
           padding-left: 16px;
           padding-right: 16px;
         }
-        .admin-key-mask {
-          display: block;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-          max-width: 100%;
-        }
         .admin-modal-scroll {
           scrollbar-width: thin;
           scrollbar-color: var(--line) transparent;
@@ -1889,7 +1882,7 @@ const usagePlanSummary = useMemo(() => {
                   { key: 'userId', label: '아이디', width: 120 },
                   { key: 'email', label: '이메일', width: 200 },
                   { key: 'plan', label: '요금제', width: 90 },
-                  { key: 'apiKey', label: 'API Key', width: 160 },
+                  { key: 'apiKey', label: 'API Key', width: 90 },
                   { key: 'joinedAt', label: '가입일', width: 120 },
                   { key: 'status', label: '상태', width: 120 },
                 ];
@@ -1910,13 +1903,7 @@ const usagePlanSummary = useMemo(() => {
                             <td>{user.socialProvider ? <SocialProviderLogo provider={user.socialProvider} /> : user.userId}</td>
                             <td>{user.email}</td>
                             <td>{user.plan}</td>
-                            <td>
-                              {user.apiKey === '미발급' ? (
-                                user.apiKey
-                              ) : (
-                                <code className="admin-key-mask">{user.apiKey}</code>
-                              )}
-                            </td>
+                            <td>{user.apiKey === '미발급' ? '미발급' : '발급'}</td>
                             <td>{user.joinedAt}</td>
                             <td>
                               <StatusDropdown
@@ -1944,7 +1931,7 @@ const usagePlanSummary = useMemo(() => {
                   { key: 'userId', label: '아이디', width: 120 },
                   { key: 'email', label: '이메일', width: 200 },
                   { key: 'plan', label: '요금제', width: 90 },
-                  { key: 'apiKey', label: 'API Key', width: 160 },
+                  { key: 'apiKey', label: 'API Key', width: 90 },
                   { key: 'siteCount', label: '등록 사이트 수', width: 120 },
                   { key: 'monthlyLimit', label: '월 호출 한도', width: 110 },
                   { key: 'status', label: '상태', width: 120 },
@@ -1967,13 +1954,7 @@ const usagePlanSummary = useMemo(() => {
                             <td>{user.socialProvider ? <SocialProviderLogo provider={user.socialProvider} /> : user.userId}</td>
                             <td>{user.email}</td>
                             <td>{user.plan}</td>
-                            <td>
-                              {user.apiKey === '미발급' ? (
-                                user.apiKey
-                              ) : (
-                                <code className="admin-key-mask">{user.apiKey}</code>
-                              )}
-                            </td>
+                            <td>{user.apiKey === '미발급' ? '미발급' : '발급'}</td>
                             <td>{user.siteCount}</td>
                             <td>{formatNumber(user.monthlyLimit)}</td>
                             <td>
