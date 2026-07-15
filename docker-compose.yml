@@ -2,7 +2,6 @@ services:
   db:
     image: mysql:8.0
     container_name: captcha-db
-    # 초기화 SQL(init)까지 utf8mb4로 처리되도록 강제 — 한글 시드 깨짐 방지
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
@@ -15,9 +14,7 @@ services:
     ports:
       - "3307:3306"
     volumes:
-      # 팀원별 격리된 데이터 볼륨 — git에서 공유되지 않음
       - captcha_mysql_data:/var/lib/mysql
-      # 스키마·시드 SQL: 볼륨이 비어 있을 때 알파벳순으로 1회 자동 실행
       - ./database/init:/docker-entrypoint-initdb.d:ro
     restart: unless-stopped
     healthcheck:
@@ -33,6 +30,8 @@ services:
       dockerfile: Dockerfile.dev
     container_name: captcha-backend
     env_file: .env
+    environment:
+      - PYTHONUNBUFFERED=1
     ports:
       - "8000:8000"
     depends_on:
@@ -64,5 +63,4 @@ services:
 
 volumes:
   captcha_mysql_data:
-    # name을 고정해 docker compose down 후 재기동 시 동일 볼륨 재사용
     name: captcha_mysql_data
