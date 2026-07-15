@@ -64,7 +64,8 @@ export default function SignupPage({ openPage, onLogin }) {
   const isIdAvailable = idCheck === 'available' && checkedId === loginId.trim();
   const isPasswordValid = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_\-+=\[\]{};':"\\|,.<>/?`~]).{8,16}$/.test(password);
   const pwHasLength = password.length >= 8 && password.length <= 16;
-  const pwHasCase = /(?=.*[a-z])(?=.*[A-Z])/.test(password);
+  const pwHasLower = /[a-z]/.test(password);
+  const pwHasUpper = /[A-Z]/.test(password);
   const pwHasDigit = /\d/.test(password);
   const pwHasSpecial = /[!@#$%^&*()_\-+=\[\]{};':"\\|,.<>/?`~]/.test(password);
   const isPasswordMatch = password === passwordConfirm;
@@ -298,7 +299,9 @@ export default function SignupPage({ openPage, onLogin }) {
           <p style={{ margin: 0, fontSize: 12, color: 'var(--muted)' }}>
             <span style={{ color: pwHasLength ? 'var(--orange)' : 'inherit', fontWeight: pwHasLength ? 600 : 400 }}>8~16자</span>
             {' · '}
-            <span style={{ color: pwHasCase ? 'var(--orange)' : 'inherit', fontWeight: pwHasCase ? 600 : 400 }}>영문 대소문자</span>
+            <span style={{ color: pwHasUpper ? 'var(--orange)' : 'inherit', fontWeight: pwHasUpper ? 600 : 400 }}>영문 대문자</span>
+            {' · '}
+            <span style={{ color: pwHasLower ? 'var(--orange)' : 'inherit', fontWeight: pwHasLower ? 600 : 400 }}>소문자</span>
             {' · '}
             <span style={{ color: pwHasDigit ? 'var(--orange)' : 'inherit', fontWeight: pwHasDigit ? 600 : 400 }}>숫자</span>
             {' · '}
@@ -446,7 +449,7 @@ export default function SignupPage({ openPage, onLogin }) {
           {emailVerified && (
             <p style={{ margin: 0, fontSize: 12.5, color: 'var(--orange)', fontWeight: 600 }}>이메일 인증이 완료되었습니다.</p>
           )}
-          {attempted && !emailVerified && isEmailValid && !emailApiError && !(emailCodeAttempted && !isEmailCodeValid) && (
+          {attempted && !emailVerified && isEmailValid && !emailApiError && !emailFieldError && !(emailCodeAttempted && !isEmailCodeValid) && (
             <p style={{ margin: 0, fontSize: 12.5, color: '#c0392b' }}>이메일 인증을 완료해주세요.</p>
           )}
         </div>

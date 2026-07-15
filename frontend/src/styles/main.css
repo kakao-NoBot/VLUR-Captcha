@@ -3721,11 +3721,16 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
   justify-content: center;
   flex: 0 0 42px;
   border-radius: 999px;
-  background: #f45b18;
+  background: linear-gradient(135deg, var(--gold), var(--orange));
   color: #fff;
   font-size: 14px;
   font-weight: 700;
   line-height: 1;
+}
+[data-theme="dark"] .guide-modal .guide-issue-step-number,
+[data-theme="dark"] .guide-step-modal .guide-issue-step-number,
+[data-theme="dark"] .guide-issue-step-number {
+  color: var(--paper);
 }
 
 .guide-modal .guide-issue-step-number-wrap,

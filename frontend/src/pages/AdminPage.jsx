@@ -85,6 +85,16 @@ function SocialProviderLogo({ provider }) {
   return <span>{SOCIAL_PROVIDER_LABEL[provider]}</span>;
 }
 
+// 백엔드 plan_name 대소문자/레거시 값 정규화 — free는 실질적으로 무료 요금제인 Basic으로 통합
+function normalizePlanName(planName) {
+  if (!planName) return '미가입';
+  const normalized = String(planName).trim().toLowerCase();
+  if (normalized === 'pro') return 'Pro';
+  if (normalized === 'basic' || normalized === 'free') return 'Basic';
+  if (normalized === 'enterprise') return 'Enterprise';
+  return planName;
+}
+
 function mapAdminUser(row) {
   const keyActive = row.api_key_active === true || row.api_key_active === 1;
   const shared = {
@@ -92,7 +102,7 @@ function mapAdminUser(row) {
     userId: row.user_id,
     socialProvider: getSocialProvider(row.user_id),
     email: row.email,
-    plan: row.plan_name || '미가입',
+    plan: normalizePlanName(row.plan_name),
     joinedAt: row.created_at ? String(row.created_at).slice(0, 10) : '-',
     status: keyActive ? '활성' : '비활성',
     apiKey: row.masked_api_key || '미발급',
