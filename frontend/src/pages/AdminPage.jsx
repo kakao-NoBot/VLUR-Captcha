@@ -776,7 +776,9 @@ function ScoreDetailModal({ log, onClose }) {
   );
 }
 
-function InquiryDetailModal({ detail, onClose }) {
+function InquiryDetailModal({ detail, onClose, onStatusChange }) {
+  const [statusMenuOpen, setStatusMenuOpen] = useState(false);
+
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (event.key === 'Escape') onClose();
@@ -827,7 +829,17 @@ function InquiryDetailModal({ detail, onClose }) {
             <dt style={{ margin: 0, fontSize: 13, color: 'var(--muted)', fontWeight: 600 }}>{label}</dt>
             <dd style={{ margin: 0, fontSize: 14, color: 'var(--ink)', fontWeight: 600, textAlign: 'right' }}>
               {label === '상태' ? (
-                <StatusBadge tone={getStatusTone(value)}>{value}</StatusBadge>
+                <StatusDropdown
+                  status={inquiry.status}
+                  options={INQUIRY_STATUS_OPTIONS}
+                  resolveTone={(status) => INQUIRY_STATUS_TONE[status] || 'neutral'}
+                  isOpen={statusMenuOpen}
+                  onToggle={() => setStatusMenuOpen((v) => !v)}
+                  onSelect={(option) => {
+                    onStatusChange(option);
+                    setStatusMenuOpen(false);
+                  }}
+                />
               ) : value}
             </dd>
           </div>
@@ -845,7 +857,6 @@ function InquiryDetailModal({ detail, onClose }) {
             background: 'var(--paper)',
             borderRadius: 12,
             padding: '14px 16px',
-
             whiteSpace: 'pre-wrap',
             overflowWrap: 'anywhere',
             wordBreak: 'break-word',
@@ -942,6 +953,7 @@ export default function AdminPage() {
   const [selectedScoreLog, setSelectedScoreLog] = useState(null);
   const [selectedInquiryDetail, setSelectedInquiryDetail] = useState(null);
   const [openStatusMenu, setOpenStatusMenu] = useState(null);
+  const [toast, setToast] = useState(null);
   const [generalPage, setGeneralPage] = useState(1);
   const [businessPage, setBusinessPage] = useState(1);
   const [completedPage, setCompletedPage] = useState(1);
@@ -1201,6 +1213,12 @@ const usagePlanSummary = useMemo(() => {
     setUsagePlanPage(1);
   }, [usagePlanSearch, usagePlanSort, activeUsagePlan]);
 
+  useEffect(() => {
+    if (!toast) return undefined;
+    const timer = setTimeout(() => setToast(null), 2500);
+    return () => clearTimeout(timer);
+  }, [toast]);
+
   // 라벨 → 백엔드 값 역매핑 (INQUIRY_STATUS_BACKEND_TO_LABEL의 반대)
   const INQUIRY_LABEL_TO_BACKEND = {
     '접수': 'new',
@@ -1226,12 +1244,16 @@ const usagePlanSummary = useMemo(() => {
     setInquiries(updater); // 먼저 화면에 반영 (낙관적 업데이트)
 
     try {
-      await api.patch(`/admin/inquiries/${key}/status`, { status: backendStatus });
+      const { data } = await api.patch(`/admin/inquiries/${key}/status`, { status: backendStatus });
+      if (data?.account_created) {
+        setToast({ type: 'success', message: '기업 계정이 자동 생성되어 안내 메일이 발송되었습니다.' });
+      }
     } catch (err) {
       // 실패하면 원래 상태로 롤백
       setInquiries((inquiries) => inquiries.map((inquiry) => (
         inquiry.id === key ? { ...inquiry, status: previousStatus ?? inquiry.status } : inquiry
       )));
+      setToast({ type: 'error', message: '문의 상태 변경에 실패했습니다.' });
     }
   };
 
@@ -2206,7 +2228,28 @@ const usagePlanSummary = useMemo(() => {
         <ScoreDetailModal log={selectedScoreLog} onClose={() => setSelectedScoreLog(null)} />
       )}
       {selectedInquiryDetail && (
-        <InquiryDetailModal detail={selectedInquiryDetail} onClose={() => setSelectedInquiryDetail(null)} />
+        <InquiryDetailModal
+          detail={selectedInquiryDetail}
+          onClose={() => setSelectedInquiryDetail(null)}
+          onStatusChange={(option) => {
+            const sourceType = selectedInquiryDetail.inquiry.sourceType || selectedInquiryDetail.type;
+            updateInquiryStatus(sourceType, selectedInquiryDetail.inquiry.id, option);
+            setSelectedInquiryDetail((prev) => (
+              prev ? { ...prev, inquiry: { ...prev.inquiry, status: option } } : prev
+            ));
+          }}
+        />
+      )}
+      {toast && (
+        <div role="status" className={`admin-toast ${toast.type === 'error' ? 'error' : 'success'}`}>
+          <span>{toast.message}</span>
+          <button
+            type="button"
+            onClick={() => setToast(null)}
+            aria-label="닫기"
+            className="admin-toast-close"
+          >×</button>
+        </div>
       )}
     </main>
   );

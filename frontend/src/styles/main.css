@@ -2486,6 +2486,52 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
   }
 }
 
+/* admin toast */
+.admin-toast {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 20px;
+  border-radius: 12px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #fff;
+  box-shadow: 0 12px 28px -6px rgba(0,0,0,.28);
+  max-width: min(420px, 90vw);
+  animation: adminToastIn .16s cubic-bezier(.22,.85,.4,1) both;
+}
+.admin-toast.success {
+  background: linear-gradient(90deg, var(--gold), var(--orange));
+}
+.admin-toast.error {
+  background: linear-gradient(90deg, #e0705a, var(--bad));
+}
+.admin-toast-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #fff;
+  font-size: 15px;
+  line-height: 1;
+  opacity: .85;
+  padding: 0;
+  margin-left: 4px;
+}
+.admin-toast-close:hover { opacity: 1; }
+
+@keyframes adminToastIn {
+  from { opacity: 0; transform: translate(-50%, 10px) scale(.97); }
+  to   { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-toast { animation: none; }
+}
+
 .signup-email-combo {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(138px, .9fr);
