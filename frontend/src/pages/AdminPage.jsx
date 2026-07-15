@@ -319,7 +319,7 @@ function StatusBadge({ children, tone = 'neutral', style }) {
     <span
       style={{
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        minWidth: 46, width: 'fit-content', padding: '4px 10px', borderRadius: 999,
+        minWidth: 46, width: 'fit-content', height: 26, padding: '0 10px', borderRadius: 999,
         fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap',
         ...toneBadgeStyle(tone, s),
         ...style,
@@ -359,7 +359,7 @@ function StatusDropdown({ status, options, isOpen, onToggle, onSelect, resolveTo
         onClick={(event) => { event.stopPropagation(); onToggle(); }}
         style={{
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-          minWidth, padding: '4px 10px', borderRadius: 999,
+          minWidth, height: 28, padding: '0 10px', borderRadius: 999,
           border: isOpen ? `1px solid ${s.dot}` : '1px solid transparent',
           fontSize: 12, fontWeight: 700,
           cursor: 'pointer', whiteSpace: 'nowrap',
@@ -573,13 +573,29 @@ function AdminTable({ columns, rows, emptyMessage, wrapperClassName = '', tableC
 function UsageMeter({ used, limit }) {
   const percent = getPercent(used, limit);
   return (
-    <div className="admin-usage-meter">
-      <div className="admin-usage-meter-text">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%', minWidth: 140 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--muted)' }}>
         <span>{formatUsage(used, limit)}</span>
-        <b>{percent}%</b>
+        <b style={{ color: 'var(--orange-2)', fontWeight: 700 }}>{percent}%</b>
       </div>
-      <div className="admin-progress" aria-hidden="true">
-        <span style={{ width: `${percent}%` }} />
+      <div
+        style={{
+          width: '100%',
+          height: 6,
+          borderRadius: 999,
+          background: 'rgba(236,217,195,.76)',
+          overflow: 'hidden',
+          flexShrink: 0,
+        }}
+      >
+        <div
+          style={{
+            width: `${percent}%`,
+            height: '100%',
+            borderRadius: 999,
+            background: 'linear-gradient(90deg, var(--gold), var(--orange))',
+          }}
+        />
       </div>
     </div>
   );
@@ -1098,22 +1114,27 @@ export default function AdminPage() {
     });
   }, [activeUsagePlan, usagePlanSearch, usagePlanSort]);
 
-  const usagePlanSummary = useMemo(() => {
-    const rows = usagePlanRows;
-    const totalCalls = rows.reduce((sum, row) => sum + clampUsageToLimit(row.monthlyCalls, row.monthlyLimit), 0);
-    const totalLimit = rows.reduce((sum, row) => sum + row.monthlyLimit, 0);
-    const averageUsage = rows.length
-      ? rows.reduce((sum, row) => sum + getPrecisePercent(row.monthlyCalls, row.monthlyLimit), 0) / rows.length
-      : 0;
-    const riskyAccounts = rows.filter((row) => getPrecisePercent(row.monthlyCalls, row.monthlyLimit) >= 80).length;
-    return {
-      accountCount: rows.length,
-      totalCalls,
-      totalLimit,
-      averageUsage,
-      riskyAccounts,
-    };
-  }, [usagePlanRows]);
+  // 검색어와 무관하게 항상 선택된 요금제 "전체" 데이터를 기준으로 계산 (검색 필터링 영향 X)
+const usagePlanBaseRows = useMemo(() => (
+  PLAN_USAGE_DETAILS.filter((row) => row.plan === activeUsagePlan)
+), [activeUsagePlan]);
+
+const usagePlanSummary = useMemo(() => {
+  const rows = usagePlanBaseRows;
+  const totalCalls = rows.reduce((sum, row) => sum + clampUsageToLimit(row.monthlyCalls, row.monthlyLimit), 0);
+  const totalLimit = rows.reduce((sum, row) => sum + row.monthlyLimit, 0);
+  const averageUsage = rows.length
+    ? rows.reduce((sum, row) => sum + getPrecisePercent(row.monthlyCalls, row.monthlyLimit), 0) / rows.length
+    : 0;
+  const riskyAccounts = rows.filter((row) => getPrecisePercent(row.monthlyCalls, row.monthlyLimit) >= 80).length;
+  return {
+    accountCount: rows.length,
+    totalCalls,
+    totalLimit,
+    averageUsage,
+    riskyAccounts,
+  };
+}, [usagePlanBaseRows]);
 
   const openUsagePlanDetail = (plan) => {
     setActiveUsagePlan(plan);
@@ -1251,8 +1272,8 @@ export default function AdminPage() {
         <td className="admin-nowrap-cell" title={inquiry.type}>{inquiry.type}</td>
         <td className="admin-message-cell" title={inquiry.message}>
           <span>
-            {inquiry.message.length > 10
-              ? `${inquiry.message.slice(0, 10)}...`
+            {inquiry.message.length > 20
+              ? `${inquiry.message.slice(0, 20)}...`
               : inquiry.message}
           </span>
         </td>
@@ -1289,8 +1310,8 @@ export default function AdminPage() {
         <td className="admin-nowrap-cell" title={inquiry.estimatedCalls}>{inquiry.estimatedCalls}</td>
         <td className="admin-message-cell" title={inquiry.message}>
           <span>
-            {inquiry.message.length > 10
-              ? `${inquiry.message.slice(0, 10)}...`
+            {inquiry.message.length > 20
+              ? `${inquiry.message.slice(0, 20)}...`
               : inquiry.message}
           </span>
         </td>
@@ -1314,31 +1335,31 @@ export default function AdminPage() {
 
   const GENERAL_INQUIRY_COLUMNS = [
     { key: 'email', label: '회신 이메일', width: 200 },
-    { key: 'requester', label: '이름', width: 100 },
-    { key: 'type', label: '유형', width: 130 },
-    { key: 'message', label: '문의 내용', width: 320 },
-    { key: 'receivedAt', label: '접수일', width: 110 },
+    { key: 'requester', label: '이름', width: 80 },
+    { key: 'type', label: '유형', width: 110 },
+    { key: 'message', label: '문의 내용', width: 250 },
+    { key: 'receivedAt', label: '접수일', width: 120 },
     { key: 'status', label: '상태', width: 100 },
   ];
 
   const BUSINESS_INQUIRY_COLUMNS = [
-    { key: 'company', label: '회사/서비스명', width: 180 },
-    { key: 'manager', label: '담당자명', width: 110 },
-    { key: 'phone', label: '전화번호', width: 140 },
+    { key: 'company', label: '회사/서비스명', width: 160 },
+    { key: 'manager', label: '담당자명', width: 90 },
+    { key: 'phone', label: '전화번호', width: 130 },
     { key: 'email', label: '이메일', width: 200 },
-    { key: 'estimatedCalls', label: '예상 월 호출량', width: 140 },
-    { key: 'message', label: '문의 내용', width: 260 },
-    { key: 'receivedAt', label: '접수일', width: 110 },
+    { key: 'estimatedCalls', label: '예상 월 호출량', width: 120 },
+    { key: 'message', label: '문의 내용', width: 250 },
+    { key: 'receivedAt', label: '접수일', width: 120 },
     { key: 'status', label: '상태', width: 100 },
   ];
 
   // 일반/기업 문의를 합쳐서 보여주는 "답변 완료" 통합 테이블용 컬럼·행 렌더러
   const COMPLETED_INQUIRY_COLUMNS = [
-    { key: 'typeLabel', label: '구분', width: 80 },
+    { key: 'typeLabel', label: '구분', width: 70 },
     { key: 'email', label: '이메일', width: 200 },
-    { key: 'name', label: '이름 / 담당자', width: 130 },
-    { key: 'message', label: '문의 내용', width: 320 },
-    { key: 'receivedAt', label: '접수일', width: 110 },
+    { key: 'name', label: '이름 / 담당자', width: 110 },
+    { key: 'message', label: '문의 내용', width: 250 },
+    { key: 'receivedAt', label: '접수일', width: 120 },
     { key: 'status', label: '상태', width: 100 },
   ];
 
@@ -1356,8 +1377,8 @@ export default function AdminPage() {
         <td className="admin-ellipsis-cell" title={inquiry.displayName}>{inquiry.displayName}</td>
         <td className="admin-message-cell" title={inquiry.message}>
           <span>
-            {inquiry.message.length > 10
-              ? `${inquiry.message.slice(0, 10)}...`
+            {inquiry.message.length > 20
+              ? `${inquiry.message.slice(0, 20)}...`
               : inquiry.message}
           </span>
         </td>
@@ -1391,9 +1412,18 @@ export default function AdminPage() {
         .admin-scroll-x::-webkit-scrollbar-track { background: transparent; }
         .admin-scroll-x::-webkit-scrollbar-thumb { background: var(--line); border-radius: 999px; }
         .admin-scroll-x::-webkit-scrollbar-thumb:hover { background: var(--muted); }
-        .admin-table th,
+        .admin-table th {
+          text-align: left;
+          padding-top: 17px;
+          padding-bottom: 17px;
+          box-sizing: border-box;
+        }
         .admin-table td {
-          text-align: center;
+          text-align: left;
+          vertical-align: middle;
+          padding-top: 15px;
+          padding-bottom: 15px;
+          box-sizing: border-box;
         }
         .admin-readable-table {
           table-layout: auto;
@@ -1408,11 +1438,12 @@ export default function AdminPage() {
           padding-left: 16px;
           padding-right: 16px;
         }
-        .admin-fixed-table th,
-        .admin-fixed-table td {
-          white-space: nowrap;
+        .admin-key-mask {
+          display: block;
           overflow: hidden;
           text-overflow: ellipsis;
+          white-space: nowrap;
+          max-width: 100%;
         }
         .admin-modal-scroll {
           scrollbar-width: thin;
@@ -1766,13 +1797,13 @@ export default function AdminPage() {
                           { key: 'plan', label: '요금제', width: 90 },
                           { key: 'monthlyCalls', label: '월 호출량', width: 110 },
                           { key: 'monthlyLimit', label: '월 한도', width: 110 },
-                          { key: 'usage', label: '사용률', width: 140 },
+                          { key: 'usage', label: '사용률', width: 160 },
                           { key: 'successCount', label: '성공', width: 100 },
-                          { key: 'failCount', label: '실패', width: 90 },
+                          { key: 'failCount', label: '실패', width: 100 },
                           { key: 'botBlockedCount', label: '봇 차단', width: 100 },
-                          { key: 'lastCalledAt', label: '최근 호출', width: 110 },
+                          { key: 'lastCalledAt', label: '최근 호출', width: 120 },
                         ]}
-                        tableStyle={{ tableLayout: 'fixed', width: 1290 }}
+                        tableStyle={{ tableLayout: 'fixed', width: 1350 }}
                         emptyMessage="검색 결과가 없습니다."
                         rows={pageRows.map((row) => {
                           const monthlyCalls = clampUsageToLimit(row.monthlyCalls, row.monthlyLimit);
@@ -1849,16 +1880,16 @@ export default function AdminPage() {
                   { key: 'email', label: '이메일', width: 200 },
                   { key: 'plan', label: '요금제', width: 90 },
                   { key: 'apiKey', label: 'API Key', width: 160 },
-                  { key: 'joinedAt', label: '가입일', width: 110 },
-                  { key: 'status', label: '상태', width: 100 },
+                  { key: 'joinedAt', label: '가입일', width: 120 },
+                  { key: 'status', label: '상태', width: 120 },
                 ];
                 const totalPages = Math.max(1, Math.ceil(filteredUsers.length / INQUIRY_PAGE_SIZE));
                 const pageRows = filteredUsers.slice((personalUserPage - 1) * INQUIRY_PAGE_SIZE, personalUserPage * INQUIRY_PAGE_SIZE);
                 return (
                   <>
                     <AdminTable
-                      tableClassName="admin-fixed-table"
-                      tableStyle={{ tableLayout: 'fixed', width: 880 }}
+                      tableClassName="admin-fixed-table admin-left-table"
+                      tableStyle={{ tableLayout: 'fixed', width: 910 }}
                       columns={columns}
                       emptyMessage={usersLoading ? '사용자 정보를 불러오는 중입니다.' : '검색 결과가 없습니다.'}
                       rows={pageRows.map((user) => {
@@ -1906,15 +1937,15 @@ export default function AdminPage() {
                   { key: 'apiKey', label: 'API Key', width: 160 },
                   { key: 'siteCount', label: '등록 사이트 수', width: 120 },
                   { key: 'monthlyLimit', label: '월 호출 한도', width: 130 },
-                  { key: 'status', label: '상태', width: 100 },
+                  { key: 'status', label: '상태', width: 120 },
                 ];
                 const totalPages = Math.max(1, Math.ceil(filteredUsers.length / INQUIRY_PAGE_SIZE));
                 const pageRows = filteredUsers.slice((businessUserPage - 1) * INQUIRY_PAGE_SIZE, businessUserPage * INQUIRY_PAGE_SIZE);
                 return (
                   <>
                     <AdminTable
-                      tableClassName="admin-fixed-table"
-                      tableStyle={{ tableLayout: 'fixed', width: 1180 }}
+                      tableClassName="admin-fixed-table admin-left-table"
+                      tableStyle={{ tableLayout: 'fixed', width: 1200 }}
                       columns={columns}
                       emptyMessage={usersLoading ? '사용자 정보를 불러오는 중입니다.' : '검색 결과가 없습니다.'}
                       rows={pageRows.map((user) => {
@@ -1983,8 +2014,8 @@ export default function AdminPage() {
                   { key: 'plan', label: '요금제', width: 90 },
                   { key: 'monthlyLimit', label: '월 호출 한도', width: 130 },
                   { key: 'monthlyUsage', label: '이번 달 사용량', width: 200 },
-                  { key: 'status', label: '상태', width: 100 },
-                  { key: 'createdAt', label: '등록일', width: 110 },
+                  { key: 'status', label: '상태', width: 120 },
+                  { key: 'createdAt', label: '등록일', width: 120 },
                 ];
                 const totalPages = Math.max(1, Math.ceil(filteredSites.length / INQUIRY_PAGE_SIZE));
                 const pageRows = filteredSites.slice((sitePage - 1) * INQUIRY_PAGE_SIZE, sitePage * INQUIRY_PAGE_SIZE);
@@ -1992,7 +2023,7 @@ export default function AdminPage() {
                   <>
                     <AdminTable
                       tableClassName="table-ink-orange admin-fixed-table"
-                      tableStyle={{ tableLayout: 'fixed', width: 1100 }}
+                      tableStyle={{ tableLayout: 'fixed', width: 1130 }}
                       columns={columns}
                       emptyMessage="검색 결과가 없습니다."
                       rows={pageRows.map((site) => {
@@ -2069,7 +2100,7 @@ export default function AdminPage() {
                     <AdminTable
                       wrapperClassName="admin-inquiry-table-wrap"
                       tableClassName="admin-readable-table admin-general-inquiry-table"
-                      tableStyle={{ tableLayout: 'fixed', width: 960 }}
+                      tableStyle={{ tableLayout: 'fixed', width: 860 }}
                       columns={GENERAL_INQUIRY_COLUMNS}
                       emptyMessage="검색 결과가 없습니다."
                       rows={pageRows.map(renderGeneralInquiryRow)}
@@ -2088,7 +2119,7 @@ export default function AdminPage() {
                     <AdminTable
                       wrapperClassName="admin-inquiry-table-wrap"
                       tableClassName="admin-readable-table admin-business-inquiry-table"
-                      tableStyle={{ tableLayout: 'fixed', width: 1240 }}
+                      tableStyle={{ tableLayout: 'fixed', width: 1170 }}
                       columns={BUSINESS_INQUIRY_COLUMNS}
                       emptyMessage="검색 결과가 없습니다."
                       rows={pageRows.map(renderBusinessInquiryRow)}
@@ -2106,7 +2137,7 @@ export default function AdminPage() {
                     <AdminTable
                       wrapperClassName="admin-inquiry-table-wrap"
                       tableClassName="admin-readable-table admin-completed-inquiry-table"
-                      tableStyle={{ tableLayout: 'fixed', width: 940 }}
+                      tableStyle={{ tableLayout: 'fixed', width: 850 }}
                       columns={COMPLETED_INQUIRY_COLUMNS}
                       emptyMessage="답변 완료된 문의가 없습니다."
                       rows={pageRows.map(renderCompletedInquiryRow)}

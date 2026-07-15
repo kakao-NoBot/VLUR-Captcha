@@ -2131,10 +2131,25 @@ export default function MypagePage({ openPage, closePage, initialTab = 'info', u
 
   return (
     <div className="mp-wrap">
-      <style>{`
+    <style>{`
         .mp-wrap .pg-table th,
         .mp-wrap .pg-table td {
+          text-align: left !important;
+        }
+        .mp-wrap .pg-table td[colspan] {
           text-align: center !important;
+        }
+        .mp-wrap .pg-table th {
+          padding-top: 17px;
+          padding-bottom: 17px;
+          padding-left: 16px;
+          padding-right: 16px;
+        }
+        .mp-wrap .pg-table td {
+          padding-top: 15px;
+          padding-bottom: 15px;
+          padding-left: 16px;
+          padding-right: 16px;
         }
 
         /* 좁은 화면에서는 첫 탭부터 보이도록 가로 탭을 왼쪽 기준으로 배치 */
