@@ -4,6 +4,8 @@ import api from '../api/axios';
 export default function ApplyDonePage({ openPage, closePage }) {
   const [integTab, setIntegTab] = useState('fe');
   const [secretKey, setSecretKey] = useState('');
+  const [siteKey, setSiteKey] = useState('');
+  const [siteDomain, setSiteDomain] = useState('');
   const [secretIssued, setSecretIssued] = useState(false);
   const [step2Done, setStep2Done] = useState(false);
   const [issuing, setIssuing] = useState(false);
@@ -15,11 +17,16 @@ export default function ApplyDonePage({ openPage, closePage }) {
       return;
     }
     if (issuing) return;
+    if (!siteDomain.trim()) {
+      setIssueError('Site Key를 사용할 사이트 도메인을 입력해 주세요.');
+      return;
+    }
     setIssuing(true);
     setIssueError('');
     try {
-      const { data } = await api.post('/api-keys');
+      const { data } = await api.post('/api-keys', { site_domain: siteDomain });
       setSecretKey(data.plain_key);
+      setSiteKey(data.site_key);
       setSecretIssued(true);
       setStep2Done(true);
     } catch (err) {
@@ -50,15 +57,31 @@ export default function ApplyDonePage({ openPage, closePage }) {
         {/* Step 1 */}
         <div style={{ display: 'flex', gap: 20, marginBottom: 28 }}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <div className="step-circle done">✓</div>
+            <div className={`step-circle${siteKey ? ' done' : ''}`}>{siteKey ? '✓' : '1'}</div>
             <div className="step-line"/>
           </div>
           <div style={{ flex: 1 }}>
-            <h3 className="pg-h3" style={{ marginBottom: 10 }}>Site Key 생성</h3>
-            <p style={{ fontSize: 14, color: 'var(--ink-soft)', marginBottom: 12 }}>Site Key는 프론트엔드(React 위젯, 스크립트 태그)에서 사용하는 공개 키입니다.</p>
+            <h3 className="pg-h3" style={{ marginBottom: 10 }}>Site Key와 도메인 등록</h3>
+            <p style={{ fontSize: 14, color: 'var(--ink-soft)', marginBottom: 12 }}>Site Key는 프론트엔드(React 위젯, 스크립트 태그)에서 사용하는 공개 키입니다. 사용하는 사이트 도메인을 함께 등록해 주세요.</p>
+            <label htmlFor="site-domain" style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 700 }}>사이트 도메인</label>
+            <input
+              id="site-domain"
+              className="pg-input"
+              type="url"
+              inputMode="url"
+              autoComplete="url"
+              placeholder="https://example.com"
+              value={siteDomain}
+              onChange={(event) => setSiteDomain(event.target.value)}
+              disabled={secretIssued}
+              style={{ marginBottom: 10 }}
+            />
+            <p style={{ margin: '0 0 12px', fontSize: 12, color: 'var(--muted)' }}>개발 환경은 `http://localhost:5173`처럼 포트까지 입력해 주세요.</p>
             <div className="key-box">
-              <span style={{ fontSize: 13 }}>sitekey: 4f84db8c-a5d8-4b54-a094-d19e156417e2</span>
-              <button className="pg-btn" style={{ fontSize: 12, padding: '6px 12px' }} onClick={() => copy('4f84db8c-a5d8-4b54-a094-d19e156417e2')}>{copyLabel}</button>
+              <span style={{ color: siteKey ? 'inherit' : 'var(--muted)', fontSize: 13 }}>
+                {siteKey ? `sitekey: ${siteKey}` : 'sitekey: (Secret Key 발급 시 함께 생성)'}
+              </span>
+              <button className="pg-btn" style={{ fontSize: 12, padding: '6px 12px' }} onClick={() => copy(siteKey)} disabled={!siteKey}>{copyLabel}</button>
             </div>
           </div>
         </div>
@@ -74,7 +97,7 @@ export default function ApplyDonePage({ openPage, closePage }) {
             <p style={{ fontSize: 14, color: 'var(--ink-soft)', marginBottom: 4 }}>Secret Key는 백엔드에서 CAPTCHA 응답 토큰을 검증할 때 사용하는 비공개 키입니다.</p>
             <p style={{ fontSize: 13, color: '#c0392b', marginBottom: 12 }}>⚠ 발급 후에는 다시 확인할 수 없으니 안전한 곳에 보관하세요.</p>
             <button className="pg-btn primary" style={{ fontSize: 13, padding: '9px 18px', marginBottom: 12 }} onClick={issueSecret} disabled={issuing}>
-              {issuing ? '발급 중...' : 'Secret Key 발급받기'}
+              {issuing ? '발급 중...' : 'Site Key와 Secret Key 발급받기'}
             </button>
             <div className="key-box">
               <span style={{ color: secretKey ? 'inherit' : 'var(--muted)', fontSize: 13 }}>
@@ -111,7 +134,7 @@ export default function ApplyDonePage({ openPage, closePage }) {
             {integTab === 'fe' ? (
               <pre className="pg-code">{`<form method="POST">
   <div class="ai-captcha"
-    data-sitekey="4f84db8c-a5d8-4b54-a094-d19e156417e2">
+    data-sitekey="${siteKey || 'YOUR_SITE_KEY'}">
   </div>
   <script src="https://js.aicaptcha.dev/v1/api.js"
     async defer></script>
@@ -121,7 +144,7 @@ export default function ApplyDonePage({ openPage, closePage }) {
   -X POST \\
   --data-urlencode "secret=YOUR_SECRET_KEY" \\
   --data-urlencode "response=TOKEN_FROM_CLIENT" \\
-  --data-urlencode "sitekey=4f84db8c-..."
+  --data-urlencode "sitekey=${siteKey || 'YOUR_SITE_KEY'}"
 
 # {"success": true, "error-codes": [], "host": "example.com"}`}</pre>
             )}

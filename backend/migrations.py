@@ -5,6 +5,7 @@ database/init/*.sql은 MySQL 볼륨이 비어 있을 때만 1회 실행되므로
 여기서 시작 시마다 검사해 누락된 변경만 적용한다. 모든 단계는 멱등이어야 한다.
 """
 from datetime import date, timedelta
+import secrets
 
 from db import get_conn
 
@@ -92,6 +93,19 @@ def _column_type(cur, table: str, column: str) -> str:
     )
     row = cur.fetchone()
     return (row["column_type"] if row else "") or ""
+
+
+def _index_exists(cur, table: str, index: str) -> bool:
+    cur.execute(
+        """SELECT 1 FROM information_schema.STATISTICS
+           WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND INDEX_NAME = %s""",
+        (table, index),
+    )
+    return cur.fetchone() is not None
+
+
+def _generate_site_key() -> str:
+    return f"pk-aicap_prod_{secrets.token_urlsafe(24)}"
 
 
 def run_migrations() -> None:
@@ -207,4 +221,45 @@ def run_migrations() -> None:
             )
             if cur.rowcount:
                 print("[migrate] testuser 결제 더미 데이터 추가")
+
+            # 8) api_keys.site_key — 브라우저 위젯에서 사용할 공개 키.
+            # 기존 키에도 Site Key를 부여해 배포 직후부터 모두 연동 가능하게 한다.
+            if not _column_exists(cur, "api_keys", "site_key"):
+                cur.execute(
+                    """ALTER TABLE api_keys
+                       ADD COLUMN site_key VARCHAR(120) NULL
+                       COMMENT '브라우저 위젯에서 사용하는 공개 Site Key'
+                       AFTER key_name"""
+                )
+                print("[migrate] api_keys.site_key 컬럼 추가")
+
+            cur.execute(
+                """SELECT api_key_id FROM api_keys
+                   WHERE site_key IS NULL OR site_key = ''"""
+            )
+            api_keys_without_site_key = cur.fetchall()
+            for api_key in api_keys_without_site_key:
+                cur.execute(
+                    "UPDATE api_keys SET site_key = %s WHERE api_key_id = %s",
+                    (_generate_site_key(), api_key["api_key_id"]),
+                )
+            if api_keys_without_site_key:
+                print("[migrate] 기존 API Key에 Site Key 발급")
+
+            if not _index_exists(cur, "api_keys", "uk_api_keys_site_key"):
+                cur.execute(
+                    "ALTER TABLE api_keys ADD UNIQUE KEY uk_api_keys_site_key (site_key)"
+                )
+                print("[migrate] api_keys.site_key 고유 인덱스 추가")
+
+            # 9) api_keys.site_domain — Site Key를 사용할 허용 Origin.
+            # 기존 키의 도메인은 알 수 없으므로 NULL로 두고 사용자가 마이페이지에서 등록한다.
+            if not _column_exists(cur, "api_keys", "site_domain"):
+                cur.execute(
+                    """ALTER TABLE api_keys
+                       ADD COLUMN site_domain VARCHAR(255) NULL
+                       COMMENT 'Site Key 사용을 허용한 Origin'
+                       AFTER site_key"""
+                )
+                print("[migrate] api_keys.site_domain 컬럼 추가")
         conn.commit()

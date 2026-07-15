@@ -2,6 +2,7 @@
 
 import hashlib
 import secrets
+from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -13,6 +14,7 @@ from db import get_conn
 router = APIRouter(tags=["api-keys"])
 
 API_KEY_PREFIX = "sk-aicap_prod_"
+SITE_KEY_PREFIX = "pk-aicap_prod_"
 
 # 관리자가 API Key에 부여할 수 있는 상태 값.
 ADMIN_ASSIGNABLE_KEY_STATUSES = ("active", "inactive")
@@ -20,6 +22,31 @@ ADMIN_ASSIGNABLE_KEY_STATUSES = ("active", "inactive")
 
 def _generate_api_key() -> str:
     return f"{API_KEY_PREFIX}{secrets.token_urlsafe(32)}"
+
+
+def _generate_site_key() -> str:
+    return f"{SITE_KEY_PREFIX}{secrets.token_urlsafe(24)}"
+
+
+def _normalize_site_domain(site_domain: str) -> str:
+    """위젯 사용을 허용할 정확한 Origin만 저장한다."""
+    value = site_domain.strip()
+    parsed = urlsplit(value)
+    is_valid = (
+        parsed.scheme in ("http", "https")
+        and parsed.netloc
+        and not parsed.username
+        and not parsed.password
+        and parsed.path in ("", "/")
+        and not parsed.query
+        and not parsed.fragment
+    )
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="사이트 도메인은 https://example.com 형식의 Origin으로 입력해 주세요.",
+        )
+    return f"{parsed.scheme.lower()}://{parsed.netloc.lower()}"
 
 
 def _hash_api_key(api_key: str) -> str:
@@ -36,16 +63,19 @@ def _serialize_api_key(row: dict | None) -> dict | None:
     return {
         "id": row["api_key_id"],
         "masked_key": row["key_name"] or "마스킹 정보 없음",
+        "site_key": row["site_key"],
+        "site_domain": row["site_domain"],
         "created_at": row["created_at"],
         "expired_at": row["expired_at"],
         "is_active": bool(row["is_active"]),
     }
 
 
-def _issue_api_key(user_id: str, replace: bool) -> dict:
+def _issue_api_key(user_id: str, replace: bool, site_domain: str) -> dict:
     api_key = _generate_api_key()
     api_key_hash = _hash_api_key(api_key)
     masked_key = _mask_api_key(api_key)
+    site_key = _generate_site_key()
 
     conn = get_conn()
     with conn:
@@ -102,13 +132,13 @@ def _issue_api_key(user_id: str, replace: bool) -> dict:
 
             cur.execute(
                 """INSERT INTO api_keys
-                       (api_key_hash, user_id, plan_id, key_name, created_at, expired_at, is_active)
-                   VALUES (%s, %s, %s, %s, NOW(), NULL, TRUE)""",
-                (api_key_hash, user_id, user["plan_id"], masked_key),
+                       (api_key_hash, user_id, plan_id, key_name, site_key, site_domain, created_at, expired_at, is_active)
+                   VALUES (%s, %s, %s, %s, %s, %s, NOW(), NULL, TRUE)""",
+                (api_key_hash, user_id, user["plan_id"], masked_key, site_key, site_domain),
             )
             api_key_id = cur.lastrowid
             cur.execute(
-                """SELECT api_key_id, key_name, created_at, expired_at, is_active
+                """SELECT api_key_id, key_name, site_key, site_domain, created_at, expired_at, is_active
                    FROM api_keys WHERE api_key_id = %s""",
                 (api_key_id,),
             )
@@ -117,6 +147,7 @@ def _issue_api_key(user_id: str, replace: bool) -> dict:
 
     return {
         "plain_key": api_key,
+        "site_key": site_key,
         "api_key": _serialize_api_key(created),
         "plan_name": user["plan_name"],
     }
@@ -140,7 +171,7 @@ def get_current_api_key(current_user: dict = Depends(get_current_user)):
 
             # is_active 컬럼을 그대로 신뢰 소스로 사용한다 (관리자가 직접 제어하는 값).
             cur.execute(
-                """SELECT api_key_id, key_name, created_at, expired_at, is_active
+                """SELECT api_key_id, key_name, site_key, site_domain, created_at, expired_at, is_active
                    FROM api_keys
                    WHERE user_id = %s
                    ORDER BY api_key_id DESC
@@ -160,16 +191,71 @@ def get_current_api_key(current_user: dict = Depends(get_current_user)):
     return {"plan": plan, "api_key": _serialize_api_key(api_key)}
 
 
+class SiteDomainRequest(BaseModel):
+    site_domain: str
+
+
 @router.post("/api-keys", status_code=status.HTTP_201_CREATED)
-def issue_api_key(current_user: dict = Depends(get_current_user)):
+def issue_api_key(
+    body: SiteDomainRequest,
+    current_user: dict = Depends(get_current_user),
+):
     """첫 API Key를 발급한다. 원문은 이 응답에서만 반환한다."""
-    return _issue_api_key(current_user["sub"], replace=False)
+    return _issue_api_key(
+        current_user["sub"],
+        replace=False,
+        site_domain=_normalize_site_domain(body.site_domain),
+    )
 
 
 @router.post("/api-keys/reissue", status_code=status.HTTP_201_CREATED)
-def reissue_api_key(current_user: dict = Depends(get_current_user)):
+def reissue_api_key(
+    body: SiteDomainRequest,
+    current_user: dict = Depends(get_current_user),
+):
     """기존 활성 키를 만료시키고 새 키를 발급한다."""
-    return _issue_api_key(current_user["sub"], replace=True)
+    return _issue_api_key(
+        current_user["sub"],
+        replace=True,
+        site_domain=_normalize_site_domain(body.site_domain),
+    )
+
+
+@router.put("/api-keys/current/site-domain")
+def update_current_api_key_site_domain(
+    body: SiteDomainRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    """발급된 Site Key의 허용 Origin을 변경한다."""
+    site_domain = _normalize_site_domain(body.site_domain)
+    conn = get_conn()
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT api_key_id FROM api_keys
+                   WHERE user_id = %s AND is_active = TRUE
+                   ORDER BY api_key_id DESC
+                   LIMIT 1
+                   FOR UPDATE""",
+                (current_user["sub"],),
+            )
+            api_key = cur.fetchone()
+            if not api_key:
+                raise HTTPException(status_code=404, detail="활성 API Key를 찾을 수 없습니다.")
+
+            cur.execute(
+                "UPDATE api_keys SET site_domain = %s WHERE api_key_id = %s",
+                (site_domain, api_key["api_key_id"]),
+            )
+            cur.execute(
+                """SELECT api_key_id, key_name, site_key, site_domain, created_at, expired_at, is_active
+                   FROM api_keys WHERE api_key_id = %s""",
+                (api_key["api_key_id"],),
+            )
+            updated = cur.fetchone()
+        conn.commit()
+
+    return {"api_key": _serialize_api_key(updated)}
 
 
 @router.get("/admin/api-keys")

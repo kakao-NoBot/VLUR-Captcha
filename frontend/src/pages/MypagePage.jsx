@@ -496,7 +496,7 @@ function ReissueDoneModal({ onClose }) {
         textAlign: 'center',
       }}>
         <SuccessCheckIcon />
-        <strong style={{ fontSize: 16 }}>새 API Key가 발급되었습니다.</strong>
+        <strong style={{ fontSize: 16 }}>새 Site Key와 Secret Key가 발급되었습니다.</strong>
         <button className="pg-btn primary" style={{ width: '100%', padding: 11 }} onClick={onClose}>확인</button>
       </div>
     </div>
@@ -515,8 +515,11 @@ function ApiKeyTab({ closePage }) {
   const [plan, setPlan] = useState(null);
   const [apiKey, setApiKey] = useState(null);
   const [plainKey, setPlainKey] = useState('');
+  const [siteKey, setSiteKey] = useState('');
+  const [siteDomain, setSiteDomain] = useState('');
   const [visible, setVisible] = useState(false);
   const [copyLabel, setCopyLabel] = useState('복사');
+  const [siteKeyCopyLabel, setSiteKeyCopyLabel] = useState('복사');
   const [showReissueConfirm, setShowReissueConfirm] = useState(false);
   const [showReissueDone, setShowReissueDone] = useState(false);
   const [guideStep, setGuideStep] = useState(null);
@@ -532,6 +535,8 @@ function ApiKeyTab({ closePage }) {
         if (!ignore) {
           setPlan(data.plan || null);
           setApiKey(data.api_key || null);
+          setSiteKey(data.api_key?.site_key || '');
+          setSiteDomain(data.api_key?.site_domain || '');
         }
       } catch (err) {
         if (!ignore) setActionError(err.response?.data?.detail || 'API Key 정보를 불러오지 못했습니다.');
@@ -550,18 +555,31 @@ function ApiKeyTab({ closePage }) {
     setTimeout(() => setCopyLabel('복사'), 1500);
   };
 
+  const copySiteKey = () => {
+    if (!siteKey) return;
+    navigator.clipboard.writeText(siteKey).catch(() => {});
+    setSiteKeyCopyLabel('복사됨 ✓');
+    setTimeout(() => setSiteKeyCopyLabel('복사'), 1500);
+  };
+
   const applyIssuedKey = (data) => {
     setApiKey(data.api_key);
     setPlainKey(data.plain_key);
+    setSiteKey(data.site_key || data.api_key?.site_key || '');
+    setSiteDomain(data.api_key?.site_domain || '');
     setVisible(true);
     setActionError('');
   };
 
   const issue = async () => {
+    if (!siteDomain.trim()) {
+      setActionError('Site Key를 사용할 사이트 도메인을 입력해 주세요.');
+      return;
+    }
     setActionPending(true);
     setActionError('');
     try {
-      const { data } = await api.post('/api-keys');
+      const { data } = await api.post('/api-keys', { site_domain: siteDomain });
       applyIssuedKey(data);
     } catch (err) {
       setActionError(err.response?.data?.detail || 'API Key 발급에 실패했습니다.');
@@ -575,7 +593,7 @@ function ApiKeyTab({ closePage }) {
     setActionPending(true);
     setActionError('');
     try {
-      const { data } = await api.post('/api-keys/reissue');
+      const { data } = await api.post('/api-keys/reissue', { site_domain: siteDomain });
       applyIssuedKey(data);
       setShowReissueDone(true);
     } catch (err) {
@@ -583,6 +601,32 @@ function ApiKeyTab({ closePage }) {
     } finally {
       setActionPending(false);
     }
+  };
+
+  const saveSiteDomain = async () => {
+    if (!siteDomain.trim()) {
+      setActionError('Site Key를 사용할 사이트 도메인을 입력해 주세요.');
+      return;
+    }
+    setActionPending(true);
+    setActionError('');
+    try {
+      const { data } = await api.put('/api-keys/current/site-domain', { site_domain: siteDomain });
+      setApiKey(data.api_key);
+      setSiteDomain(data.api_key?.site_domain || '');
+    } catch (err) {
+      setActionError(err.response?.data?.detail || '사이트 도메인 저장에 실패했습니다.');
+    } finally {
+      setActionPending(false);
+    }
+  };
+
+  const requestReissue = () => {
+    if (!siteDomain.trim()) {
+      setActionError('재발급 전에 Site Key를 사용할 사이트 도메인을 등록해 주세요.');
+      return;
+    }
+    setShowReissueConfirm(true);
   };
 
   const goToPricing = () => {
@@ -634,12 +678,25 @@ function ApiKeyTab({ closePage }) {
       <>
         <h2 className="pg-h2 mp-api-key-title" style={{ marginBottom: 20 }}>API Key 관리</h2>
         <div className="pg-card" style={{ maxWidth: 640, textAlign: 'center', padding: '48px 24px' }}>
-          <strong style={{ display: 'block', fontSize: 16, marginBottom: 8 }}>API Key를 발급해 주세요</strong>
+          <strong style={{ display: 'block', fontSize: 16, marginBottom: 8 }}>Site Key와 Secret Key를 발급해 주세요</strong>
           <p style={{ margin: '0 0 20px', fontSize: 13.5, color: 'var(--muted)' }}>
-            {plan.name} 요금제가 활성화되어 있습니다. 발급된 원문 키는 한 번만 표시됩니다.
+            {plan.name} 요금제가 활성화되어 있습니다. Secret Key 원문은 한 번만 표시됩니다.
           </p>
+          <label htmlFor="new-site-domain" style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 700 }}>사이트 도메인</label>
+          <input
+            id="new-site-domain"
+            className="pg-input"
+            type="url"
+            inputMode="url"
+            autoComplete="url"
+            placeholder="https://example.com"
+            value={siteDomain}
+            onChange={(event) => setSiteDomain(event.target.value)}
+            style={{ marginBottom: 12 }}
+          />
+          <p style={{ margin: '-4px 0 16px', fontSize: 12, color: 'var(--muted)' }}>개발 환경은 `http://localhost:5173`처럼 포트까지 입력해 주세요.</p>
           <button className="pg-btn primary" onClick={issue} disabled={actionPending}>
-            {actionPending ? '발급 중...' : 'API Key 발급'}
+            {actionPending ? '발급 중...' : '키 발급'}
           </button>
         </div>
         {actionError && <p style={{ color: 'var(--bad)', fontSize: 13, marginTop: 12 }}>{actionError}</p>}
@@ -655,51 +712,107 @@ function ApiKeyTab({ closePage }) {
   return (
     <>
       <h2 className="pg-h2 mp-api-key-title" style={{ marginBottom: 20 }}>API Key 관리</h2>
-      <div className="pg-card api-key-card" style={{ maxWidth: 720 }}>
-        <div className="api-key-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <span className="pg-h3">현재 API Key</span>
-          <span
-            className="pill"
-            style={{ background: isKeyActive ? 'var(--ok)' : 'var(--bad)' }}
-          >
-            {isKeyActive ? '사용 중' : '비활성화'}
+      <div className="pg-card api-key-card">
+        <div className="api-key-card-header">
+          <div>
+            <span className="api-key-overline">API CREDENTIALS</span>
+            <h3 className="api-key-card-title">연동 키 관리</h3>
+            <p>서버 검증용 Secret Key와 프론트엔드용 Site Key를 관리합니다.</p>
+          </div>
+          <span className={`api-key-status${isKeyActive ? ' active' : ' inactive'}`}>
+            <i aria-hidden="true" />{isKeyActive ? '사용 중' : '비활성화'}
           </span>
         </div>
-        <div className="key-box">
-          <span style={{ fontFamily: 'monospace', fontSize: 13 }}>{displayedKey}</span>
-          <div className="api-key-controls" style={{ display: 'flex', gap: 8 }}>
+
+        <section className="api-key-section api-key-secret-section" aria-labelledby="secret-key-heading">
+          <div className="api-key-section-heading">
+            <div>
+              <span className="api-key-section-label">SECRET KEY · SERVER ONLY</span>
+              <h4 id="secret-key-heading">서버 검증용 비공개 키</h4>
+            </div>
+            <span className="api-key-visibility-note">외부에 노출하지 마세요</span>
+          </div>
+          <div className="api-key-key-row">
+            <code>{displayedKey}</code>
+            <div className="api-key-controls">
             <button
               className="pg-btn"
               style={{ padding: '7px 10px', fontSize: 13, display: 'flex', alignItems: 'center' }}
               onClick={() => setVisible((value) => !value)}
               disabled={!plainKey}
-              aria-label={visible ? 'API Key 숨기기' : 'API Key 조회'}
-              title={visible ? 'API Key 숨기기' : 'API Key 조회'}
+              aria-label={visible ? 'Secret Key 숨기기' : 'Secret Key 조회'}
+              title={visible ? 'Secret Key 숨기기' : 'Secret Key 조회'}
             >
               {visible ? <EyeOpen /> : <EyeOff />}
             </button>
             <button className="pg-btn" style={{ padding: '7px 12px', fontSize: 13 }} onClick={copy} disabled={!plainKey}>{copyLabel}</button>
+            </div>
           </div>
-        </div>
-        <div className="api-key-meta" style={{ display: 'flex', gap: 20, margin: '14px 0', fontSize: 13, color: 'var(--ink-soft)' }}>
-          <span>발급일: {issuedAt}</span><span>만료일: {expiresAt}</span><span>요금제: {plan.name}</span>
-        </div>
+          <dl className="api-key-meta">
+            <div><dt>발급일</dt><dd>{issuedAt}</dd></div>
+            <div><dt>만료일</dt><dd>{expiresAt}</dd></div>
+            <div><dt>요금제</dt><dd>{plan.name}</dd></div>
+          </dl>
+        </section>
+
+        <section className="api-key-section api-key-site-section" aria-labelledby="site-key-heading">
+          <div className="api-key-section-heading">
+            <div>
+              <span className="api-key-section-label">SITE KEY · PUBLIC</span>
+              <h4 id="site-key-heading">프론트엔드 위젯용 공개 키</h4>
+            </div>
+            <span className="api-key-public-note">공개 가능</span>
+          </div>
+          <div className="api-key-key-row">
+            <code className={!siteKey ? 'muted' : ''}>
+              {siteKey || 'Site Key 정보를 불러오지 못했습니다.'}
+            </code>
+            <button className="pg-btn" onClick={copySiteKey} disabled={!siteKey}>{siteKeyCopyLabel}</button>
+          </div>
+        </section>
+
+        <section className="api-key-section api-key-domain-section" aria-labelledby="site-domain-heading">
+          <div className="api-key-section-heading">
+            <div>
+              <span className="api-key-section-label">ALLOWED ORIGIN</span>
+              <h4 id="site-domain-heading">허용 사이트 도메인</h4>
+            </div>
+            <span className="api-key-optional">1개 등록</span>
+          </div>
+          <div className="api-key-domain-form">
+            <input
+              id="current-site-domain"
+              className="pg-input"
+              type="url"
+              inputMode="url"
+              autoComplete="url"
+              placeholder="https://example.com"
+              value={siteDomain}
+              onChange={(event) => setSiteDomain(event.target.value)}
+            />
+            <button className="pg-btn" onClick={saveSiteDomain} disabled={actionPending}>저장</button>
+          </div>
+          <p className="api-key-field-help">`https://example.com`처럼 프로토콜을 포함한 Origin을 입력해 주세요.</p>
+          {actionError && <p className="api-key-field-error" role="alert">{actionError}</p>}
+        </section>
+
         {!isKeyActive && (
-          <p className="api-key-warning" style={{ fontSize: 12.5, color: 'var(--bad)', margin: '0 0 12px' }}>
-            이 계정은 현재 비활성화 상태라 이 API Key로는 CAPTCHA 요청이 처리되지 않습니다.
+          <p className="api-key-warning">
+            이 계정은 현재 비활성화 상태라 이 키로는 CAPTCHA 요청이 처리되지 않습니다.
           </p>
         )}
-        <div className="api-key-actions" style={{ display: 'flex', gap: 10 }}>
-          <button className="pg-btn primary" onClick={() => setShowReissueConfirm(true)} disabled={actionPending}>
-            {actionPending ? '처리 중...' : '재발급'}
-          </button>
-          <button className="pg-btn" onClick={() => setGuideStep(0)}>사용 가이드 보기</button>
+        <div className="api-key-footer">
+          <p className="api-key-help">
+            {plainKey ? '지금 Secret Key 원문을 복사해 보관하세요. 페이지를 벗어나면 다시 조회할 수 없습니다.' : 'Secret Key 원문은 저장되지 않습니다. 새 원문이 필요하면 재발급해 주세요.'}
+          </p>
+          <div className="api-key-actions">
+            <button className="pg-btn primary" onClick={requestReissue} disabled={actionPending}>
+              {actionPending ? '처리 중...' : '키 재발급'}
+            </button>
+            <button className="pg-btn" onClick={() => setGuideStep(0)}>사용 가이드 보기</button>
+          </div>
         </div>
-        <p className="api-key-help" style={{ fontSize: 12, color: 'var(--muted)', marginTop: 12 }}>
-          {plainKey ? '지금 원문 키를 복사해 보관하세요. 페이지를 벗어나면 다시 조회할 수 없습니다.' : '원문 키는 저장되지 않습니다. 새 원문이 필요하면 재발급해 주세요.'}
-        </p>
       </div>
-      {actionError && <p style={{ color: 'var(--bad)', fontSize: 13, marginTop: 12 }}>{actionError}</p>}
 
       {showReissueConfirm && (
         <ReissueConfirmModal
