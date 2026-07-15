@@ -178,11 +178,31 @@ function getScoreBreakdown(botScore) {
 
 // duration과 botScore가 서로 설명되도록 구성 (반응이 너무 빠르거나 느릴수록 점수 상승)
 const MOCK_LOGS = [
-  { time: '2026-07-03 09:42', site: 'VLUR Demo Shop',   captchaType: 'type1_drag',     duration: '1.8초', botScore: 8  },
-  { time: '2026-07-03 09:38', site: 'AI Study Portal',  captchaType: 'type2_identify', duration: '2.3초', botScore: 15 },
-  { time: '2026-07-03 09:34', site: 'Secure Board',     captchaType: 'type1_drag',     duration: '3.9초', botScore: 46 }, // 느린 반응 → 의심
-  { time: '2026-07-03 09:29', site: 'VLUR Demo Shop',   captchaType: 'type1_drag',     duration: '0.6초', botScore: 61 }, // 빠른 반응 → 의심
-  { time: '2026-07-03 09:21', site: 'AI Study Portal',  captchaType: 'type2_identify', duration: '0.3초', botScore: 84 }, // 비정상 반응속도 → 실패
+  { time: '2026-07-06 14:52', site: 'VLUR Secure Mall',  captchaType: 'type1_drag',     duration: '2.1초', botScore: 12 },
+  { time: '2026-07-06 14:47', site: 'Mega Ticket',       captchaType: 'type2_identify', duration: '1.9초', botScore: 9  },
+  { time: '2026-07-06 14:41', site: 'K-Event',           captchaType: 'type1_drag',     duration: '2.4초', botScore: 18 },
+  { time: '2026-07-06 14:35', site: 'Commerce Lab Global', captchaType: 'type2_identify', duration: '0.4초', botScore: 79 },
+  { time: '2026-07-06 14:28', site: 'AI Study Portal',   captchaType: 'type1_drag',     duration: '3.6초', botScore: 44 },
+  { time: '2026-07-06 14:20', site: 'Secure Study',      captchaType: 'type2_identify', duration: '1.7초', botScore: 11 },
+  { time: '2026-07-06 14:12', site: 'Demo Shop Plus',    captchaType: 'type1_drag',     duration: '0.5초', botScore: 68 },
+  { time: '2026-07-06 14:05', site: 'K-Event Arena',     captchaType: 'type2_identify', duration: '2.0초', botScore: 14 },
+  { time: '2026-07-06 13:58', site: 'Mega Ticket',       captchaType: 'type1_drag',     duration: '4.1초', botScore: 51 },
+  { time: '2026-07-06 13:50', site: 'VLUR Demo Shop',    captchaType: 'type2_identify', duration: '1.6초', botScore: 7  },
+  { time: '2026-07-06 13:44', site: 'Secure Board',      captchaType: 'type1_drag',     duration: '0.3초', botScore: 86 },
+  { time: '2026-07-06 13:37', site: 'Ticket Demo',       captchaType: 'type2_identify', duration: '2.2초', botScore: 16 },
+  { time: '2026-07-06 13:29', site: 'Commerce Lab',      captchaType: 'type1_drag',     duration: '1.8초', botScore: 10 },
+  { time: '2026-07-06 13:22', site: 'AI Study Portal',   captchaType: 'type2_identify', duration: '3.8초', botScore: 47 },
+  { time: '2026-07-06 13:15', site: 'K-Event',           captchaType: 'type1_drag',     duration: '0.6초', botScore: 63 },
+  { time: '2026-07-06 13:08', site: 'VLUR Secure Mall',  captchaType: 'type2_identify', duration: '2.3초', botScore: 13 },
+  { time: '2026-07-06 13:01', site: 'Secure Study',      captchaType: 'type1_drag',     duration: '1.9초', botScore: 8  },
+  { time: '2026-07-06 12:54', site: 'Demo Shop Plus',    captchaType: 'type2_identify', duration: '0.4초', botScore: 82 },
+  { time: '2026-07-06 12:47', site: 'Mega Ticket',       captchaType: 'type1_drag',     duration: '2.5초', botScore: 20 },
+  { time: '2026-07-06 12:39', site: 'Commerce Lab Global', captchaType: 'type2_identify', duration: '3.4초', botScore: 42 },
+  { time: '2026-07-06 12:32', site: 'K-Event Arena',     captchaType: 'type1_drag',     duration: '1.7초', botScore: 9  },
+  { time: '2026-07-06 12:25', site: 'VLUR Demo Shop',    captchaType: 'type2_identify', duration: '0.5초', botScore: 71 },
+  { time: '2026-07-06 12:18', site: 'Secure Board',      captchaType: 'type1_drag',     duration: '2.0초', botScore: 15 },
+  { time: '2026-07-06 12:10', site: 'Ticket Demo',       captchaType: 'type2_identify', duration: '4.3초', botScore: 55 },
+  { time: '2026-07-06 12:03', site: 'AI Study Portal',   captchaType: 'type1_drag',     duration: '1.8초', botScore: 11 },
 ].map((log) => ({ ...log, result: getResultFromScore(log.botScore) }));
 
 const PLAN_USAGE = [
@@ -515,7 +535,7 @@ function AdminSearchInput({ value, onChange, placeholder, ariaLabel }) {
 }
 
 function AdminTable({ columns, rows, emptyMessage, wrapperClassName = '', tableClassName = '', tableStyle, wrapperStyle }) {
-return (
+  return (
     <div
       className={`admin-table-wrap admin-scroll-x${wrapperClassName ? ` ${wrapperClassName}` : ''}`}
       style={{ marginTop: 0, ...wrapperStyle }}
@@ -524,6 +544,13 @@ return (
         className={`admin-table${tableClassName ? ` ${tableClassName}` : ''}`}
         style={tableStyle}
       >
+        {columns.some((c) => c.width) && (
+          <colgroup>
+            {columns.map((column) => (
+              <col key={column.key} style={{ width: column.width || 'auto' }} />
+            ))}
+          </colgroup>
+        )}
         <thead>
           <tr>
             {columns.map((column) => (
@@ -805,6 +832,67 @@ function InquiryDetailModal({ detail, onClose }) {
   );
 }
 
+const INQUIRY_PAGE_SIZE = 10;
+const USAGE_PLAN_PAGE_SIZE = 5;
+
+function Pagination({ page, totalPages, onChange }) {
+  if (totalPages <= 1) return null;
+
+  const pages = [];
+  const start = Math.max(1, page - 2);
+  const end = Math.min(totalPages, start + 4);
+  for (let i = start; i <= end; i += 1) pages.push(i);
+
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      gap: 6, marginTop: 16,
+    }}>
+      <button
+        type="button"
+        onClick={() => onChange(Math.max(1, page - 1))}
+        disabled={page === 1}
+        style={{
+          width: 32, height: 32, borderRadius: 8, border: '1px solid var(--line)',
+          background: 'var(--card)', cursor: page === 1 ? 'default' : 'pointer',
+          opacity: page === 1 ? 0.4 : 1, fontSize: 13,
+        }}
+      >‹</button>
+
+      {start > 1 && <span style={{ padding: '0 4px', color: 'var(--muted)' }}>…</span>}
+
+      {pages.map((p) => (
+        <button
+          key={p}
+          type="button"
+          onClick={() => onChange(p)}
+          style={{
+            width: 32, height: 32, borderRadius: 8,
+            border: p === page ? '1px solid var(--orange)' : '1px solid var(--line)',
+            background: p === page ? 'var(--orange)' : 'var(--card)',
+            color: p === page ? '#fff' : 'var(--ink)',
+            fontWeight: p === page ? 700 : 500,
+            cursor: 'pointer', fontSize: 13,
+          }}
+        >{p}</button>
+      ))}
+
+      {end < totalPages && <span style={{ padding: '0 4px', color: 'var(--muted)' }}>…</span>}
+
+      <button
+        type="button"
+        onClick={() => onChange(Math.min(totalPages, page + 1))}
+        disabled={page === totalPages}
+        style={{
+          width: 32, height: 32, borderRadius: 8, border: '1px solid var(--line)',
+          background: 'var(--card)', cursor: page === totalPages ? 'default' : 'pointer',
+          opacity: page === totalPages ? 0.4 : 1, fontSize: 13,
+        }}
+      >›</button>
+    </div>
+  );
+}
+
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [activeUserType, setActiveUserType] = useState('personal');
@@ -828,6 +916,14 @@ export default function AdminPage() {
   const [selectedScoreLog, setSelectedScoreLog] = useState(null);
   const [selectedInquiryDetail, setSelectedInquiryDetail] = useState(null);
   const [openStatusMenu, setOpenStatusMenu] = useState(null);
+  const [generalPage, setGeneralPage] = useState(1);
+  const [businessPage, setBusinessPage] = useState(1);
+  const [completedPage, setCompletedPage] = useState(1);
+  const [personalUserPage, setPersonalUserPage] = useState(1);
+  const [businessUserPage, setBusinessUserPage] = useState(1);
+  const [sitePage, setSitePage] = useState(1);
+  const [logPage, setLogPage] = useState(1);
+  const [usagePlanPage, setUsagePlanPage] = useState(1);
 
   // 문의 알림 관련: 마지막으로 "문의 관리" 탭을 연 시각(ms) → 그 이후 접수된 문의만 "새 문의"로 취급
   const [inquiryLastSeen, setInquiryLastSeen] = useState(() => (
@@ -1023,6 +1119,7 @@ export default function AdminPage() {
     setActiveUsagePlan(plan);
     setUsagePlanSearch('');
     setUsagePlanSort('calls_desc');
+    setUsagePlanPage(1);
     setActiveTab('usage-plans');
   };
 
@@ -1044,11 +1141,34 @@ export default function AdminPage() {
   }, [openStatusMenu]);
 
   useEffect(() => {
-  if (!usagePlanSortOpen) return undefined;
-  const close = () => setUsagePlanSortOpen(false);
-  document.addEventListener('click', close);
-  return () => document.removeEventListener('click', close);
-}, [usagePlanSortOpen]);
+    if (!usagePlanSortOpen) return undefined;
+    const close = () => setUsagePlanSortOpen(false);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [usagePlanSortOpen]);
+
+  useEffect(() => {
+    setGeneralPage(1);
+    setBusinessPage(1);
+    setCompletedPage(1);
+  }, [inquirySearch, activeInquiryType]);
+
+  useEffect(() => {
+    setPersonalUserPage(1);
+    setBusinessUserPage(1);
+  }, [userSearch, activeUserType]);
+
+  useEffect(() => {
+    setSitePage(1);
+  }, [siteSearch]);
+
+  useEffect(() => {
+    setLogPage(1);
+  }, [logSearch]);
+
+  useEffect(() => {
+    setUsagePlanPage(1);
+  }, [usagePlanSearch, usagePlanSort, activeUsagePlan]);
 
   // 라벨 → 백엔드 값 역매핑 (INQUIRY_STATUS_BACKEND_TO_LABEL의 반대)
   const INQUIRY_LABEL_TO_BACKEND = {
@@ -1193,33 +1313,33 @@ export default function AdminPage() {
   };
 
   const GENERAL_INQUIRY_COLUMNS = [
-    { key: 'email', label: '회신 이메일' },
-    { key: 'requester', label: '이름' },
-    { key: 'type', label: '유형' },
-    { key: 'message', label: '문의 내용' },
-    { key: 'receivedAt', label: '접수일' },
-    { key: 'status', label: '상태' },
+    { key: 'email', label: '회신 이메일', width: 200 },
+    { key: 'requester', label: '이름', width: 100 },
+    { key: 'type', label: '유형', width: 130 },
+    { key: 'message', label: '문의 내용', width: 320 },
+    { key: 'receivedAt', label: '접수일', width: 110 },
+    { key: 'status', label: '상태', width: 100 },
   ];
 
   const BUSINESS_INQUIRY_COLUMNS = [
-    { key: 'company', label: '회사/서비스명' },
-    { key: 'manager', label: '담당자명' },
-    { key: 'phone', label: '전화번호' },
-    { key: 'email', label: '이메일' },
-    { key: 'estimatedCalls', label: '예상 월 호출량' },
-    { key: 'message', label: '문의 내용' },
-    { key: 'receivedAt', label: '접수일' },
-    { key: 'status', label: '상태' },
+    { key: 'company', label: '회사/서비스명', width: 180 },
+    { key: 'manager', label: '담당자명', width: 110 },
+    { key: 'phone', label: '전화번호', width: 140 },
+    { key: 'email', label: '이메일', width: 200 },
+    { key: 'estimatedCalls', label: '예상 월 호출량', width: 140 },
+    { key: 'message', label: '문의 내용', width: 260 },
+    { key: 'receivedAt', label: '접수일', width: 110 },
+    { key: 'status', label: '상태', width: 100 },
   ];
 
   // 일반/기업 문의를 합쳐서 보여주는 "답변 완료" 통합 테이블용 컬럼·행 렌더러
   const COMPLETED_INQUIRY_COLUMNS = [
-    { key: 'typeLabel', label: '구분' },
-    { key: 'email', label: '이메일' },
-    { key: 'name', label: '이름 / 담당자' },
-    { key: 'message', label: '문의 내용' },
-    { key: 'receivedAt', label: '접수일' },
-    { key: 'status', label: '상태' },
+    { key: 'typeLabel', label: '구분', width: 80 },
+    { key: 'email', label: '이메일', width: 200 },
+    { key: 'name', label: '이름 / 담당자', width: 130 },
+    { key: 'message', label: '문의 내용', width: 320 },
+    { key: 'receivedAt', label: '접수일', width: 110 },
+    { key: 'status', label: '상태', width: 100 },
   ];
 
   const renderCompletedInquiryRow = (inquiry) => {
@@ -1280,12 +1400,20 @@ export default function AdminPage() {
           width: max-content;
           min-width: 100%;
         }
-         .admin-readable-table th,
-         .admin-readable-table td {
-           white-space: nowrap;
-           padding-left: 16px;
-           padding-right: 16px;
-         }
+        .admin-readable-table th,
+        .admin-readable-table td {
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          padding-left: 16px;
+          padding-right: 16px;
+        }
+        .admin-fixed-table th,
+        .admin-fixed-table td {
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
         .admin-modal-scroll {
           scrollbar-width: thin;
           scrollbar-color: var(--line) transparent;
@@ -1578,7 +1706,7 @@ export default function AdminPage() {
                         key={plan}
                         type="button"
                         className={activeUsagePlan === plan ? 'active' : ''}
-                        onClick={() => setActiveUsagePlan(plan)}
+                        onClick={() => { setActiveUsagePlan(plan); setUsagePlanPage(1); }}
                       >
                         {plan}
                       </button>
@@ -1625,50 +1753,60 @@ export default function AdminPage() {
                   </div>
                 </div>
 
-                <AdminTable
-                  columns={[
-                    { key: 'siteName', label: '사이트명' },
-                    { key: 'userName', label: '사용자' },
-                    { key: 'email', label: '이메일' },
-                    { key: 'plan', label: '요금제' },
-                    { key: 'monthlyCalls', label: '월 호출량' },
-                    { key: 'monthlyLimit', label: '월 한도' },
-                    { key: 'usage', label: '사용률' },
-                    { key: 'successCount', label: '성공' },
-                    { key: 'failCount', label: '실패' },
-                    { key: 'botBlockedCount', label: '봇 차단' },
-                    { key: 'lastCalledAt', label: '최근 호출' },
-                  ]}
-                  emptyMessage="검색 결과가 없습니다."
-                  rows={usagePlanRows.map((row) => {
-                    const monthlyCalls = clampUsageToLimit(row.monthlyCalls, row.monthlyLimit);
-                    const usagePercent = getPrecisePercent(row.monthlyCalls, row.monthlyLimit);
-                    return (
-                      <tr key={row.id}>
-                        <td>{row.siteName}</td>
-                        <td>{row.userName}</td>
-                        <td>{row.email}</td>
-                        <td>{row.plan}</td>
-                        <td>{formatNumber(monthlyCalls)}</td>
-                        <td>{formatNumber(row.monthlyLimit)}</td>
-                        <td>
-                          <div className="admin-usage-percent-cell">
-                            <div className="admin-usage-percent-top">
-                              <b>{usagePercent.toFixed(1)}%</b>
-                            </div>
-                            <div className="admin-usage-progress" aria-hidden="true">
-                              <span style={{ width: `${Math.min(100, usagePercent)}%` }} />
-                            </div>
-                          </div>
-                        </td>
-                        <td>{formatNumber(row.successCount)}</td>
-                        <td>{formatNumber(row.failCount)}</td>
-                        <td>{formatNumber(row.botBlockedCount)}</td>
-                        <td>{row.lastCalledAt}</td>
-                      </tr>
-                    );
-                  })}
-                />
+                {(() => {
+                  const totalPages = Math.max(1, Math.ceil(usagePlanRows.length / USAGE_PLAN_PAGE_SIZE));
+                  const pageRows = usagePlanRows.slice((usagePlanPage - 1) * USAGE_PLAN_PAGE_SIZE, usagePlanPage * USAGE_PLAN_PAGE_SIZE);
+                  return (
+                    <>
+                      <AdminTable
+                        columns={[
+                          { key: 'siteName', label: '사이트명', width: 160 },
+                          { key: 'userName', label: '사용자', width: 100 },
+                          { key: 'email', label: '이메일', width: 200 },
+                          { key: 'plan', label: '요금제', width: 90 },
+                          { key: 'monthlyCalls', label: '월 호출량', width: 110 },
+                          { key: 'monthlyLimit', label: '월 한도', width: 110 },
+                          { key: 'usage', label: '사용률', width: 140 },
+                          { key: 'successCount', label: '성공', width: 100 },
+                          { key: 'failCount', label: '실패', width: 90 },
+                          { key: 'botBlockedCount', label: '봇 차단', width: 100 },
+                          { key: 'lastCalledAt', label: '최근 호출', width: 110 },
+                        ]}
+                        tableStyle={{ tableLayout: 'fixed', width: 1290 }}
+                        emptyMessage="검색 결과가 없습니다."
+                        rows={pageRows.map((row) => {
+                          const monthlyCalls = clampUsageToLimit(row.monthlyCalls, row.monthlyLimit);
+                          const usagePercent = getPrecisePercent(row.monthlyCalls, row.monthlyLimit);
+                          return (
+                            <tr key={row.id}>
+                              <td>{row.siteName}</td>
+                              <td>{row.userName}</td>
+                              <td>{row.email}</td>
+                              <td>{row.plan}</td>
+                              <td>{formatNumber(monthlyCalls)}</td>
+                              <td>{formatNumber(row.monthlyLimit)}</td>
+                              <td>
+                                <div className="admin-usage-percent-cell">
+                                  <div className="admin-usage-percent-top">
+                                    <b>{usagePercent.toFixed(1)}%</b>
+                                  </div>
+                                  <div className="admin-usage-progress" aria-hidden="true">
+                                    <span style={{ width: `${Math.min(100, usagePercent)}%` }} />
+                                  </div>
+                                </div>
+                              </td>
+                              <td>{formatNumber(row.successCount)}</td>
+                              <td>{formatNumber(row.failCount)}</td>
+                              <td>{formatNumber(row.botBlockedCount)}</td>
+                              <td>{row.lastCalledAt}</td>
+                            </tr>
+                          );
+                        })}
+                      />
+                      <Pagination page={usagePlanPage} totalPages={totalPages} onChange={setUsagePlanPage} />
+                    </>
+                  );
+                })()}
               </div>
             </section>
           )}
@@ -1704,99 +1842,119 @@ export default function AdminPage() {
 
               {usersError && <p style={{ color: 'var(--bad)', fontSize: 13, margin: '0 0 12px' }}>{usersError}</p>}
 
-              {activeUserType === 'personal' ? (
-                <AdminTable
-                  columns={[
-                    { key: 'name', label: '이름' },
-                    { key: 'userId', label: '아이디' },
-                    { key: 'email', label: '이메일' },
-                    { key: 'plan', label: '요금제' },
-                    { key: 'apiKey', label: 'API Key' },
-                    { key: 'joinedAt', label: '가입일' },
-                    { key: 'status', label: '상태' },
-                  ]}
-                  emptyMessage={usersLoading ? '사용자 정보를 불러오는 중입니다.' : '검색 결과가 없습니다.'}
-                  rows={filteredUsers.map((user) => {
-                    const menuKey = `user-personal-${user.internalId}`;
-                    return (
-                      <tr key={user.internalId}>
-                        <td>{user.name}</td>
-                        <td>{user.socialProvider ? <SocialProviderLogo provider={user.socialProvider} /> : user.userId}</td>
-                        <td>{user.email}</td>
-                        <td>{user.plan}</td>
-                        <td>
-                          {user.apiKey === '미발급' ? (
-                            user.apiKey
-                          ) : (
-                            <code className="admin-key-mask">{user.apiKey}</code>
-                          )}
-                        </td>
-                        <td>{user.joinedAt}</td>
-                        <td>
-                          <StatusDropdown
-                            status={user.status}
-                            options={USER_STATUS_OPTIONS}
-                            isOpen={openStatusMenu === menuKey}
-                            onToggle={() => setOpenStatusMenu(openStatusMenu === menuKey ? null : menuKey)}
-                            onSelect={(option) => {
-                              updateUserApiKeyStatus('personal', user.internalId, option);
-                              setOpenStatusMenu(null);
-                            }}
-                          />
-                        </td>
-                      </tr>
-                    );
-                  })}
-                />
-              ) : (
-                <AdminTable
-                  columns={[
-                    { key: 'company', label: '회사명' },
-                    { key: 'manager', label: '담당자' },
-                    { key: 'userId', label: '아이디' },
-                    { key: 'email', label: '이메일' },
-                    { key: 'plan', label: '요금제' },
-                    { key: 'apiKey', label: 'API Key' },
-                    { key: 'siteCount', label: '등록 사이트 수' },
-                    { key: 'monthlyLimit', label: '월 호출 한도' },
-                    { key: 'status', label: '상태' },
-                  ]}
-                  emptyMessage={usersLoading ? '사용자 정보를 불러오는 중입니다.' : '검색 결과가 없습니다.'}
-                  rows={filteredUsers.map((user) => {
-                    const menuKey = `user-business-${user.internalId}`;
-                    return (
-                      <tr key={user.internalId}>
-                        <td>{user.company}</td>
-                        <td>{user.manager}</td>
-                        <td>{user.socialProvider ? <SocialProviderLogo provider={user.socialProvider} /> : user.userId}</td>
-                        <td>{user.email}</td>
-                        <td>{user.plan}</td>
-                        <td>
-                          {user.apiKey === '미발급' ? (
-                            user.apiKey
-                          ) : (
-                            <code className="admin-key-mask">{user.apiKey}</code>
-                          )}
-                        </td>
-                        <td>{user.siteCount}</td>
-                        <td>{formatNumber(user.monthlyLimit)}</td>
-                        <td>
-                          <StatusDropdown
-                            status={user.status}
-                            options={USER_STATUS_OPTIONS}
-                            isOpen={openStatusMenu === menuKey}
-                            onToggle={() => setOpenStatusMenu(openStatusMenu === menuKey ? null : menuKey)}
-                            onSelect={(option) => {
-                              updateUserApiKeyStatus('business', user.internalId, option);
-                              setOpenStatusMenu(null);
-                            }}
-                          />
-                        </td>
-                      </tr>
-                    );
-                  })}
-                />
-              )}
+              {activeUserType === 'personal' ? (() => {
+                const columns = [
+                  { key: 'name', label: '이름', width: 100 },
+                  { key: 'userId', label: '아이디', width: 120 },
+                  { key: 'email', label: '이메일', width: 200 },
+                  { key: 'plan', label: '요금제', width: 90 },
+                  { key: 'apiKey', label: 'API Key', width: 160 },
+                  { key: 'joinedAt', label: '가입일', width: 110 },
+                  { key: 'status', label: '상태', width: 100 },
+                ];
+                const totalPages = Math.max(1, Math.ceil(filteredUsers.length / INQUIRY_PAGE_SIZE));
+                const pageRows = filteredUsers.slice((personalUserPage - 1) * INQUIRY_PAGE_SIZE, personalUserPage * INQUIRY_PAGE_SIZE);
+                return (
+                  <>
+                    <AdminTable
+                      tableClassName="admin-fixed-table"
+                      tableStyle={{ tableLayout: 'fixed', width: 880 }}
+                      columns={columns}
+                      emptyMessage={usersLoading ? '사용자 정보를 불러오는 중입니다.' : '검색 결과가 없습니다.'}
+                      rows={pageRows.map((user) => {
+                        const menuKey = `user-personal-${user.internalId}`;
+                        return (
+                          <tr key={user.internalId}>
+                            <td>{user.name}</td>
+                            <td>{user.socialProvider ? <SocialProviderLogo provider={user.socialProvider} /> : user.userId}</td>
+                            <td>{user.email}</td>
+                            <td>{user.plan}</td>
+                            <td>
+                              {user.apiKey === '미발급' ? (
+                                user.apiKey
+                              ) : (
+                                <code className="admin-key-mask">{user.apiKey}</code>
+                              )}
+                            </td>
+                            <td>{user.joinedAt}</td>
+                            <td>
+                              <StatusDropdown
+                                status={user.status}
+                                options={USER_STATUS_OPTIONS}
+                                isOpen={openStatusMenu === menuKey}
+                                onToggle={() => setOpenStatusMenu(openStatusMenu === menuKey ? null : menuKey)}
+                                onSelect={(option) => {
+                                  updateUserApiKeyStatus('personal', user.internalId, option);
+                                  setOpenStatusMenu(null);
+                                }}
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    />
+                    <Pagination page={personalUserPage} totalPages={totalPages} onChange={setPersonalUserPage} />
+                  </>
+                );
+              })() : (() => {
+                const columns = [
+                  { key: 'company', label: '회사명', width: 160 },
+                  { key: 'manager', label: '담당자', width: 100 },
+                  { key: 'userId', label: '아이디', width: 120 },
+                  { key: 'email', label: '이메일', width: 200 },
+                  { key: 'plan', label: '요금제', width: 90 },
+                  { key: 'apiKey', label: 'API Key', width: 160 },
+                  { key: 'siteCount', label: '등록 사이트 수', width: 120 },
+                  { key: 'monthlyLimit', label: '월 호출 한도', width: 130 },
+                  { key: 'status', label: '상태', width: 100 },
+                ];
+                const totalPages = Math.max(1, Math.ceil(filteredUsers.length / INQUIRY_PAGE_SIZE));
+                const pageRows = filteredUsers.slice((businessUserPage - 1) * INQUIRY_PAGE_SIZE, businessUserPage * INQUIRY_PAGE_SIZE);
+                return (
+                  <>
+                    <AdminTable
+                      tableClassName="admin-fixed-table"
+                      tableStyle={{ tableLayout: 'fixed', width: 1180 }}
+                      columns={columns}
+                      emptyMessage={usersLoading ? '사용자 정보를 불러오는 중입니다.' : '검색 결과가 없습니다.'}
+                      rows={pageRows.map((user) => {
+                        const menuKey = `user-business-${user.internalId}`;
+                        return (
+                          <tr key={user.internalId}>
+                            <td>{user.company}</td>
+                            <td>{user.manager}</td>
+                            <td>{user.socialProvider ? <SocialProviderLogo provider={user.socialProvider} /> : user.userId}</td>
+                            <td>{user.email}</td>
+                            <td>{user.plan}</td>
+                            <td>
+                              {user.apiKey === '미발급' ? (
+                                user.apiKey
+                              ) : (
+                                <code className="admin-key-mask">{user.apiKey}</code>
+                              )}
+                            </td>
+                            <td>{user.siteCount}</td>
+                            <td>{formatNumber(user.monthlyLimit)}</td>
+                            <td>
+                              <StatusDropdown
+                                status={user.status}
+                                options={USER_STATUS_OPTIONS}
+                                isOpen={openStatusMenu === menuKey}
+                                onToggle={() => setOpenStatusMenu(openStatusMenu === menuKey ? null : menuKey)}
+                                onSelect={(option) => {
+                                  updateUserApiKeyStatus('business', user.internalId, option);
+                                  setOpenStatusMenu(null);
+                                }}
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    />
+                    <Pagination page={businessUserPage} totalPages={totalPages} onChange={setBusinessUserPage} />
+                  </>
+                );
+              })()}
             </section>
           )}
 
@@ -1817,48 +1975,59 @@ export default function AdminPage() {
                 />
               </div>
 
-              <AdminTable
-                tableClassName="table-ink-orange"
-                columns={[
-                  { key: 'name', label: '사이트명' },
-                  { key: 'domain', label: '도메인' },
-                  { key: 'owner', label: '소유자' },
-                  { key: 'plan', label: '요금제' },
-                  { key: 'monthlyLimit', label: '월 호출 한도' },
-                  { key: 'monthlyUsage', label: '이번 달 사용량' },
-                  { key: 'status', label: '상태' },
-                  { key: 'createdAt', label: '등록일' },
-                ]}
-                emptyMessage="검색 결과가 없습니다."
-                rows={filteredSites.map((site) => {
-                  const menuKey = `site-${site.domain}`;
-                  const monthlyLimit = getPlanMonthlyLimit(site.plan, site.monthlyLimit);
-                  const monthlyUsage = clampUsageToLimit(site.monthlyUsage, monthlyLimit);
-                  return (
-                    <tr key={site.domain}>
-                      <td>{site.name}</td>
-                      <td>{site.domain}</td>
-                      <td>{site.owner}</td>
-                      <td>{site.plan}</td>
-                      <td>{formatNumber(monthlyLimit)}</td>
-                      <td><UsageMeter used={monthlyUsage} limit={monthlyLimit} /></td>
-                      <td>
-                        <StatusDropdown
-                          status={site.status}
-                          options={MANAGE_STATUS_OPTIONS}
-                          isOpen={openStatusMenu === menuKey}
-                          onToggle={() => setOpenStatusMenu(openStatusMenu === menuKey ? null : menuKey)}
-                          onSelect={(option) => {
-                            updateSiteStatus(site.domain, option);
-                            setOpenStatusMenu(null);
-                          }}
-                        />
-                      </td>
-                      <td>{site.createdAt}</td>
-                    </tr>
-                  );
-                })}
-              />
+              {(() => {
+                const columns = [
+                  { key: 'name', label: '사이트명', width: 160 },
+                  { key: 'domain', label: '도메인', width: 160 },
+                  { key: 'owner', label: '소유자', width: 150 },
+                  { key: 'plan', label: '요금제', width: 90 },
+                  { key: 'monthlyLimit', label: '월 호출 한도', width: 130 },
+                  { key: 'monthlyUsage', label: '이번 달 사용량', width: 200 },
+                  { key: 'status', label: '상태', width: 100 },
+                  { key: 'createdAt', label: '등록일', width: 110 },
+                ];
+                const totalPages = Math.max(1, Math.ceil(filteredSites.length / INQUIRY_PAGE_SIZE));
+                const pageRows = filteredSites.slice((sitePage - 1) * INQUIRY_PAGE_SIZE, sitePage * INQUIRY_PAGE_SIZE);
+                return (
+                  <>
+                    <AdminTable
+                      tableClassName="table-ink-orange admin-fixed-table"
+                      tableStyle={{ tableLayout: 'fixed', width: 1100 }}
+                      columns={columns}
+                      emptyMessage="검색 결과가 없습니다."
+                      rows={pageRows.map((site) => {
+                        const menuKey = `site-${site.domain}`;
+                        const monthlyLimit = getPlanMonthlyLimit(site.plan, site.monthlyLimit);
+                        const monthlyUsage = clampUsageToLimit(site.monthlyUsage, monthlyLimit);
+                        return (
+                          <tr key={site.domain}>
+                            <td>{site.name}</td>
+                            <td>{site.domain}</td>
+                            <td>{site.owner}</td>
+                            <td>{site.plan}</td>
+                            <td>{formatNumber(monthlyLimit)}</td>
+                            <td><UsageMeter used={monthlyUsage} limit={monthlyLimit} /></td>
+                            <td>
+                              <StatusDropdown
+                                status={site.status}
+                                options={MANAGE_STATUS_OPTIONS}
+                                isOpen={openStatusMenu === menuKey}
+                                onToggle={() => setOpenStatusMenu(openStatusMenu === menuKey ? null : menuKey)}
+                                onSelect={(option) => {
+                                  updateSiteStatus(site.domain, option);
+                                  setOpenStatusMenu(null);
+                                }}
+                              />
+                            </td>
+                            <td>{site.createdAt}</td>
+                          </tr>
+                        );
+                      })}
+                    />
+                    <Pagination page={sitePage} totalPages={totalPages} onChange={setSitePage} />
+                  </>
+                );
+              })()}
             </section>
           )}
 
@@ -1891,43 +2060,62 @@ export default function AdminPage() {
                 />
               </div>
 
-              {activeInquiryType === 'general' && (
-                <AdminTable
-                  wrapperClassName="admin-inquiry-table-wrap"
-                  tableClassName="admin-readable-table admin-general-inquiry-table"
-                  tableStyle={{ tableLayout: 'auto', width: 'max-content', minWidth: '100%' }}
-                  columns={GENERAL_INQUIRY_COLUMNS}
-                  emptyMessage="검색 결과가 없습니다."
-                  rows={filteredInquiries
-                    .filter((inquiry) => inquiry.status !== '답변')
-                    .map(renderGeneralInquiryRow)}
-                />
-              )}
+              {activeInquiryType === 'general' && (() => {
+                const rows = filteredInquiries.filter((inquiry) => inquiry.status !== '답변');
+                const totalPages = Math.max(1, Math.ceil(rows.length / INQUIRY_PAGE_SIZE));
+                const pageRows = rows.slice((generalPage - 1) * INQUIRY_PAGE_SIZE, generalPage * INQUIRY_PAGE_SIZE);
+                return (
+                  <>
+                    <AdminTable
+                      wrapperClassName="admin-inquiry-table-wrap"
+                      tableClassName="admin-readable-table admin-general-inquiry-table"
+                      tableStyle={{ tableLayout: 'fixed', width: 960 }}
+                      columns={GENERAL_INQUIRY_COLUMNS}
+                      emptyMessage="검색 결과가 없습니다."
+                      rows={pageRows.map(renderGeneralInquiryRow)}
+                    />
+                    <Pagination page={generalPage} totalPages={totalPages} onChange={setGeneralPage} />
+                  </>
+                );
+              })()}
 
-              {activeInquiryType === 'business' && (
-                <AdminTable
-                  wrapperClassName="admin-inquiry-table-wrap"
-                  tableClassName="admin-readable-table admin-business-inquiry-table"
-                  tableStyle={{ tableLayout: 'auto', width: 'max-content', minWidth: '100%' }}
-                  columns={BUSINESS_INQUIRY_COLUMNS}
-                  emptyMessage="검색 결과가 없습니다."
-                  rows={filteredInquiries
-                    .filter((inquiry) => inquiry.status !== '답변')
-                    .map(renderBusinessInquiryRow)}
-                />
-              )}
+              {activeInquiryType === 'business' && (() => {
+                const rows = filteredInquiries.filter((inquiry) => inquiry.status !== '답변');
+                const totalPages = Math.max(1, Math.ceil(rows.length / INQUIRY_PAGE_SIZE));
+                const pageRows = rows.slice((businessPage - 1) * INQUIRY_PAGE_SIZE, businessPage * INQUIRY_PAGE_SIZE);
+                return (
+                  <>
+                    <AdminTable
+                      wrapperClassName="admin-inquiry-table-wrap"
+                      tableClassName="admin-readable-table admin-business-inquiry-table"
+                      tableStyle={{ tableLayout: 'fixed', width: 1240 }}
+                      columns={BUSINESS_INQUIRY_COLUMNS}
+                      emptyMessage="검색 결과가 없습니다."
+                      rows={pageRows.map(renderBusinessInquiryRow)}
+                    />
+                    <Pagination page={businessPage} totalPages={totalPages} onChange={setBusinessPage} />
+                  </>
+                );
+              })()}
 
-              {activeInquiryType === 'completed' && (
-                <AdminTable
-                  wrapperClassName="admin-inquiry-table-wrap"
-                  tableClassName="admin-readable-table admin-completed-inquiry-table"
-                  tableStyle={{ tableLayout: 'auto', width: 'max-content', minWidth: '100%' }}
-                  columns={COMPLETED_INQUIRY_COLUMNS}
-                  emptyMessage="답변 완료된 문의가 없습니다."
-                  rows={completedInquiries.map(renderCompletedInquiryRow)}
-                />
-              )}
-            </section>
+              {activeInquiryType === 'completed' && (() => {
+                const totalPages = Math.max(1, Math.ceil(completedInquiries.length / INQUIRY_PAGE_SIZE));
+                const pageRows = completedInquiries.slice((completedPage - 1) * INQUIRY_PAGE_SIZE, completedPage * INQUIRY_PAGE_SIZE);
+                return (
+                  <>
+                    <AdminTable
+                      wrapperClassName="admin-inquiry-table-wrap"
+                      tableClassName="admin-readable-table admin-completed-inquiry-table"
+                      tableStyle={{ tableLayout: 'fixed', width: 940 }}
+                      columns={COMPLETED_INQUIRY_COLUMNS}
+                      emptyMessage="답변 완료된 문의가 없습니다."
+                      rows={pageRows.map(renderCompletedInquiryRow)}
+                    />
+                    <Pagination page={completedPage} totalPages={totalPages} onChange={setCompletedPage} />
+                  </>
+                );
+              })()}
+              </section>
           )}
 
           {activeTab === 'logs' && (
@@ -1947,35 +2135,46 @@ export default function AdminPage() {
                 />
               </div>
 
-              <AdminTable
-              tableClassName="admin-logs-table"
-                columns={[
-                  { key: 'time', label: '시간' },
-                  { key: 'site', label: '사이트' },
-                  { key: 'captchaType', label: '유형' },
-                  { key: 'result', label: '결과' },
-                  { key: 'duration', label: '소요시간' },
-                  { key: 'botScore', label: '봇 점수' },
-                ]}
-                emptyMessage="검색 결과가 없습니다."
-                rows={filteredLogs.map((log) => {
-                  const rowKey = `${log.time}-${log.site}-${log.result}`;
-                  return (
-                    <tr
-                      key={rowKey}
-                      onClick={() => setSelectedScoreLog(log)}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      <td>{log.time}</td>
-                      <td>{log.site}</td>
-                      <td>{log.captchaType}</td>
-                      <td><StatusBadge tone={getStatusTone(log.result)}>{log.result}</StatusBadge></td>
-                      <td>{log.duration}</td>
-                      <td style={{ color: 'var(--orange-2)' }}>{log.botScore}점</td>
-                    </tr>
-                  );
-                })}
-              />
+              {(() => {
+                const columns = [
+                  { key: 'time', label: '시간', width: 160 },
+                  { key: 'site', label: '사이트', width: 170 },
+                  { key: 'captchaType', label: '유형', width: 160 },
+                  { key: 'result', label: '결과', width: 110 },
+                  { key: 'duration', label: '소요시간', width: 120 },
+                  { key: 'botScore', label: '봇 점수', width: 110 },
+                ];
+                const totalPages = Math.max(1, Math.ceil(filteredLogs.length / INQUIRY_PAGE_SIZE));
+                const pageRows = filteredLogs.slice((logPage - 1) * INQUIRY_PAGE_SIZE, logPage * INQUIRY_PAGE_SIZE);
+                return (
+                  <>
+                    <AdminTable
+                      tableClassName="admin-logs-table admin-fixed-table"
+                      tableStyle={{ tableLayout: 'fixed', width: 830 }}
+                      columns={columns}
+                      emptyMessage="검색 결과가 없습니다."
+                      rows={pageRows.map((log) => {
+                        const rowKey = `${log.time}-${log.site}-${log.result}`;
+                        return (
+                          <tr
+                            key={rowKey}
+                            onClick={() => setSelectedScoreLog(log)}
+                            style={{ cursor: 'pointer' }}
+                          >
+                            <td>{log.time}</td>
+                            <td>{log.site}</td>
+                            <td>{log.captchaType}</td>
+                            <td><StatusBadge tone={getStatusTone(log.result)}>{log.result}</StatusBadge></td>
+                            <td>{log.duration}</td>
+                            <td style={{ color: 'var(--orange-2)' }}>{log.botScore}점</td>
+                          </tr>
+                        );
+                      })}
+                    />
+                    <Pagination page={logPage} totalPages={totalPages} onChange={setLogPage} />
+                  </>
+                );
+              })()}
             </section>
           )}
         </div>
