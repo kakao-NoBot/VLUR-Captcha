@@ -248,14 +248,14 @@ function StepModal({ stepIndex, onClose, onMove }) {
           {stepIndex < total - 1 ? (
             <button
               onClick={() => onMove(stepIndex + 1)}
-              style={{ padding: '9px 18px', borderRadius: 8, border: 'none', background: step.color, color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 700 }}
+              style={{ padding: '9px 18px', borderRadius: 8, border: 'none', background: step.color, color: 'var(--paper)', cursor: 'pointer', fontSize: 14, fontWeight: 700 }}
             >
               다음
             </button>
           ) : (
             <button
               onClick={onClose}
-              style={{ padding: '9px 18px', borderRadius: 8, border: 'none', background: step.color, color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 700 }}
+              style={{ padding: '9px 18px', borderRadius: 8, border: 'none', background: step.color, color: 'var(--paper)', cursor: 'pointer', fontSize: 14, fontWeight: 700 }}
             >
               완료
             </button>

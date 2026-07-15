@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import GuideStepModal from '../components/GuideStepModal';
-import PasswordInput from '../components/PasswordInput';
+import PasswordInput, { EyeOpen, EyeOff } from '../components/PasswordInput';
 import EmailInput from '../components/EmailInput';
 import ClearableInput from '../components/ClearableInput';
 import api from '../api/axios';
@@ -670,11 +670,13 @@ function ApiKeyTab({ closePage }) {
           <div className="api-key-controls" style={{ display: 'flex', gap: 8 }}>
             <button
               className="pg-btn"
-              style={{ padding: '7px 12px', fontSize: 13 }}
+              style={{ padding: '7px 10px', fontSize: 13, display: 'flex', alignItems: 'center' }}
               onClick={() => setVisible((value) => !value)}
               disabled={!plainKey}
+              aria-label={visible ? 'API Key 숨기기' : 'API Key 조회'}
+              title={visible ? 'API Key 숨기기' : 'API Key 조회'}
             >
-              {visible ? '숨기기' : '조회'}
+              {visible ? <EyeOpen /> : <EyeOff />}
             </button>
             <button className="pg-btn" style={{ padding: '7px 12px', fontSize: 13 }} onClick={copy} disabled={!plainKey}>{copyLabel}</button>
           </div>
@@ -1266,15 +1268,15 @@ function UsageTab() {
         </div>
       </div>
       <table className="pg-table table-ink-orange">
-        <thead><tr><th>날짜</th><th>CAPTCHA 발급</th><th>CAPTCHA 검증</th><th>성공률</th></tr></thead>
+        <thead><tr><th style={{ textAlign: 'left' }}>날짜</th><th style={{ textAlign: 'left' }}>CAPTCHA 발급</th><th style={{ textAlign: 'left' }}>CAPTCHA 검증</th><th style={{ textAlign: 'left' }}>성공률</th></tr></thead>
         <tbody>
           {usageTableRows.length > 0 ? (
             paginatedUsageTableRows.map((row) => (
               <tr key={row.date}>
-                <td>{row.date}</td>
-                <td>{formatNumber(row.issued)}</td>
-                <td>{formatNumber(row.verified)}</td>
-                <td>{getSuccessRate(row)}</td>
+                <td style={{ textAlign: 'left' }}>{row.date}</td>
+                <td style={{ textAlign: 'left' }}>{formatNumber(row.issued)}</td>
+                <td style={{ textAlign: 'left' }}>{formatNumber(row.verified)}</td>
+                <td style={{ textAlign: 'left' }}>{getSuccessRate(row)}</td>
               </tr>
             ))
           ) : (
@@ -1679,21 +1681,21 @@ function BillingTab({ closePage, profile, onProfileRefresh }) {
           <table className="pg-table" style={{ maxWidth: 720 }}>
             <thead>
               <tr>
-                <th>결제일</th>
-                <th>요금제</th>
-                <th>결제 금액</th>
-                <th>결제 수단</th>
-                <th>상태</th>
+                <th style={{ textAlign: 'left' }}>결제일</th>
+                <th style={{ textAlign: 'left' }}>요금제</th>
+                <th style={{ textAlign: 'left' }}>결제 금액</th>
+                <th style={{ textAlign: 'left' }}>결제 수단</th>
+                <th style={{ textAlign: 'left' }}>상태</th>
               </tr>
             </thead>
             <tbody>
               {paginatedPayments.map(row => (
                 <tr key={row.payment_id}>
-                  <td>{row.date}</td>
-                  <td>{row.plan_name}</td>
-                  <td>{formatNumber(row.amount)}원</td>
-                  <td><PayBadge provider={row.provider} fallback={<span style={{ color: 'var(--ink-soft)', fontSize: 13 }}>{row.method}</span>} /></td>
-                  <td>
+                  <td style={{ textAlign: 'left' }}>{row.date}</td>
+                  <td style={{ textAlign: 'left' }}>{row.plan_name}</td>
+                  <td style={{ textAlign: 'left' }}>{formatNumber(row.amount)}원</td>
+                  <td style={{ textAlign: 'left' }}><PayBadge provider={row.provider} fallback={<span style={{ color: 'var(--ink-soft)', fontSize: 13 }}>{row.method}</span>} /></td>
+                  <td style={{ textAlign: 'left' }}>
                     <span style={{
                       display: 'inline-block',
                       padding: '3px 10px', borderRadius: 20,
