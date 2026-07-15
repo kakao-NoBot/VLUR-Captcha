@@ -593,7 +593,7 @@ function UsageMeter({ used, limit }) {
           width: '100%',
           height: 6,
           borderRadius: 999,
-          background: 'rgba(236,217,195,.76)',
+          background: 'var(--line)',
           overflow: 'hidden',
           flexShrink: 0,
         }}
