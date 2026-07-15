@@ -1278,7 +1278,7 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
 }
 .admin-usage-detail-head {
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 22px;
 }
 .admin-usage-summary-grid {
   display: grid;
