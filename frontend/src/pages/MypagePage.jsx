@@ -760,10 +760,57 @@ const TODAY_DATE = new Date().toISOString().slice(0, 10);
 const DEFAULT_USAGE_START_DATE = addDays(TODAY_DATE, -29);
 const DEFAULT_USAGE_END_DATE = TODAY_DATE;
 const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
+const USAGE_TABLE_PAGE_SIZE = 10;
+const PAYMENT_TABLE_PAGE_SIZE = 10;
 
 function getSuccessRate(row) {
   if (!row.issued) return '-';
   return `${((row.verified / row.issued) * 100).toFixed(1)}%`;
+}
+
+function TablePagination({ page, totalPages, onChange, ariaLabel }) {
+  if (totalPages <= 1) return null;
+
+  return (
+    <nav aria-label={ariaLabel} style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 16, flexWrap: 'wrap' }}>
+      <button
+        className="pg-btn"
+        type="button"
+        aria-label="이전 페이지"
+        style={{ padding: '7px 12px', fontSize: 13 }}
+        disabled={page === 1}
+        onClick={() => onChange(page - 1)}
+      >
+        ‹
+      </button>
+      {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
+        <button
+          key={pageNumber}
+          className="pg-btn"
+          type="button"
+          aria-current={pageNumber === page ? 'page' : undefined}
+          style={{
+            padding: '7px 14px',
+            fontSize: 13,
+            ...(pageNumber === page ? { background: 'var(--orange)', color: '#fff', borderColor: 'var(--orange)' } : {}),
+          }}
+          onClick={() => onChange(pageNumber)}
+        >
+          {pageNumber}
+        </button>
+      ))}
+      <button
+        className="pg-btn"
+        type="button"
+        aria-label="다음 페이지"
+        style={{ padding: '7px 12px', fontSize: 13 }}
+        disabled={page === totalPages}
+        onClick={() => onChange(page + 1)}
+      >
+        ›
+      </button>
+    </nav>
+  );
 }
 
 function UsageLineChart({ data, labelKey, valueKey = 'issued', emptyMessage }) {
@@ -868,6 +915,7 @@ function UsageTab() {
   const [appliedRange, setAppliedRange] = useState(null);
   const [calendarMonth, setCalendarMonth] = useState(DEFAULT_USAGE_END_DATE.slice(0, 7));
   const [dateError, setDateError] = useState('');
+  const [usageTablePage, setUsageTablePage] = useState(1);
   const datePickerRef = useRef(null);
 
   useEffect(() => {
@@ -930,6 +978,16 @@ function UsageTab() {
   const usageTableRows = useMemo(() => (
     [...filteredDailyUsageData].reverse()
   ), [filteredDailyUsageData]);
+
+  const usageTableTotalPages = Math.max(1, Math.ceil(usageTableRows.length / USAGE_TABLE_PAGE_SIZE));
+  const paginatedUsageTableRows = useMemo(() => {
+    const start = (usageTablePage - 1) * USAGE_TABLE_PAGE_SIZE;
+    return usageTableRows.slice(start, start + USAGE_TABLE_PAGE_SIZE);
+  }, [usageTablePage, usageTableRows]);
+
+  useEffect(() => {
+    setUsageTablePage((page) => Math.min(page, usageTableTotalPages));
+  }, [usageTableTotalPages]);
 
   const periodLabel = appliedRange
     ? appliedRange.start === appliedRange.end
@@ -1011,6 +1069,7 @@ function UsageTab() {
     }
 
     setAppliedRange({ start: normalizedStart, end: normalizedEnd });
+    setUsageTablePage(1);
     setDateError('');
     setIsDatePickerOpen(false);
   };
@@ -1020,6 +1079,7 @@ function UsageTab() {
     setEndDate('');
     setCalendarMonth(DEFAULT_USAGE_END_DATE.slice(0, 7));
     setAppliedRange(null);
+    setUsageTablePage(1);
     setDateError('');
   };
 
@@ -1209,7 +1269,7 @@ function UsageTab() {
         <thead><tr><th>날짜</th><th>CAPTCHA 발급</th><th>CAPTCHA 검증</th><th>성공률</th></tr></thead>
         <tbody>
           {usageTableRows.length > 0 ? (
-            usageTableRows.map((row) => (
+            paginatedUsageTableRows.map((row) => (
               <tr key={row.date}>
                 <td>{row.date}</td>
                 <td>{formatNumber(row.issued)}</td>
@@ -1226,6 +1286,12 @@ function UsageTab() {
           )}
         </tbody>
       </table>
+      <TablePagination
+        ariaLabel="사용량 상세 페이지"
+        page={usageTablePage}
+        totalPages={usageTableTotalPages}
+        onChange={setUsageTablePage}
+      />
     </>
   );
 }
@@ -1340,6 +1406,7 @@ function BillingTab({ closePage, profile, onProfileRefresh }) {
   const [loading, setLoading] = useState(true);
   const [cancelPending, setCancelPending] = useState(false);
   const [cancelError, setCancelError] = useState('');
+  const [paymentPage, setPaymentPage] = useState(1);
 
   useEffect(() => {
     let ignore = false;
@@ -1359,6 +1426,15 @@ function BillingTab({ closePage, profile, onProfileRefresh }) {
   const isPro = profile?.plan_name === 'Pro';
   const hasPlan = Boolean(profile?.plan_name);
   const latestPayment = payments[0] || null;
+  const paymentTotalPages = Math.max(1, Math.ceil(payments.length / PAYMENT_TABLE_PAGE_SIZE));
+  const paginatedPayments = useMemo(() => {
+    const start = (paymentPage - 1) * PAYMENT_TABLE_PAGE_SIZE;
+    return payments.slice(start, start + PAYMENT_TABLE_PAGE_SIZE);
+  }, [paymentPage, payments]);
+
+  useEffect(() => {
+    setPaymentPage((page) => Math.min(page, paymentTotalPages));
+  }, [paymentTotalPages]);
 
   const pendingDowngrade = isPro && profile?.pending_plan_name === 'Basic' && profile?.plan_change_at
     ? { effectiveDate: String(profile.plan_change_at).slice(0, 10) }
@@ -1599,37 +1675,45 @@ function BillingTab({ closePage, profile, onProfileRefresh }) {
           결제 내역이 없습니다.
         </div>
       ) : (
-        <table className="pg-table" style={{ maxWidth: 720 }}>
-          <thead>
-            <tr>
-              <th>결제일</th>
-              <th>요금제</th>
-              <th>결제 금액</th>
-              <th>결제 수단</th>
-              <th>상태</th>
-            </tr>
-          </thead>
-          <tbody>
-            {payments.map(row => (
-              <tr key={row.payment_id}>
-                <td>{row.date}</td>
-                <td>{row.plan_name}</td>
-                <td>{formatNumber(row.amount)}원</td>
-                <td><PayBadge provider={row.provider} fallback={<span style={{ color: 'var(--ink-soft)', fontSize: 13 }}>{row.method}</span>} /></td>
-                <td>
-                  <span style={{
-                    display: 'inline-block',
-                    padding: '3px 10px', borderRadius: 20,
-                    fontSize: 12, fontWeight: 600,
-                    ...paymentBadgeStyle(row.status),
-                  }}>
-                    {row.status}
-                  </span>
-                </td>
+        <>
+          <table className="pg-table" style={{ maxWidth: 720 }}>
+            <thead>
+              <tr>
+                <th>결제일</th>
+                <th>요금제</th>
+                <th>결제 금액</th>
+                <th>결제 수단</th>
+                <th>상태</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {paginatedPayments.map(row => (
+                <tr key={row.payment_id}>
+                  <td>{row.date}</td>
+                  <td>{row.plan_name}</td>
+                  <td>{formatNumber(row.amount)}원</td>
+                  <td><PayBadge provider={row.provider} fallback={<span style={{ color: 'var(--ink-soft)', fontSize: 13 }}>{row.method}</span>} /></td>
+                  <td>
+                    <span style={{
+                      display: 'inline-block',
+                      padding: '3px 10px', borderRadius: 20,
+                      fontSize: 12, fontWeight: 600,
+                      ...paymentBadgeStyle(row.status),
+                    }}>
+                      {row.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <TablePagination
+            ariaLabel="결제 내역 페이지"
+            page={paymentPage}
+            totalPages={paymentTotalPages}
+            onChange={setPaymentPage}
+          />
+        </>
       )}
 
       {showCancelModal && (
