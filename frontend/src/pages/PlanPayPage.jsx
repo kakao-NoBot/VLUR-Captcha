@@ -267,7 +267,7 @@ export default function PlanPayPage({ planName = 'Pro', initialSuccess = false, 
                 <>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ color: 'var(--muted)' }}>Pro 요금제 정가 (1개월)</span>
-                    <span style={{ textDecoration: 'line-through', color: 'var(--muted)' }}>₩{plan.comparePrice}</span>
+                    <span style={{ color: 'var(--muted)' }}>₩{plan.comparePrice}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--ok)' }}>
                     <span>무료 플랜 할인</span>
