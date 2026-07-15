@@ -1347,7 +1347,7 @@ const usagePlanSummary = useMemo(() => {
     { key: 'email', label: '회신 이메일', width: 200 },
     { key: 'requester', label: '이름', width: 80 },
     { key: 'type', label: '유형', width: 110 },
-    { key: 'message', label: '문의 내용', width: 250 },
+    { key: 'message', label: '문의 내용', width: 230 },
     { key: 'receivedAt', label: '접수일', width: 120 },
     { key: 'status', label: '상태', width: 100 },
   ];
@@ -1358,7 +1358,7 @@ const usagePlanSummary = useMemo(() => {
     { key: 'phone', label: '전화번호', width: 130 },
     { key: 'email', label: '이메일', width: 200 },
     { key: 'estimatedCalls', label: '예상 월 호출량', width: 120 },
-    { key: 'message', label: '문의 내용', width: 250 },
+    { key: 'message', label: '문의 내용', width: 230 },
     { key: 'receivedAt', label: '접수일', width: 120 },
     { key: 'status', label: '상태', width: 100 },
   ];
@@ -1368,7 +1368,7 @@ const usagePlanSummary = useMemo(() => {
     { key: 'typeLabel', label: '구분', width: 70 },
     { key: 'email', label: '이메일', width: 200 },
     { key: 'name', label: '이름 / 담당자', width: 110 },
-    { key: 'message', label: '문의 내용', width: 250 },
+    { key: 'message', label: '문의 내용', width: 230 },
     { key: 'receivedAt', label: '접수일', width: 120 },
     { key: 'status', label: '상태', width: 100 },
   ];
@@ -1946,7 +1946,7 @@ const usagePlanSummary = useMemo(() => {
                   { key: 'plan', label: '요금제', width: 90 },
                   { key: 'apiKey', label: 'API Key', width: 160 },
                   { key: 'siteCount', label: '등록 사이트 수', width: 120 },
-                  { key: 'monthlyLimit', label: '월 호출 한도', width: 130 },
+                  { key: 'monthlyLimit', label: '월 호출 한도', width: 110 },
                   { key: 'status', label: '상태', width: 120 },
                 ];
                 const totalPages = Math.max(1, Math.ceil(filteredUsers.length / INQUIRY_PAGE_SIZE));
@@ -1955,7 +1955,7 @@ const usagePlanSummary = useMemo(() => {
                   <>
                     <AdminTable
                       tableClassName="admin-fixed-table admin-left-table"
-                      tableStyle={{ tableLayout: 'fixed', width: 1200 }}
+                      tableStyle={{ tableLayout: 'fixed', width: 1180 }}
                       columns={columns}
                       emptyMessage={usersLoading ? '사용자 정보를 불러오는 중입니다.' : '검색 결과가 없습니다.'}
                       rows={pageRows.map((user) => {
@@ -2022,7 +2022,7 @@ const usagePlanSummary = useMemo(() => {
                   { key: 'domain', label: '도메인', width: 160 },
                   { key: 'owner', label: '소유자', width: 150 },
                   { key: 'plan', label: '요금제', width: 90 },
-                  { key: 'monthlyLimit', label: '월 호출 한도', width: 130 },
+                  { key: 'monthlyLimit', label: '월 호출 한도', width: 110 },
                   { key: 'monthlyUsage', label: '이번 달 사용량', width: 200 },
                   { key: 'status', label: '상태', width: 120 },
                   { key: 'createdAt', label: '등록일', width: 120 },
@@ -2033,7 +2033,7 @@ const usagePlanSummary = useMemo(() => {
                   <>
                     <AdminTable
                       tableClassName="table-ink-orange admin-fixed-table"
-                      tableStyle={{ tableLayout: 'fixed', width: 1130 }}
+                      tableStyle={{ tableLayout: 'fixed', width: 1110 }}
                       columns={columns}
                       emptyMessage="검색 결과가 없습니다."
                       rows={pageRows.map((site) => {
@@ -2110,7 +2110,7 @@ const usagePlanSummary = useMemo(() => {
                     <AdminTable
                       wrapperClassName="admin-inquiry-table-wrap"
                       tableClassName="admin-readable-table admin-general-inquiry-table"
-                      tableStyle={{ tableLayout: 'fixed', width: 860 }}
+                      tableStyle={{ tableLayout: 'fixed', width: 840 }}
                       columns={GENERAL_INQUIRY_COLUMNS}
                       emptyMessage="검색 결과가 없습니다."
                       rows={pageRows.map(renderGeneralInquiryRow)}
@@ -2129,7 +2129,7 @@ const usagePlanSummary = useMemo(() => {
                     <AdminTable
                       wrapperClassName="admin-inquiry-table-wrap"
                       tableClassName="admin-readable-table admin-business-inquiry-table"
-                      tableStyle={{ tableLayout: 'fixed', width: 1170 }}
+                      tableStyle={{ tableLayout: 'fixed', width: 1150 }}
                       columns={BUSINESS_INQUIRY_COLUMNS}
                       emptyMessage="검색 결과가 없습니다."
                       rows={pageRows.map(renderBusinessInquiryRow)}
@@ -2147,7 +2147,7 @@ const usagePlanSummary = useMemo(() => {
                     <AdminTable
                       wrapperClassName="admin-inquiry-table-wrap"
                       tableClassName="admin-readable-table admin-completed-inquiry-table"
-                      tableStyle={{ tableLayout: 'fixed', width: 850 }}
+                      tableStyle={{ tableLayout: 'fixed', width: 830 }}
                       columns={COMPLETED_INQUIRY_COLUMNS}
                       emptyMessage="답변 완료된 문의가 없습니다."
                       rows={pageRows.map(renderCompletedInquiryRow)}
