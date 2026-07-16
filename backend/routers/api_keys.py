@@ -1,6 +1,8 @@
 # api_keys.py
 
 import hashlib
+import ipaddress
+import re
 import secrets
 from urllib.parse import urlsplit
 
@@ -15,6 +17,7 @@ router = APIRouter(tags=["api-keys"])
 
 API_KEY_PREFIX = "sk-aicap_prod_"
 SITE_KEY_PREFIX = "pk-aicap_prod_"
+DOMAIN_LABEL_PATTERN = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
 
 # 관리자가 API Key에 부여할 수 있는 상태 값.
 ADMIN_ASSIGNABLE_KEY_STATUSES = ("active", "inactive")
@@ -29,24 +32,56 @@ def _generate_site_key() -> str:
 
 
 def _normalize_site_domain(site_domain: str) -> str:
-    """위젯 사용을 허용할 정확한 Origin만 저장한다."""
+    """프로토콜·경로·포트를 제외한 허용 호스트명만 저장한다."""
     value = site_domain.strip()
-    parsed = urlsplit(value)
-    is_valid = (
-        parsed.scheme in ("http", "https")
-        and parsed.netloc
-        and not parsed.username
-        and not parsed.password
-        and parsed.path in ("", "/")
-        and not parsed.query
-        and not parsed.fragment
-    )
-    if not is_valid:
+    has_scheme = "://" in value
+    parsed = urlsplit(value if has_scheme else f"//{value}")
+
+    try:
+        parsed.port
+    except ValueError:
+        parsed = None
+
+    if (
+        not parsed
+        or (has_scheme and parsed.scheme.lower() not in ("http", "https"))
+        or not parsed.hostname
+        or parsed.username
+        or parsed.password
+        or parsed.path not in ("", "/")
+        or parsed.query
+        or parsed.fragment
+    ):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="사이트 도메인은 https://example.com 형식의 Origin으로 입력해 주세요.",
+            detail="사이트 도메인은 example.com 형식의 호스트명으로 입력해 주세요.",
         )
-    return f"{parsed.scheme.lower()}://{parsed.netloc.lower()}"
+
+    try:
+        hostname = parsed.hostname.encode("idna").decode("ascii").lower().rstrip(".")
+    except UnicodeError:
+        hostname = ""
+
+    try:
+        ipaddress.ip_address(hostname)
+        is_valid_hostname = True
+    except ValueError:
+        labels = hostname.split(".")
+        is_valid_hostname = (
+            hostname == "localhost"
+            or (
+                len(hostname) <= 253
+                and len(labels) >= 2
+                and all(DOMAIN_LABEL_PATTERN.fullmatch(label) for label in labels)
+            )
+        )
+
+    if not is_valid_hostname:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="사이트 도메인은 example.com 형식의 호스트명으로 입력해 주세요.",
+        )
+    return hostname
 
 
 def _hash_api_key(api_key: str) -> str:
@@ -338,7 +373,7 @@ def update_current_api_key_site_domain(
     body: SiteDomainRequest,
     current_user: dict = Depends(get_current_user),
 ):
-    """발급된 Site Key의 허용 Origin을 변경한다."""
+    """발급된 Site Key의 허용 호스트명을 변경한다."""
     site_domain = _normalize_site_domain(body.site_domain)
     conn = get_conn()
     with conn:

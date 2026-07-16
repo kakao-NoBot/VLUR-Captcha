@@ -95,7 +95,7 @@ CREATE TABLE IF NOT EXISTS api_keys (
     plan_id      BIGINT UNSIGNED NULL COMMENT '키 발급 시점의 요금제 스냅샷 — users.plan_id와 별개로 관리',
     key_name     VARCHAR(120)    NULL COMMENT '관리 화면용 마스킹 키 표시값 — API Key 원문 저장 금지',
     site_key     VARCHAR(120)    NOT NULL COMMENT '브라우저 위젯에서 사용하는 공개 Site Key',
-    site_domain  VARCHAR(255)    NULL COMMENT 'Site Key 사용을 허용한 Origin',
+    site_domain  VARCHAR(255)    NULL COMMENT 'Site Key 사용을 허용한 호스트명',
     created_at   DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
     expired_at   DATETIME        NULL,
     is_active    BOOLEAN         NOT NULL DEFAULT TRUE,

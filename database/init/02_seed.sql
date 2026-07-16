@@ -51,13 +51,19 @@ VALUES (
 -- ============================================================
 -- [4] 테스트용 API 키 (testuser)
 --   원문 키: dev-sample-key-001  (개발 환경 전용)
+--   Site Key: pk-aicap_dev_testuser_001
 -- ============================================================
-INSERT INTO api_keys (api_key_hash, user_id, plan_id, key_name, created_at, expired_at, is_active)
+INSERT INTO api_keys (
+    api_key_hash, user_id, plan_id, key_name, site_key, site_domain,
+    created_at, expired_at, is_active
+)
 VALUES (
     SHA2('dev-sample-key-001', 256),
     'testuser',
     (SELECT plan_id FROM plans WHERE plan_name = 'Basic'),
     'dev-sample••••-001',
+    'pk-aicap_dev_testuser_001',
+    'localhost',
     NOW(),
     DATE_ADD(NOW(), INTERVAL 1 YEAR),
     1

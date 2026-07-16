@@ -681,15 +681,17 @@ const doReissue = async () => {
           <input
             id="new-site-domain"
             className="pg-input"
-            type="url"
+            type="text"
             inputMode="url"
-            autoComplete="url"
-            placeholder="https://example.com"
+            autoComplete="off"
+            autoCapitalize="none"
+            spellCheck={false}
+            placeholder="example.com"
             value={siteDomain}
             onChange={(event) => setSiteDomain(event.target.value)}
             style={{ marginBottom: 12 }}
           />
-          <p style={{ margin: '-4px 0 16px', fontSize: 12, color: 'var(--muted)' }}>개발 환경은 `http://localhost:5173`처럼 포트까지 입력해 주세요.</p>
+          <p style={{ margin: '-4px 0 16px', fontSize: 12, color: 'var(--muted)' }}>프로토콜과 경로 없이 입력해 주세요. 개발 환경은 localhost를 사용할 수 있습니다.</p>
           <button className="pg-btn primary" onClick={issue} disabled={actionPending}>
             {actionPending ? '발급 중...' : '키 발급'}
           </button>
@@ -784,17 +786,20 @@ const doReissue = async () => {
         <section className="pg-card api-key-section api-key-domain-section" aria-labelledby="site-domain-heading">
           <div className="api-key-section-heading">
             <div>
-              <h4 id="site-domain-heading" style={{ margin: 0 }}>허용 사이트 도메인</h4>
+            <span className="api-key-section-label">ALLOWED DOMAIN</span>
+             <h4 id="site-domain-heading" style={{ margin: 0 }}>허용 사이트 도메인</h4>
             </div>
           </div>
           <div className="api-key-domain-form">
             <input
               id="current-site-domain"
               className="pg-input"
-              type="url"
+              type="text"
               inputMode="url"
-              autoComplete="url"
-              placeholder="https://example.com"
+              autoComplete="off"
+              autoCapitalize="none"
+              spellCheck={false}
+              placeholder="example.com"
               value={siteDomain}
               onChange={(event) => setSiteDomain(event.target.value)}
             />
@@ -805,7 +810,7 @@ const doReissue = async () => {
           ) : actionError ? (
             <p className="api-key-field-error" role="alert">{actionError}</p>
           ) : (
-            <p className="api-key-field-help">위젯을 사용할 사이트 주소를 입력해 주세요. (예: https://example.com)</p>
+            <p className="api-key-field-help">example.com처럼 프로토콜과 경로를 제외한 호스트명만 입력해 주세요.</p>
           )}
         </section>
 
