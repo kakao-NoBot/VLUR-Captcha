@@ -479,29 +479,7 @@ function ReissueConfirmModal({ onConfirm, onClose }) {
       </div>
     </div>
   );
-}
-
-/* ── API Key 재발급 완료 모달 ── */
-function ReissueDoneModal({ onClose }) {
-  return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 9999,
-      background: 'rgba(36,27,21,.45)', display: 'flex',
-      alignItems: 'center', justifyContent: 'center', padding: 24,
-    }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div style={{
-        background: 'var(--card)', borderRadius: 'var(--r)', padding: '28px 24px',
-        width: '100%', maxWidth: 320, boxShadow: 'var(--shadow-md)',
-        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
-        textAlign: 'center',
-      }}>
-        <SuccessCheckIcon />
-        <strong style={{ fontSize: 16 }}>새 Site Key와 Secret Key가 발급되었습니다.</strong>
-        <button className="pg-btn primary" style={{ width: '100%', padding: 11 }} onClick={onClose}>확인</button>
-      </div>
-    </div>
-  );
-}
+};
 
 function addMonths(dateString, months) {
   const [year, month, day] = dateString.split('-').map(Number);
@@ -563,13 +541,15 @@ function ApiKeyTab({ closePage }) {
   };
 
   const applyIssuedKey = (data) => {
-    setApiKey(data.api_key);
+  setApiKey(data.api_key);
+  if (data.plain_key) {
     setPlainKey(data.plain_key);
-    setSiteKey(data.site_key || data.api_key?.site_key || '');
-    setSiteDomain(data.api_key?.site_domain || '');
     setVisible(true);
-    setActionError('');
-  };
+  }
+  setSiteKey(data.site_key || data.api_key?.site_key || '');
+  setSiteDomain(data.api_key?.site_domain || '');
+  setActionError('');
+};
 
   const issue = async () => {
     if (!siteDomain.trim()) {
@@ -588,20 +568,43 @@ function ApiKeyTab({ closePage }) {
     }
   };
 
-  const doReissue = async () => {
-    setShowReissueConfirm(false);
-    setActionPending(true);
-    setActionError('');
-    try {
-      const { data } = await api.post('/api-keys/reissue', { site_domain: siteDomain });
-      applyIssuedKey(data);
-      setShowReissueDone(true);
-    } catch (err) {
-      setActionError(err.response?.data?.detail || 'API Key 재발급에 실패했습니다.');
-    } finally {
-      setActionPending(false);
-    }
-  };
+  const [reissueTarget, setReissueTarget] = useState(null); // 'secret' | 'site'
+
+const requestReissueSecret = () => {
+  if (!isKeyActive) {
+    setActionError('비활성화된 계정에서는 Key를 재발급할 수 없습니다.');
+    return;
+  }
+  setReissueTarget('secret');
+  setShowReissueConfirm(true);
+};
+
+const requestReissueSite = () => {
+  if (!isKeyActive) {
+    setActionError('비활성화된 계정에서는 Key를 재발급할 수 없습니다.');
+    return;
+  }
+  setReissueTarget('site');
+  setShowReissueConfirm(true);
+};
+
+const doReissue = async () => {
+  setShowReissueConfirm(false);
+  setActionPending(true);
+  setActionError('');
+  try {
+    const { data } = await api.post('/api-keys/reissue', {
+      site_domain: siteDomain,
+      target: reissueTarget, // 'secret' | 'site'
+    });
+    applyIssuedKey(data);
+    setShowReissueDone(true);
+  } catch (err) {
+    setActionError(err.response?.data?.detail || 'API Key 재발급에 실패했습니다.');
+  } finally {
+    setActionPending(false);
+  }
+};
 
   const saveSiteDomain = async () => {
     if (!siteDomain.trim()) {
@@ -619,14 +622,6 @@ function ApiKeyTab({ closePage }) {
     } finally {
       setActionPending(false);
     }
-  };
-
-  const requestReissue = () => {
-    if (!siteDomain.trim()) {
-      setActionError('재발급 전에 Site Key를 사용할 사이트 도메인을 등록해 주세요.');
-      return;
-    }
-    setShowReissueConfirm(true);
   };
 
   const goToPricing = () => {
@@ -711,26 +706,30 @@ function ApiKeyTab({ closePage }) {
 
   return (
     <>
-      <h2 className="pg-h2 mp-api-key-title" style={{ marginBottom: 20 }}>API Key 관리</h2>
-      <div className="pg-card api-key-card">
-        <div className="api-key-card-header">
-          <div>
-            <span className="api-key-overline">API CREDENTIALS</span>
-            <h3 className="api-key-card-title">연동 키 관리</h3>
-            <p>서버 검증용 Secret Key와 프론트엔드용 Site Key를 관리합니다.</p>
-          </div>
-          <span className={`api-key-status${isKeyActive ? ' active' : ' inactive'}`}>
-            <i aria-hidden="true" />{isKeyActive ? '사용 중' : '비활성화'}
-          </span>
-        </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, gap: 12 }}>
+        <h2 className="pg-h2 mp-api-key-title" style={{ margin: 0 }}>API Key 관리</h2>
+      </div>
 
-        <section className="api-key-section api-key-secret-section" aria-labelledby="secret-key-heading">
+      {!isKeyActive && (
+        <p style={{ margin: '0 0 16px', color: 'var(--bad)', fontSize: 13.5, fontWeight: 500, lineHeight: 1.5 }}>
+          이 계정은 현재 비활성화 상태라 이 키로는 CAPTCHA 요청이 처리되지 않습니다.
+        </p>
+      )}
+
+      <div className="api-key-stack">
+        <section className="pg-card api-key-section api-key-secret-section" aria-labelledby="secret-key-heading">
           <div className="api-key-section-heading">
-            <div>
-              <span className="api-key-section-label">SECRET KEY · SERVER ONLY</span>
-              <h4 id="secret-key-heading">서버 검증용 비공개 키</h4>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <h4 id="secret-key-heading" style={{ margin: 0 }}>서버 검증용 비공개 키</h4>
+              <span className={`api-key-status${isKeyActive ? ' active' : ' inactive'}`}>
+                <i aria-hidden="true" />{isKeyActive ? '사용 중' : '비활성화'}
+              </span>
             </div>
-            <span className="api-key-visibility-note">외부에 노출하지 마세요</span>
+            <div className="api-key-heading-actions">
+              <button className="pg-btn primary" onClick={requestReissueSecret} disabled={actionPending}>
+                {actionPending ? '처리 중...' : '키 재발급'}
+              </button>
+            </div>
           </div>
           <div className="api-key-key-row">
             <code>{displayedKey}</code>
@@ -748,6 +747,9 @@ function ApiKeyTab({ closePage }) {
             <button className="pg-btn" style={{ padding: '7px 12px', fontSize: 13 }} onClick={copy} disabled={!plainKey}>{copyLabel}</button>
             </div>
           </div>
+          <p className="api-key-field-help" style={{ marginTop: 12, marginBottom: 0 }}>
+            {plainKey ? '지금 원문을 복사해 보관하세요. 페이지를 벗어나면 다시 조회할 수 없습니다.' : '원문은 저장되지 않습니다. 새 원문이 필요하면 재발급해 주세요.'}
+          </p>
           <dl className="api-key-meta">
             <div><dt>발급일</dt><dd>{issuedAt}</dd></div>
             <div><dt>만료일</dt><dd>{expiresAt}</dd></div>
@@ -755,29 +757,35 @@ function ApiKeyTab({ closePage }) {
           </dl>
         </section>
 
-        <section className="api-key-section api-key-site-section" aria-labelledby="site-key-heading">
+        <section className="pg-card api-key-section api-key-site-section" aria-labelledby="site-key-heading">
           <div className="api-key-section-heading">
-            <div>
-              <span className="api-key-section-label">SITE KEY · PUBLIC</span>
-              <h4 id="site-key-heading">프론트엔드 위젯용 공개 키</h4>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <h4 id="site-key-heading" style={{ margin: 0 }}>프론트엔드 위젯용 공개 키</h4>
+              <span className={`api-key-status${isKeyActive ? ' active' : ' inactive'}`}>
+                <i aria-hidden="true" />{isKeyActive ? '사용 중' : '비활성화'}
+              </span>
             </div>
-            <span className="api-key-public-note">공개 가능</span>
+            <div className="api-key-heading-actions">
+              <button className="pg-btn primary" onClick={requestReissueSite} disabled={actionPending}>
+                {actionPending ? '처리 중...' : '키 재발급'}
+              </button>
+            </div>
           </div>
-          <div className="api-key-key-row">
+          <div className={`api-key-key-row${!siteKey ? ' is-error' : ''}`}>
             <code className={!siteKey ? 'muted' : ''}>
               {siteKey || 'Site Key 정보를 불러오지 못했습니다.'}
             </code>
-            <button className="pg-btn" onClick={copySiteKey} disabled={!siteKey}>{siteKeyCopyLabel}</button>
+            {siteKey && (
+              <button className="pg-btn" onClick={copySiteKey}>{siteKeyCopyLabel}</button>
+            )}
           </div>
         </section>
 
-        <section className="api-key-section api-key-domain-section" aria-labelledby="site-domain-heading">
+        <section className="pg-card api-key-section api-key-domain-section" aria-labelledby="site-domain-heading">
           <div className="api-key-section-heading">
             <div>
-              <span className="api-key-section-label">ALLOWED ORIGIN</span>
-              <h4 id="site-domain-heading">허용 사이트 도메인</h4>
+              <h4 id="site-domain-heading" style={{ margin: 0 }}>허용 사이트 도메인</h4>
             </div>
-            <span className="api-key-optional">1개 등록</span>
           </div>
           <div className="api-key-domain-form">
             <input
@@ -792,25 +800,23 @@ function ApiKeyTab({ closePage }) {
             />
             <button className="pg-btn" onClick={saveSiteDomain} disabled={actionPending}>저장</button>
           </div>
-          <p className="api-key-field-help">`https://example.com`처럼 프로토콜을 포함한 Origin을 입력해 주세요.</p>
-          {actionError && <p className="api-key-field-error" role="alert">{actionError}</p>}
+          {!siteDomain.trim() ? (
+            <p className="api-key-field-error" role="alert">Site Key를 사용할 사이트 도메인을 등록해 주세요.</p>
+          ) : actionError ? (
+            <p className="api-key-field-error" role="alert">{actionError}</p>
+          ) : (
+            <p className="api-key-field-help">위젯을 사용할 사이트 주소를 입력해 주세요. (예: https://example.com)</p>
+          )}
         </section>
 
-        {!isKeyActive && (
-          <p className="api-key-warning">
-            이 계정은 현재 비활성화 상태라 이 키로는 CAPTCHA 요청이 처리되지 않습니다.
-          </p>
-        )}
-        <div className="api-key-footer">
-          <p className="api-key-help">
-            {plainKey ? '지금 Secret Key 원문을 복사해 보관하세요. 페이지를 벗어나면 다시 조회할 수 없습니다.' : 'Secret Key 원문은 저장되지 않습니다. 새 원문이 필요하면 재발급해 주세요.'}
-          </p>
-          <div className="api-key-actions">
-            <button className="pg-btn primary" onClick={requestReissue} disabled={actionPending}>
-              {actionPending ? '처리 중...' : '키 재발급'}
-            </button>
-            <button className="pg-btn" onClick={() => setGuideStep(0)}>사용 가이드 보기</button>
-          </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
+          <button
+            className="pg-btn"
+            style={{ fontSize: 13, padding: '8px 14px' }}
+            onClick={() => setGuideStep(0)}
+          >
+            사용 가이드 보기
+          </button>
         </div>
       </div>
 
@@ -821,7 +827,10 @@ function ApiKeyTab({ closePage }) {
         />
       )}
       {showReissueDone && (
-        <ReissueDoneModal onClose={() => setShowReissueDone(false)} />
+        <ReissueDoneModal
+          onClose={() => setShowReissueDone(false)}
+          target={reissueTarget}
+        />
       )}
       {guideStep !== null && (
         <GuideStepModal
@@ -1843,7 +1852,6 @@ function BillingTab({ closePage, profile, onProfileRefresh }) {
   );
 }
 
-/* ── 탈퇴 확인 모달 (소셜 로그인은 확인 문구 입력) ── */
 function ConfirmDeactivateModal({ onConfirm, onClose, isSocialLogin, confirmation, onConfirmationChange, busy }) {
   const canConfirm = !isSocialLogin || confirmation === '탈퇴';
 
@@ -1859,10 +1867,14 @@ function ConfirmDeactivateModal({ onConfirm, onClose, isSocialLogin, confirmatio
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
         textAlign: 'center',
       }}>
-        <div className="deactivate-status-icon danger">
-          <svg viewBox="0 0 24 24" fill="none">
-            <path d="M12 8v5M12 16.5h.01" />
-            <path d="M10.3 3.9 2.6 17.5A1.6 1.6 0 0 0 4 20h16a1.6 1.6 0 0 0 1.4-2.5L13.7 3.9a1.6 1.6 0 0 0-2.8 0Z" />
+        <div style={{
+          width: 48, height: 48, borderRadius: '50%',
+          background: 'var(--orange)', display: 'flex',
+          alignItems: 'center', justifyContent: 'center',
+        }}>
+          <svg viewBox="0 0 24 24" fill="none" width={22} height={22}>
+            <path d="M12 8v5M12 16.5h.01" stroke="#fff" strokeWidth="2.2" strokeLinecap="round"/>
+            <path d="M10.3 3.9 2.6 17.5A1.6 1.6 0 0 0 4 20h16a1.6 1.6 0 0 0 1.4-2.5L13.7 3.9a1.6 1.6 0 0 0-2.8 0Z" stroke="#fff" strokeWidth="1.8" strokeLinejoin="round"/>
           </svg>
         </div>
         <div>
@@ -1870,46 +1882,39 @@ function ConfirmDeactivateModal({ onConfirm, onClose, isSocialLogin, confirmatio
           <span style={{ fontSize: 13, color: 'var(--muted)' }}>이 작업은 되돌릴 수 없습니다.</span>
         </div>
         {isSocialLogin && (
-          <div style={{ width: '100%', textAlign: 'left' }}>
-            <div style={{ position: 'relative' }}>
-              <input
-                id="deactivate-confirmation"
-                className="pg-input"
-                value={confirmation}
-                onChange={e => onConfirmationChange(e.target.value)}
-                aria-label="계속하려면 탈퇴를 입력하세요"
-                autoFocus
-                autoComplete="off"
-                onKeyDown={e => {
-                  if (e.key === 'Enter' && canConfirm && !busy) onConfirm();
-                }}
-              />
-              {!confirmation && (
-                <span style={{
-                  position: 'absolute',
-                  left: 16,
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  color: 'var(--muted)',
-                  fontSize: 15,
-                  pointerEvents: 'none',
-                }}>
-                  계속하려면 <strong>탈퇴</strong>를 입력하세요
-                </span>
-              )}
-            </div>
+          <div style={{ width: '100%', textAlign: 'left', position: 'relative' }}>
+            <input
+              id="deactivate-confirmation"
+              className="pg-input"
+              value={confirmation}
+              onChange={e => onConfirmationChange(e.target.value)}
+              aria-label="계속하려면 탈퇴를 입력하세요"
+              autoFocus
+              autoComplete="off"
+              onKeyDown={e => {
+                if (e.key === 'Enter' && canConfirm && !busy) onConfirm();
+              }}
+            />
+            {!confirmation && (
+              <span style={{
+                position: 'absolute',
+                left: 16,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                color: 'var(--muted)',
+                fontSize: 15,
+                pointerEvents: 'none',
+              }}>
+                계속하려면 <strong>탈퇴</strong>를 입력하세요
+              </span>
+            )}
           </div>
         )}
         <div style={{ display: 'flex', gap: 8, width: '100%', marginTop: 4 }}>
           <button className="pg-btn" style={{ flex: 1, padding: 11 }} onClick={onClose} disabled={busy}>취소</button>
           <button
-            className="pg-btn danger"
-            style={{
-              flex: 1,
-              padding: 11,
-              opacity: canConfirm && !busy ? 1 : 0.5,
-              cursor: canConfirm && !busy ? 'pointer' : 'not-allowed',
-            }}
+            className="pg-btn primary"
+            style={{ flex: 1, padding: 11, opacity: canConfirm && !busy ? 1 : 0.5, cursor: canConfirm && !busy ? 'pointer' : 'not-allowed' }}
             onClick={onConfirm}
             disabled={!canConfirm || busy}
           >{busy ? '처리 중...' : (isSocialLogin ? '탈퇴' : '확인')}</button>
@@ -2297,6 +2302,41 @@ export default function MypagePage({ openPage, closePage, initialTab = 'info', u
           />
         )}
         {activeTab === 'inquiries' && isAdmin && <InquiriesTab />}
+      </div>
+    </div>
+  );
+}
+
+function ReissueDoneModal({ onClose, target }) {
+  const message = target === 'secret'
+    ? '새 Secret Key가 발급되었습니다.'
+    : target === 'site'
+      ? '새 Site Key가 발급되었습니다.'
+      : '새 Site Key와 Secret Key가 발급되었습니다.';
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 9999,
+      background: 'rgba(36,27,21,.45)', display: 'flex',
+      alignItems: 'center', justifyContent: 'center', padding: 24,
+    }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style={{
+        background: 'var(--card)', borderRadius: 'var(--r)', padding: '28px 24px',
+        width: '100%', maxWidth: 320, boxShadow: 'var(--shadow-md)',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
+        textAlign: 'center',
+      }}>
+        <div style={{
+          width: 48, height: 48, borderRadius: '50%',
+          background: 'linear-gradient(135deg, var(--gold), var(--orange-2))', display: 'flex',
+          alignItems: 'center', justifyContent: 'center',
+        }}>
+          <svg viewBox="0 0 24 24" fill="none" width={22} height={22} aria-hidden="true">
+            <path d="M5 12.5 9.5 17 19 7" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </div>
+        <strong style={{ fontSize: 16 }}>{message}</strong>
+        <button className="pg-btn primary" style={{ width: '100%', padding: 11 }} onClick={onClose}>확인</button>
       </div>
     </div>
   );

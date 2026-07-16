@@ -208,17 +208,129 @@ def issue_api_key(
     )
 
 
+class ReissueRequest(BaseModel):
+    site_domain: str
+    target: str = "both"  # 'secret' | 'site' | 'both'
+
+
+def _reissue_secret_key(user_id: str) -> dict:
+    """Secret Key만 재발급하고 Site Key/도메인은 그대로 유지한다.
+    site_key가 전역 UNIQUE 제약이라 새 행을 만들면 기존 값과 충돌하므로,
+    기존 활성 행을 그 자리에서 UPDATE한다 (Site Key 재발급과 동일한 방식)."""
+    new_secret = _generate_api_key()
+    api_key_hash = _hash_api_key(new_secret)
+    masked_key = _mask_api_key(new_secret)
+
+    conn = get_conn()
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT u.plan_id, pl.plan_name, u.api_key_suspended
+                   FROM users u LEFT JOIN plans pl ON pl.plan_id = u.plan_id
+                   WHERE u.user_id = %s AND u.user_status = 'active' FOR UPDATE""",
+                (user_id,),
+            )
+            user = cur.fetchone()
+            if not user:
+                raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
+            if user["api_key_suspended"]:
+                raise HTTPException(status_code=403, detail="관리자에 의해 API Key 사용이 제한된 계정입니다.")
+            if not user["plan_id"]:
+                raise HTTPException(status_code=403, detail="요금제를 먼저 활성화해 주세요.")
+
+            cur.execute(
+                """SELECT api_key_id, site_key, site_domain FROM api_keys
+                   WHERE user_id = %s AND is_active = TRUE
+                     AND (expired_at IS NULL OR expired_at > NOW())
+                   ORDER BY api_key_id DESC LIMIT 1 FOR UPDATE""",
+                (user_id,),
+            )
+            active_key = cur.fetchone()
+            if not active_key:
+                raise HTTPException(status_code=404, detail="활성 API Key가 없습니다.")
+
+            # 같은 행을 그대로 UPDATE — site_key/site_domain은 건드리지 않는다
+            cur.execute(
+                """UPDATE api_keys SET api_key_hash = %s, key_name = %s, created_at = NOW()
+                   WHERE api_key_id = %s""",
+                (api_key_hash, masked_key, active_key["api_key_id"]),
+            )
+            cur.execute(
+                """SELECT api_key_id, key_name, site_key, site_domain, created_at, expired_at, is_active
+                   FROM api_keys WHERE api_key_id = %s""",
+                (active_key["api_key_id"],),
+            )
+            updated = cur.fetchone()
+        conn.commit()
+
+    return {
+        "plain_key": new_secret,
+        "site_key": active_key["site_key"],
+        "api_key": _serialize_api_key(updated),
+        "plan_name": user["plan_name"],
+    }
+
+
+def _reissue_site_key(user_id: str, site_domain: str | None) -> dict:
+    """Site Key만 재발급하고 Secret Key(해시)는 그대로 유지한다.
+    site_domain이 None이면 기존 도메인 값(빈 값 포함)을 그대로 둔다."""
+    new_site_key = _generate_site_key()
+
+    conn = get_conn()
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT api_key_id, site_domain FROM api_keys
+                   WHERE user_id = %s AND is_active = TRUE
+                   ORDER BY api_key_id DESC LIMIT 1 FOR UPDATE""",
+                (user_id,),
+            )
+            active_key = cur.fetchone()
+            if not active_key:
+                raise HTTPException(status_code=404, detail="활성 API Key가 없습니다.")
+
+            final_domain = site_domain if site_domain is not None else active_key["site_domain"]
+
+            # 같은 행을 그대로 UPDATE — Secret Key 해시는 건드리지 않는다
+            cur.execute(
+                "UPDATE api_keys SET site_key = %s, site_domain = %s WHERE api_key_id = %s",
+                (new_site_key, final_domain, active_key["api_key_id"]),
+            )
+            cur.execute(
+                """SELECT api_key_id, key_name, site_key, site_domain, created_at, expired_at, is_active
+                   FROM api_keys WHERE api_key_id = %s""",
+                (active_key["api_key_id"],),
+            )
+            updated = cur.fetchone()
+        conn.commit()
+
+    return {
+        "plain_key": None,
+        "site_key": new_site_key,
+        "api_key": _serialize_api_key(updated),
+    }
+
+
 @router.post("/api-keys/reissue", status_code=status.HTTP_201_CREATED)
 def reissue_api_key(
-    body: SiteDomainRequest,
+    body: ReissueRequest,
     current_user: dict = Depends(get_current_user),
 ):
-    """기존 활성 키를 만료시키고 새 키를 발급한다."""
-    return _issue_api_key(
-        current_user["sub"],
-        replace=True,
-        site_domain=_normalize_site_domain(body.site_domain),
-    )
+    """target에 따라 Secret Key 또는 Site Key만 선택적으로 재발급한다.
+    Site Key 재발급은 도메인 등록 여부와 무관하게 항상 허용한다."""
+    if body.target == "secret":
+        # 도메인 값은 서버 검증용 키와 무관하므로 그대로 유지
+        return _reissue_secret_key(current_user["sub"])
+    elif body.target == "site":
+        # 도메인이 비어있으면 검증하지 않고 기존 값(빈 값 포함)을 그대로 유지
+        normalized_domain = (
+            _normalize_site_domain(body.site_domain) if body.site_domain.strip() else None
+        )
+        return _reissue_site_key(current_user["sub"], normalized_domain)
+    else:
+        # 하위 호환: target 없으면 기존 동작(둘 다 재발급) — 이 경로만 도메인 필수
+        site_domain = _normalize_site_domain(body.site_domain)
+        return _issue_api_key(current_user["sub"], replace=True, site_domain=site_domain)
 
 
 @router.put("/api-keys/current/site-domain")
