@@ -67,16 +67,18 @@ export default function ApplyDonePage({ openPage, closePage }) {
             <input
               id="site-domain"
               className="pg-input"
-              type="url"
+              type="text"
               inputMode="url"
-              autoComplete="url"
-              placeholder="https://example.com"
+              autoComplete="off"
+              autoCapitalize="none"
+              spellCheck={false}
+              placeholder="example.com"
               value={siteDomain}
               onChange={(event) => setSiteDomain(event.target.value)}
               disabled={secretIssued}
               style={{ marginBottom: 10 }}
             />
-            <p style={{ margin: '0 0 12px', fontSize: 12, color: 'var(--muted)' }}>개발 환경은 `http://localhost:5173`처럼 포트까지 입력해 주세요.</p>
+            <p style={{ margin: '0 0 12px', fontSize: 12, color: 'var(--muted)' }}>프로토콜과 경로 없이 입력해 주세요. 개발 환경은 localhost를 사용할 수 있습니다.</p>
             <div className="key-box">
               <span style={{ color: siteKey ? 'inherit' : 'var(--muted)', fontSize: 13 }}>
                 {siteKey ? `sitekey: ${siteKey}` : 'sitekey: (Secret Key 발급 시 함께 생성)'}

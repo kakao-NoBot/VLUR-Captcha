@@ -252,14 +252,32 @@ def run_migrations() -> None:
                 )
                 print("[migrate] api_keys.site_key 고유 인덱스 추가")
 
-            # 9) api_keys.site_domain — Site Key를 사용할 허용 Origin.
+            # 9) api_keys.site_domain — Site Key를 사용할 허용 호스트명.
             # 기존 키의 도메인은 알 수 없으므로 NULL로 두고 사용자가 마이페이지에서 등록한다.
             if not _column_exists(cur, "api_keys", "site_domain"):
                 cur.execute(
                     """ALTER TABLE api_keys
                        ADD COLUMN site_domain VARCHAR(255) NULL
-                       COMMENT 'Site Key 사용을 허용한 Origin'
+                       COMMENT 'Site Key 사용을 허용한 호스트명'
                        AFTER site_key"""
                 )
                 print("[migrate] api_keys.site_domain 컬럼 추가")
+
+            # 초기 Origin 방식으로 저장된 값을 호스트명 형식으로 변환한다.
+            cur.execute(
+                """UPDATE api_keys
+                   SET site_domain = LOWER(
+                       SUBSTRING_INDEX(
+                           SUBSTRING_INDEX(
+                               SUBSTRING_INDEX(site_domain, '://', -1),
+                               '/', 1
+                           ),
+                           ':', 1
+                       )
+                   )
+                   WHERE site_domain LIKE 'http://%'
+                      OR site_domain LIKE 'https://%'"""
+            )
+            if cur.rowcount:
+                print("[migrate] 기존 Site Key 허용 Origin을 호스트명으로 변환")
         conn.commit()
