@@ -786,7 +786,6 @@ const doReissue = async () => {
         <section className="pg-card api-key-section api-key-domain-section" aria-labelledby="site-domain-heading">
           <div className="api-key-section-heading">
             <div>
-            <span className="api-key-section-label">ALLOWED DOMAIN</span>
              <h4 id="site-domain-heading" style={{ margin: 0 }}>허용 사이트 도메인</h4>
             </div>
           </div>
