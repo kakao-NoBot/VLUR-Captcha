@@ -4,8 +4,9 @@ database/init/*.sql은 MySQL 볼륨이 비어 있을 때만 1회 실행되므로
 이미 데이터가 있는 DB(팀원 로컬 환경 등)에는 이후의 스키마 변경이 반영되지 않는다.
 여기서 시작 시마다 검사해 누락된 변경만 적용한다. 모든 단계는 멱등이어야 한다.
 """
-from datetime import date, timedelta
+import os
 import secrets
+from datetime import date, timedelta
 
 from db import get_conn
 
@@ -14,6 +15,10 @@ PLAN_LIMITS = {
     "Basic": (100000, 100000),
     "Pro": (500000, 500000),
 }
+
+
+def _demo_seed_enabled() -> bool:
+    return os.getenv("SEED_DEMO_DATA", "").strip().lower() in {"1", "true", "yes", "on"}
 
 def _first_day_months_ago(target: date, months: int) -> date:
     """target 기준 `months`개월 전 달의 1일을 반환한다."""
@@ -192,35 +197,32 @@ def run_migrations() -> None:
                 )
                 print("[migrate] usage_daily_stats 테이블 추가")
 
-            # 6) 사용량 화면 확인용 testuser 더미 데이터.
-            # 이미 기록된 날짜는 보존해 실제 사용량을 덮어쓰지 않는다.
-            cur.executemany(
-                """INSERT IGNORE INTO usage_daily_stats
-                       (user_id, usage_date, issued_count, verified_count)
-                   SELECT %s, %s, %s, %s
-                   WHERE EXISTS (SELECT 1 FROM users WHERE user_id = %s)""",
-                [(*row, row[0]) for row in _build_testuser_usage_seed()],
-            )
-            if cur.rowcount:
-                print("[migrate] testuser 사용량 더미 데이터 추가")
+            # 6~7) 로컬 화면 확인용 testuser 더미 데이터.
+            # 기본값은 비활성화하며, 명시적으로 SEED_DEMO_DATA=true인 환경에서만 넣는다.
+            if _demo_seed_enabled():
+                # 이미 기록된 날짜는 보존해 실제 사용량을 덮어쓰지 않는다.
+                cur.executemany(
+                    """INSERT IGNORE INTO usage_daily_stats
+                           (user_id, usage_date, issued_count, verified_count)
+                       SELECT %s, %s, %s, %s
+                       WHERE EXISTS (SELECT 1 FROM users WHERE user_id = %s)""",
+                    [(*row, row[0]) for row in _build_testuser_usage_seed()],
+                )
 
-            # 7) 결제 내역 화면 확인용 testuser 더미 데이터.
-            # pg_payment_key의 고유 제약을 이용해 기존 결제 이력은 보존한다.
-            cur.executemany(
-                """INSERT IGNORE INTO payments
-                       (user_id, plan_id, amount, pg_provider, pg_provider_id,
-                        pg_payment_key, payment_status, paid_at)
-                   SELECT %s, plan_id, %s, %s, %s, %s, 'paid', %s
-                   FROM plans
-                   WHERE plan_name = %s
-                     AND EXISTS (SELECT 1 FROM users WHERE user_id = %s)""",
-                [
-                    (*row[:1], row[2], row[3], row[4], row[5], row[6], row[1], row[0])
-                    for row in _build_testuser_payment_seed()
-                ],
-            )
-            if cur.rowcount:
-                print("[migrate] testuser 결제 더미 데이터 추가")
+                # pg_payment_key의 고유 제약을 이용해 기존 결제 이력은 보존한다.
+                cur.executemany(
+                    """INSERT IGNORE INTO payments
+                           (user_id, plan_id, amount, pg_provider, pg_provider_id,
+                            pg_payment_key, payment_status, paid_at)
+                       SELECT %s, plan_id, %s, %s, %s, %s, 'paid', %s
+                       FROM plans
+                       WHERE plan_name = %s
+                         AND EXISTS (SELECT 1 FROM users WHERE user_id = %s)""",
+                    [
+                        (*row[:1], row[2], row[3], row[4], row[5], row[6], row[1], row[0])
+                        for row in _build_testuser_payment_seed()
+                    ],
+                )
 
             # 8) api_keys.site_key — 브라우저 위젯에서 사용할 공개 키.
             # 기존 키에도 Site Key를 부여해 배포 직후부터 모두 연동 가능하게 한다.
