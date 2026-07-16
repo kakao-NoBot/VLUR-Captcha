@@ -33,6 +33,12 @@ const FAQ_TREE = [
     keywords: ['결제', '카카오페이', '토스', '구독', '해지'],
   },
   {
+    q: '결제 내역은 어디서 확인하나요?',
+    a: '마이페이지 > 결제 내역 탭에서 결제일, 요금제, 결제 금액, 결제 수단, 상태를 확인할 수 있습니다.',
+    follow: ['마이페이지는 어디 있나요?', '결제는 어떻게 하나요?'],
+    keywords: ['결제 내역', '결제내역', '결제 확인', '영수증'],
+  },
+  {
     q: '토큰 유효 시간이 얼마인가요?',
     a: '검증 성공 후 발급되는 one-time token의 기본 유효 시간은 180초(3분)입니다. 재사용이 불가하며 만료 시 CAPTCHA를 다시 풀어야 합니다.',
     follow: ['CAPTCHA 유형은 몇 가지인가요?', 'React/Vue SDK 지원하나요?'],
@@ -55,6 +61,18 @@ const FAQ_TREE = [
     a: '우측 상단 [로그인] 버튼으로 로그인 후 마이페이지에서 API Key 관리, 사용량 조회 등을 확인할 수 있습니다.',
     follow: ['API Key 발급은 어떻게 하나요?', '결제는 어떻게 하나요?'],
     keywords: ['마이페이지', '로그인', '사용량'],
+  },
+  {
+    q: '비밀번호는 어떻게 변경하나요?',
+    a: '마이페이지 > 내 정보 탭에서 [비밀번호 변경] 버튼을 누르고, 현재 비밀번호 확인 후 새 비밀번호(8~16자, 영문 대소문자·숫자·특수문자 포함)를 입력하면 변경됩니다.',
+    follow: ['마이페이지는 어디 있나요?', '계정 탈퇴는 어떻게 하나요?'],
+    keywords: ['비밀번호', '비밀번호 변경', '패스워드', 'password', '비번'],
+  },
+  {
+    q: '계정 탈퇴는 어떻게 하나요?',
+    a: '마이페이지 > 계정 탈퇴 탭에서 진행할 수 있습니다. 탈퇴 시 API Key와 계정 데이터가 삭제되며 복구할 수 없어요.',
+    follow: ['마이페이지는 어디 있나요?', '비밀번호는 어떻게 변경하나요?'],
+    keywords: ['탈퇴', '계정 삭제', '회원 탈퇴', '계정 탈퇴'],
   },
 ];
 
@@ -156,6 +174,25 @@ export default function ChatbotWidget() {
     setFollows(item?.follow || QUICK_STARTS);
   };
 
+  // 자유 입력 질문에서 FAQ 키워드가 발견되면 API 호출 없이 즉시 정확한 답변을 준다.
+  // 배열 순서상 먼저 나온 항목이 아니라, 가장 길게(구체적으로) 일치하는 키워드를 가진 항목을 고른다
+  // (예: "결제 내역"이 "결제"보다 더 구체적이므로 우선 매칭되어야 함).
+  const matchFaqByKeyword = (text) => {
+    const normalized = text.toLowerCase();
+    let best = null;
+    let bestLength = 0;
+    for (const item of FAQ_TREE) {
+      for (const kw of item.keywords) {
+        const kwLower = kw.toLowerCase();
+        if (normalized.includes(kwLower) && kwLower.length > bestLength) {
+          best = item;
+          bestLength = kwLower.length;
+        }
+      }
+    }
+    return best;
+  };
+
   const handleSend = async () => {
     const q = input.trim();
     if (!q || loading) return;
@@ -164,6 +201,14 @@ export default function ChatbotWidget() {
     const withUser = [...messages, { type: 'user', text: q }];
     setMessages(withUser);
     setFollows([]);
+
+    const matched = matchFaqByKeyword(q);
+    if (matched) {
+      setMessages([...withUser, { type: 'bot', text: matched.a }]);
+      setFollows(matched.follow);
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -285,7 +330,10 @@ export default function ChatbotWidget() {
               placeholder="직접 질문하기..."
               value={input}
               onChange={e => setInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleSend()}
+              onKeyDown={e => {
+                // 한글 등 IME 조합 중 Enter는 조합 확정용이라 전송하면 안 됨 (마지막 글자가 분리되어 다시 전송되는 버그 방지)
+                if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleSend();
+              }}
               disabled={loading}
               style={{ flex: 1, padding: '9px 12px', fontSize: 13, borderRadius: 10 }}
             />
