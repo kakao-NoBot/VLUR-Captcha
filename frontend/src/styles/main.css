@@ -357,6 +357,71 @@ h1 .hl::after {
 .drop .dtxt b { display: block; font-size: 15px; }
 .drop .dtxt span { font-size: 13px; color: var(--muted); }
 .demo-foot { display: flex; align-items: center; gap: 10px; margin-top: 16px; }
+.login-captcha-backdrop {
+  position: fixed; inset: 0; z-index: 10000; display: flex; align-items: center; justify-content: center;
+  padding: 16px; background: rgba(36,27,21,.56); backdrop-filter: blur(4px);
+}
+.login-captcha-modal {
+  position: relative; display: flex; flex-direction: column; width: min(720px, 100%);
+  max-height: calc(100dvh - 32px); overflow: hidden;
+  background: #fffaf5; border: 0; border-radius: 42px; box-shadow: 0 32px 92px -32px rgba(0,0,0,.58);
+}
+.login-captcha-header {
+  display: flex; align-items: center; justify-content: space-between; flex: 0 0 auto; min-height: 88px; padding: 18px 48px;
+  background: linear-gradient(105deg, #f8d6a1, #ef8500); color: var(--ink);
+}
+.login-captcha-brand { display: inline-flex; align-items: center; gap: 8px; font-family: var(--disp); font-size: 16px; letter-spacing: -.03em; }
+.login-captcha-brand img { width: 34px; height: 34px; object-fit: contain; }
+.login-captcha-brand strong { font-weight: 800; }
+.login-captcha-brand em { color: #ff5d13; font-style: normal; }
+.login-captcha-close { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: rgba(255,255,255,.12); color: rgba(36,27,21,.72); font-size: 27px; line-height: 1; cursor: pointer; }
+.login-captcha-close:hover { background: rgba(255,255,255,.38); color: var(--ink); }
+.login-captcha-close:disabled { opacity: .45; cursor: wait; }
+.login-captcha-content { flex: 1 1 auto; overflow-y: auto; padding: 14px 48px 20px; overscroll-behavior: contain; }
+.login-captcha-intro { text-align: center; }
+.login-captcha-shield { display: grid; place-items: center; width: 40px; height: 40px; margin: 0 auto 3px; border-radius: 50%; background: #fff3e8; color: var(--orange); }
+.login-captcha-shield svg { width: 25px; height: 25px; }
+.login-captcha-intro h2 { margin: 0; font-size: 21px; letter-spacing: -.055em; line-height: 1.35; }
+.login-captcha-intro p { margin: 1px 0 0; color: var(--ink-soft); font-size: 12px; }
+.login-captcha-instruction { margin: 10px 0 9px; text-align: center; font-size: 16px; font-weight: 800; letter-spacing: -.04em; }
+.login-captcha-question { display: flex; justify-content: center; overflow: hidden; background: #fff; }
+.login-captcha-question.is-drag { margin-top: 12px; padding: 12px 16px 4px; }
+.login-captcha-question.is-identify { padding: 6px 10px; }
+.login-captcha-question img { display: block; width: 100%; height: auto; object-fit: contain; }
+.login-captcha-question.is-drag img { max-height: min(76px, 12dvh); }
+.login-captcha-question.is-identify img { max-height: min(220px, 27dvh); }
+.login-captcha-options { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; width: min(100%, 520px); margin: 12px auto 0; }
+.login-captcha-option { aspect-ratio: 1; overflow: hidden; padding: 8px; border: 1px solid #f2e5d8; border-radius: 13px; background: #fff; cursor: pointer; transition: .16s; touch-action: none; }
+.login-captcha-option:hover, .login-captcha-option.selected { border-color: var(--orange); transform: translateY(-2px); box-shadow: 0 10px 24px -17px rgba(221,84,19,.8); }
+.login-captcha-option:disabled { cursor: wait; }
+.login-captcha-option img { display: block; width: 100%; height: 100%; border-radius: 8px; object-fit: cover; }
+.login-captcha-drop { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 2px; min-height: 110px; margin: 18px auto 0; padding: 13px 15px; border: 1.5px dashed #f6a65e; border-radius: 18px; background: repeating-linear-gradient(45deg, #fffdfb, #fffdfb 13px, #fff6ee 13px, #fff6ee 26px); text-align: center; }
+.login-captcha-drop.ready { border-color: var(--orange); background: var(--peach); }
+.login-captcha-cart { display: grid; place-items: center; width: 46px; height: 42px; color: var(--orange); }
+.login-captcha-cart svg { width: 42px; height: 42px; }
+.login-captcha-drop b, .login-captcha-drop small { display: block; }
+.login-captcha-drop b { font-size: 14px; letter-spacing: -.04em; }
+.login-captcha-drop small { color: var(--muted); font-size: 11.5px; }
+.login-captcha-error { margin: 12px 0 0; color: var(--bad); text-align: center; font-size: 12.5px; }
+.login-captcha-actions { display: flex; justify-content: center; margin-top: 10px; }
+.login-captcha-new { padding: 8px 16px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink-soft); font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.login-captcha-new:hover { border-color: var(--orange); color: var(--orange); }
+.login-captcha-new:disabled { cursor: wait; opacity: .55; }
+.login-captcha-ghost { position: fixed; z-index: 10001; width: 82px; height: 72px; overflow: hidden; pointer-events: none; border: 2px solid var(--orange); border-radius: 13px; box-shadow: var(--shadow-md); transform: translate(-50%, -50%) rotate(-4deg); }
+.login-captcha-ghost img { width: 100%; height: 100%; object-fit: cover; }
+@media (max-width: 620px) {
+  .login-captcha-backdrop { padding: 10px; }
+  .login-captcha-modal { border-radius: 28px; max-height: calc(100dvh - 20px); }
+  .login-captcha-header { min-height: 72px; padding: 13px 24px; }
+  .login-captcha-brand { font-size: 14px; }
+  .login-captcha-brand img { width: 29px; height: 29px; }
+  .login-captcha-content { padding: 12px 18px 16px; }
+  .login-captcha-instruction { font-size: 14px; }
+  .login-captcha-options { gap: 8px; }
+  .login-captcha-option { padding: 5px; border-radius: 11px; }
+  .login-captcha-question.is-identify img { max-height: min(190px, 27dvh); }
+  .login-captcha-drop { min-height: 96px; margin-top: 14px; }
+}
 .demo-foot .status { font-size: 13.5px; color: var(--muted); display: flex; align-items: center; gap: 8px; min-height: 20px; }
 .demo-foot .status.ok { color: var(--ok); font-weight: 600; }
 .demo-foot .status.bad { color: var(--bad); font-weight: 600; }

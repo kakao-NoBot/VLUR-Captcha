@@ -3,7 +3,7 @@
 import hashlib
 
 import pymysql
-from fastapi import APIRouter, HTTPException, status, Depends, Query
+from fastapi import APIRouter, HTTPException, status, Depends, Query, Request
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 from auth.hash import hash_password, verify_password
@@ -11,6 +11,13 @@ from auth.jwt import create_access_token
 from auth.deps import get_current_user
 from db import get_conn
 from services import email_verify, smtp_mailer
+from services.login_captcha import (
+    clear_login_failures,
+    consume_solved_token,
+    issue_challenge,
+    record_login_failure,
+    verify_challenge_for_user,
+)
 from services.kakao_oauth import (
     KakaoConfigurationError,
     KakaoOAuthError,
@@ -37,6 +44,27 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 class LoginRequest(BaseModel):
     user_id: str
     password: str
+    captcha_token: str | None = None
+
+
+class LoginCaptchaRequest(BaseModel):
+    user_id: str
+
+
+class LoginCaptchaVerifyRequest(BaseModel):
+    user_id: str
+    challenge_id: str
+    answer: str
+
+
+def _captcha_required_error() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        detail={
+            "code": "captcha_required",
+            "message": "로그인을 계속하려면 보안 확인을 완료해 주세요.",
+        },
+    )
 
 
 class SignupRequest(BaseModel):
@@ -155,7 +183,10 @@ def _social_login_response(user: dict, provider: str):
 
 
 @router.post("/login")
-def login(body: LoginRequest):
+def login(body: LoginRequest, request: Request):
+    if not consume_solved_token(request, body.user_id, body.captcha_token):
+        raise _captcha_required_error()
+
     conn = get_conn()
     with conn:
         with conn.cursor() as cur:
@@ -173,6 +204,8 @@ def login(body: LoginRequest):
         # 탈퇴 계정은 존재 여부를 노출하지 않도록 잘못된 자격증명과 동일하게 응답
         or user["user_status"] == "deleted"
     ):
+        if record_login_failure(request, body.user_id):
+            raise _captcha_required_error()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="아이디 또는 비밀번호가 올바르지 않습니다.",
@@ -182,6 +215,8 @@ def login(body: LoginRequest):
             status_code=status.HTTP_403_FORBIDDEN,
             detail="비활성화된 계정입니다.",
         )
+
+    clear_login_failures(request, body.user_id)
 
     token = create_access_token({
         "sub": user["user_id"],
@@ -200,6 +235,35 @@ def login(body: LoginRequest):
             "created_at": user["created_at"],
         },
     }
+
+
+@router.post("/login-captcha")
+def create_login_captcha(body: LoginCaptchaRequest, request: Request):
+    """연속 로그인 실패 상태에서만 CAPTCHA 문제를 발급한다."""
+    challenge = issue_challenge(request, body.user_id)
+    if not challenge:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="현재 CAPTCHA 확인이 필요하지 않습니다.",
+        )
+    return challenge
+
+
+@router.post("/login-captcha/verify")
+def verify_login_captcha(body: LoginCaptchaVerifyRequest, request: Request):
+    """CAPTCHA를 통과하면 다음 로그인 요청 한 번에 쓸 토큰을 반환한다."""
+    captcha_token = verify_challenge_for_user(
+        request,
+        body.user_id,
+        body.challenge_id,
+        body.answer,
+    )
+    if not captcha_token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="CAPTCHA 정답이 아니거나 문제가 만료되었습니다. 새 문제를 요청해 주세요.",
+        )
+    return {"captcha_token": captcha_token, "expires_in": 300}
 
 
 @router.get("/kakao/authorize-url")
