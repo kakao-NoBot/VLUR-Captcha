@@ -1,6 +1,7 @@
 // App.jsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import './styles/main.css';
 
 // Layout components
@@ -15,7 +16,7 @@ import Footer from './components/Footer';
 import ChatbotWidget from './components/ChatbotWidget';
 import PaymentCancelModal from './components/PaymentCancelModal';
 
-// Pages (overlays)
+// Pages
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import MypagePage from './pages/MypagePage';
@@ -24,6 +25,8 @@ import GuidePage from './pages/GuidePage';
 import BoardPage from './pages/BoardPage';
 import PlanPayPage from './pages/PlanPayPage';
 import EnterprisePage from './pages/EnterprisePage';
+import ApplyPage from './pages/ApplyPage';
+import ApplyDonePage from './pages/ApplyDonePage';
 import KakaoCallbackPage from './pages/KakaoCallbackPage';
 import AdminPage from './pages/AdminPage';
 import NaverCallbackPage from './pages/NaverCallbackPage';
@@ -31,15 +34,24 @@ import GoogleCallbackPage from './pages/GoogleCallbackPage';
 import KakaoPayCallbackPage from './pages/KakaoPayCallbackPage';
 import TossPayCallbackPage from './pages/TossPayCallbackPage';
 
-// Page overlay wrapper
-function PageOverlay({ id, activePage, onBack, openPage, isLoggedIn, onLogout, user, children }) {
-  const isActive = activePage === id;
+const PAGE_PATHS = {
+  login: '/login',
+  signup: '/signup',
+  mypage: '/mypage',
+  payment: '/payment',
+  guide: '/guide',
+  board: '/board',
+  enterprise: '/enterprise',
+  admin: '/admin',
+  'plan-pay': '/plan-pay',
+  apply: '/apply',
+  'apply-done': '/apply-done',
+};
 
+function PageShell({ onBack, openPage, isLoggedIn, onLogout, user, children }) {
   useEffect(() => {
-    if (isActive) window.scrollTo(0, 0);
-  }, [isActive]);
-
-  if (!isActive) return null;
+    window.scrollTo(0, 0);
+  }, []);
 
   return (
     <div className="page-overlay active">
@@ -49,11 +61,32 @@ function PageOverlay({ id, activePage, onBack, openPage, isLoggedIn, onLogout, u
   );
 }
 
+function ProtectedRoute({ allowed, children }) {
+  return allowed ? children : <Navigate to="/login" replace />;
+}
+
+function HomePage({ openPage, isLoggedIn, onLogout, user, openPlanPayment, planRefreshKey }) {
+  return (
+    <>
+      <Nav openPage={openPage} isLoggedIn={isLoggedIn} onLogout={onLogout} user={user} />
+      <a id="top" />
+      <Hero openPage={openPage} />
+      <Compare />
+      <Metrics />
+      <Flow />
+      <Cases />
+      <Pricing openPage={openPage} openPlanPayment={openPlanPayment} isLoggedIn={isLoggedIn} planRefreshKey={planRefreshKey} />
+      <GuidePage openPage={openPage} />
+      <Footer />
+      <ChatbotWidget />
+    </>
+  );
+}
+
 function readCompletedPayment() {
   try {
     const stored = sessionStorage.getItem('completed_payment');
-    if (!stored) return null;
-    return JSON.parse(stored);
+    return stored ? JSON.parse(stored) : null;
   } catch {
     return null;
   }
@@ -62,14 +95,13 @@ function readCompletedPayment() {
 function readCancelledPayment() {
   try {
     const stored = sessionStorage.getItem('cancelled_payment');
-    if (!stored) return null;
-    return JSON.parse(stored);
+    return stored ? JSON.parse(stored) : null;
   } catch {
     return null;
   }
 }
 
-// 소셜 로그인 취소 후 돌아온 경우 — 로그인 창을 자동으로 다시 연다
+// 소셜 로그인 취소 후 돌아온 경우 — 로그인 페이지를 자동으로 다시 연다.
 function readReopenLogin() {
   try {
     if (!sessionStorage.getItem('reopen_login')) return false;
@@ -81,16 +113,12 @@ function readReopenLogin() {
 }
 
 export default function App() {
-  const currentPath = window.location.pathname;
-  const isOAuthCallback = currentPath.startsWith('/auth/') && currentPath.endsWith('/callback');
+  const navigate = useNavigate();
+  const location = useLocation();
   const [completedPayment] = useState(readCompletedPayment);
   const [cancelledPayment] = useState(readCancelledPayment);
+  const [reopenLogin] = useState(readReopenLogin);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(Boolean(cancelledPayment));
-  const [page, setPage] = useState(() => {
-    if (completedPayment || cancelledPayment) return 'plan-pay';
-    if (readReopenLogin()) return 'login';   // 소셜 로그인 취소 복귀
-    return null;
-  });
   const [planPayArgs, setPlanPayArgs] = useState({
     plan: completedPayment?.plan_name || cancelledPayment?.plan_name || 'Pro',
     completed: Boolean(completedPayment),
@@ -103,55 +131,62 @@ export default function App() {
   });
   const [signupKey, setSignupKey] = useState(0);
   const [boardKey, setBoardKey] = useState(0);
-  // 비로그인 상태로 결제 진입 시 로그인 후 이어갈 요금제
   const [pendingPlan, setPendingPlan] = useState(null);
-  // 결제/요금제 변경 완료 후 홈으로 돌아올 때마다 Pricing 섹션의 내 요금제 표시를 갱신
   const [planRefreshKey, setPlanRefreshKey] = useState(0);
 
   useEffect(() => {
-    if (completedPayment) {
-      sessionStorage.removeItem('completed_payment');
-    }
+    if (completedPayment) sessionStorage.removeItem('completed_payment');
   }, [completedPayment]);
 
   useEffect(() => {
     if (cancelledPayment) sessionStorage.removeItem('cancelled_payment');
   }, [cancelledPayment]);
 
+  // 외부 결제·소셜 로그인에서 루트로 돌아온 직후에도 이전 흐름을 URL로 복원한다.
+  useEffect(() => {
+    if (location.pathname !== '/') return;
+    if (completedPayment || cancelledPayment) {
+      navigate('/plan-pay', { replace: true });
+    } else if (reopenLogin) {
+      navigate('/login', { replace: true });
+    }
+  }, [cancelledPayment, completedPayment, location.pathname, navigate, reopenLogin]);
+
   const openPage = (id) => {
+    const targetPath = PAGE_PATHS[id];
+    if (!targetPath) return;
+
     if (id === 'admin' && currentUser?.role !== 'admin') {
-      setPage('login');
+      navigate('/login');
       return;
     }
     if (id === 'mypage') {
       setMypageTab('info');
-      setMypageKey(k => k + 1);
+      setMypageKey((key) => key + 1);
     }
-    if (id === 'signup') {
-      setSignupKey(k => k + 1);
-    }
-    if (id === 'board') {
-      setBoardKey(k => k + 1);
-    }
-    setPage(id);
+    if (id === 'signup') setSignupKey((key) => key + 1);
+    if (id === 'board') setBoardKey((key) => key + 1);
+    navigate(targetPath);
   };
 
   const closePage = () => {
     setPendingPlan(null);
-    setPage(null);
-    setPlanRefreshKey(k => k + 1);
+    setPlanRefreshKey((key) => key + 1);
+    navigate('/');
   };
+
   const handleLogin = (user) => {
     setIsLoggedIn(true);
     setCurrentUser(user);
     if (pendingPlan) {
       setPlanPayArgs({ plan: pendingPlan, completed: false });
       setPendingPlan(null);
-      setPage('plan-pay');
+      navigate('/plan-pay', { replace: true });
       return;
     }
     closePage();
   };
+
   const handleLogout = () => {
     localStorage.removeItem('access_token');
     localStorage.removeItem('user');
@@ -159,6 +194,7 @@ export default function App() {
     setCurrentUser(null);
     closePage();
   };
+
   const handleUserUpdate = (user) => {
     setCurrentUser(user);
     localStorage.setItem('user', JSON.stringify(user));
@@ -167,48 +203,23 @@ export default function App() {
   const openPlanPayment = (plan) => {
     if (!isLoggedIn) {
       setPendingPlan(plan);
-      setPage('login');
+      navigate('/login');
       return;
     }
     setPlanPayArgs({ plan, completed: false });
-    setPage('plan-pay');
+    navigate('/plan-pay');
   };
 
   const openMypageOnApiKey = () => {
-  setMypageTab('apikey');
-  setMypageKey(k => k + 1);
-  setPage('mypage');
-};
+    setMypageTab('apikey');
+    setMypageKey((key) => key + 1);
+    navigate('/mypage');
+  };
 
-  // 오버레이가 열려 있을 때 최상위 스크롤까지 잠가 배경 페이지 노출 방지
-  useEffect(() => {
-    if (!page) return undefined;
-
-    const root = document.documentElement;
-    const body = document.body;
-    const previousRootOverflow = root.style.overflow;
-    const previousRootOverscroll = root.style.overscrollBehavior;
-    const previousBodyOverflow = body.style.overflow;
-    const previousBodyOverscroll = body.style.overscrollBehavior;
-
-    root.style.overflow = 'hidden';
-    root.style.overscrollBehavior = 'none';
-    body.style.overflow = 'hidden';
-    body.style.overscrollBehavior = 'none';
-
-    return () => {
-      root.style.overflow = previousRootOverflow;
-      root.style.overscrollBehavior = previousRootOverscroll;
-      body.style.overflow = previousBodyOverflow;
-      body.style.overscrollBehavior = previousBodyOverscroll;
-    };
-  }, [page]);
-
-  // 스크롤 진입 시 요소 표시 (IntersectionObserver) — 반복 재생
+  // 홈이 다시 렌더링될 때 스크롤 애니메이션 대상을 새로 연결한다.
   useEffect(() => {
     const els = document.querySelectorAll('[data-reveal]');
-    if (!els.length) return;
-    // data-reveal-delay 속성으로 JS 타이머를 제어해 빠른 스크롤에서도 순차 등장 보장
+    if (!els.length) return undefined;
     const timers = new Map();
     const observer = new IntersectionObserver(
       (entries) => {
@@ -221,7 +232,6 @@ export default function App() {
             }, delay);
             timers.set(entry.target, id);
           } else if (entry.boundingClientRect.top > 0) {
-            // 뷰포트 아래로 나간 경우(위로 스크롤)만 리셋 → 예약 타이머도 취소
             clearTimeout(timers.get(entry.target));
             timers.delete(entry.target);
             entry.target.classList.remove('is-visible');
@@ -230,86 +240,65 @@ export default function App() {
       },
       { threshold: 0.15 }
     );
-    els.forEach((el) => observer.observe(el));
+    els.forEach((element) => observer.observe(element));
     return () => { observer.disconnect(); timers.forEach(clearTimeout); };
-  }, [isOAuthCallback]);
+  }, [location.pathname]);
 
-  if (currentPath === '/auth/kakao/callback') {
-    return <KakaoCallbackPage onLogin={handleLogin} />;
-  }
-  if (currentPath === '/auth/naver/callback') {
-    return <NaverCallbackPage onLogin={handleLogin} />;
-  }
-  if (currentPath === '/auth/google/callback') {
-    return <GoogleCallbackPage onLogin={handleLogin} />;
-  }
-  if (currentPath.startsWith('/payments/kakao/')) {
-    return <KakaoPayCallbackPage />;
-  }
-  if (currentPath.startsWith('/payments/toss/')) {
-    return <TossPayCallbackPage />;
-  }
+  const pageShellProps = {
+    onBack: closePage,
+    openPage,
+    isLoggedIn,
+    onLogout: handleLogout,
+    user: currentUser,
+  };
 
   return (
     <>
-      {/* Main page */}
-      <Nav openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} user={currentUser} />
-      <a id="top"/>
-      <Hero openPage={openPage} />
-      <Compare />
-      <Metrics />
-      <Flow />
-<Cases />
-      <Pricing openPage={openPage} openPlanPayment={openPlanPayment} isLoggedIn={isLoggedIn} planRefreshKey={planRefreshKey} />
-      <GuidePage openPage={openPage} />
-      <Footer />
+      <Routes>
+        <Route
+          path="/"
+          element={(
+            <HomePage
+              openPage={openPage}
+              isLoggedIn={isLoggedIn}
+              onLogout={handleLogout}
+              user={currentUser}
+              openPlanPayment={openPlanPayment}
+              planRefreshKey={planRefreshKey}
+            />
+          )}
+        />
+        <Route path="/auth/kakao/callback" element={<KakaoCallbackPage onLogin={handleLogin} />} />
+        <Route path="/auth/naver/callback" element={<NaverCallbackPage onLogin={handleLogin} />} />
+        <Route path="/auth/google/callback" element={<GoogleCallbackPage onLogin={handleLogin} />} />
+        <Route path="/payments/kakao/*" element={<KakaoPayCallbackPage />} />
+        <Route path="/payments/toss/*" element={<TossPayCallbackPage />} />
 
-      {/* Chatbot FAB + Widget */}
-      <ChatbotWidget />
-
-      {/* ── Page Overlays ── */}
-
-      {/* Login */}
-      <PageOverlay id="login" activePage={page} onBack={closePage} openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} user={currentUser}>
-        <LoginPage openPage={openPage} closePage={closePage} onLogin={handleLogin} />
-      </PageOverlay>
-
-      {/* Signup */}
-      <PageOverlay id="signup" activePage={page} onBack={closePage} openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout}>
-        <SignupPage key={signupKey} openPage={openPage} onLogin={handleLogin} />
-      </PageOverlay>
-
-      {/* Mypage */}
-      <PageOverlay id="mypage" activePage={page} onBack={closePage} openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} user={currentUser}>
-        <div className="po-body mp-po-body">
-          <MypagePage key={mypageKey} openPage={openPage} closePage={closePage} initialTab={mypageTab} user={currentUser} onUserUpdate={handleUserUpdate} onLogout={handleLogout} />
-        </div>
-      </PageOverlay>
-
-      {/* Payment (ticketing) */}
-      <PageOverlay id="payment" activePage={page} onBack={closePage} openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} user={currentUser}>
-        <PaymentPage closePage={closePage} />
-      </PageOverlay>
-
-      {/* Board */}
-      <PageOverlay id="board" activePage={page} onBack={closePage} openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} user={currentUser}>
-        <BoardPage key={boardKey} user={currentUser} />
-      </PageOverlay>
-
-      {/* Enterprise Inquiry */}
-      <PageOverlay id="enterprise" activePage={page} onBack={closePage} openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} user={currentUser}>
-        <EnterprisePage closePage={closePage} />
-      </PageOverlay>
-
-      {/* Admin */}
-      <PageOverlay id="admin" activePage={page} onBack={closePage} openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} user={currentUser}>
-        <AdminPage />
-      </PageOverlay>
-
-      {/* Plan Payment */}
-      <PageOverlay id="plan-pay" activePage={page} onBack={closePage} openPage={openPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} user={currentUser}>
-        <PlanPayPage planName={planPayArgs.plan} initialSuccess={planPayArgs.completed} closePage={closePage} openPage={openPage} openMypageOnApiKey={openMypageOnApiKey} user={currentUser} />
-      </PageOverlay>
+        <Route path="/login" element={<PageShell {...pageShellProps}><LoginPage openPage={openPage} closePage={closePage} onLogin={handleLogin} /></PageShell>} />
+        <Route path="/signup" element={<PageShell {...pageShellProps}><SignupPage key={signupKey} openPage={openPage} onLogin={handleLogin} /></PageShell>} />
+        <Route path="/guide" element={<PageShell {...pageShellProps}><GuidePage openPage={openPage} /></PageShell>} />
+        <Route path="/board" element={<PageShell {...pageShellProps}><BoardPage key={boardKey} user={currentUser} /></PageShell>} />
+        <Route path="/board/notice/:postId" element={<PageShell {...pageShellProps}><BoardPage key={boardKey} user={currentUser} detailType="notice" /></PageShell>} />
+        <Route path="/board/research/:postId" element={<PageShell {...pageShellProps}><BoardPage key={boardKey} user={currentUser} detailType="research" /></PageShell>} />
+        <Route path="/board/:boardType/:postId" element={<Navigate to="/board" replace />} />
+        <Route path="/enterprise" element={<PageShell {...pageShellProps}><EnterprisePage closePage={closePage} /></PageShell>} />
+        <Route path="/apply" element={<PageShell {...pageShellProps}><ApplyPage openPage={openPage} /></PageShell>} />
+        <Route path="/apply-done" element={<ProtectedRoute allowed={isLoggedIn}><PageShell {...pageShellProps}><ApplyDonePage openPage={openPage} closePage={closePage} /></PageShell></ProtectedRoute>} />
+        <Route path="/payment" element={<PageShell {...pageShellProps}><PaymentPage closePage={closePage} /></PageShell>} />
+        <Route
+          path="/mypage"
+          element={<ProtectedRoute allowed={isLoggedIn}><PageShell {...pageShellProps}><div className="po-body mp-po-body"><MypagePage key={mypageKey} openPage={openPage} closePage={closePage} initialTab={mypageTab} user={currentUser} onUserUpdate={handleUserUpdate} onLogout={handleLogout} /></div></PageShell></ProtectedRoute>}
+        />
+        <Route
+          path="/admin"
+          element={<ProtectedRoute allowed={currentUser?.role === 'admin'}><PageShell {...pageShellProps}><AdminPage /></PageShell></ProtectedRoute>}
+        />
+        <Route
+          path="/plan-pay"
+          element={<ProtectedRoute allowed={isLoggedIn}><PageShell {...pageShellProps}><PlanPayPage planName={planPayArgs.plan} initialSuccess={planPayArgs.completed} closePage={closePage} openPage={openPage} openMypageOnApiKey={openMypageOnApiKey} user={currentUser} /></PageShell></ProtectedRoute>}
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
 
       <PaymentCancelModal
         open={isCancelModalOpen}

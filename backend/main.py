@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
-from db import get_conn
+from db import get_conn, wait_for_database
 from routers import auth as auth_router
 from routers import contact as contact_router
 from routers import payments as payments_router
@@ -21,6 +21,7 @@ app = FastAPI()
 @app.on_event("startup")
 def apply_migrations():
     """init SQL은 빈 볼륨에서만 실행되므로, 기존 DB에도 스키마 변경이 반영되게 시작 시 보정"""
+    wait_for_database()
     run_migrations()
 
 app.add_middleware(

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import api from '../api/axios';
 
 const PAGE_SIZE = 10;
@@ -10,6 +11,20 @@ const BOARD_TABS = [
 ];
 
 const TAB_LABELS = Object.fromEntries(BOARD_TABS);
+
+const DETAIL_ROUTE_TYPES = {
+  notice: (post) => post.type === 'notice' || post.type === 'general',
+  research: (post) => post.type === 'research',
+};
+
+function getPostPath(post) {
+  const section = post.type === 'research' ? 'research' : 'notice';
+  return `/board/${section}/${post.id}`;
+}
+
+function getBoardListPath(tab) {
+  return tab === 'notice' ? '/board' : `/board?tab=${tab}`;
+}
 
 /* 페이지네이션 컴포넌트 */
 function Pagination({ total, page, pageSize, onChange }) {
@@ -366,12 +381,24 @@ function BoardSidebar({ tab, onChange }) {
   );
 }
 
-export default function BoardPage({ user = null }) {
+export default function BoardPage({ user = null, detailType = null }) {
+  const navigate = useNavigate();
+  const { postId: routePostId } = useParams();
+  const routeBoardType = detailType;
+  const [searchParams] = useSearchParams();
   const isAdmin = user?.role === 'admin';
-  const [tab, setTab] = useState('notice');
+  const hasDetailRoute = (routeBoardType === 'notice' || routeBoardType === 'research') && Boolean(routePostId);
+  const detailPostId = Number(routePostId);
+  const listTabFromPath = BOARD_TABS.some(([id]) => id === searchParams.get('tab'))
+    ? searchParams.get('tab')
+    : 'notice';
+  const [tab, setTab] = useState(listTabFromPath);
   const [noticePage, setNoticePage] = useState(1);
   const [posts, setPosts] = useState([]);
   const [selectedPost, setSelectedPost] = useState(null);
+  const [isLoadingPosts, setIsLoadingPosts] = useState(true);
+  const [detailError, setDetailError] = useState('');
+  const openedDetailRouteRef = useRef(null);
   const [isWriting, setIsWriting] = useState(false);
   const [editingPost, setEditingPost] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -383,6 +410,7 @@ export default function BoardPage({ user = null }) {
 
   // DB에서 게시글 전체 로드 (공지/일반/FAQ/연구)
   const loadNotices = async () => {
+    setIsLoadingPosts(true);
     try {
       const { data } = await api.get('/boards');
       setPosts((data.notices || []).map(n => ({
@@ -396,12 +424,18 @@ export default function BoardPage({ user = null }) {
       })));
     } catch {
       setPosts([]);
+    } finally {
+      setIsLoadingPosts(false);
     }
   };
 
   useEffect(() => {
     loadNotices();
   }, []);
+
+  useEffect(() => {
+    if (!hasDetailRoute) setTab(listTabFromPath);
+  }, [hasDetailRoute, listTabFromPath]);
 
   // 공지(notice)는 목록 상단 고정, 그 외에는 최신순
   const notices = posts
@@ -424,13 +458,59 @@ export default function BoardPage({ user = null }) {
       .map((post, index) => [post.id, index + 1])
   );
   // 상세 보기의 이전/다음 글은 해당 글이 속한 탭 목록 기준
-  const detailList = selectedPost?.type === 'research' ? researchPosts : notices;
+  const detailList = selectedPost?.type === 'faq'
+    ? faqPosts
+    : selectedPost?.type === 'research'
+      ? researchPosts
+      : notices;
+
+  // 상세 URL로 직접 진입했을 때도 목록 데이터에서 해당 글을 찾아 표시한다.
+  // 같은 URL로 인한 재렌더링에서 조회수가 중복 증가하지 않도록 마지막 경로를 기억한다.
+  useEffect(() => {
+    if (!hasDetailRoute) {
+      openedDetailRouteRef.current = null;
+      setDetailError('');
+      setSelectedPost(null);
+      return;
+    }
+    if (isLoadingPosts) return;
+
+    const matchesType = DETAIL_ROUTE_TYPES[routeBoardType];
+    const post = Number.isInteger(detailPostId) && matchesType
+      ? posts.find((item) => item.id === detailPostId && matchesType(item))
+      : null;
+
+    if (!post) {
+      setSelectedPost(null);
+      setDetailError('요청한 게시글을 찾을 수 없습니다.');
+      return;
+    }
+
+    setDetailError('');
+    setTab(post.type === 'faq' ? 'faq' : post.type === 'research' ? 'research' : 'notice');
+    setSelectedPost(post);
+
+    const routeKey = `${routeBoardType}/${detailPostId}`;
+    if (openedDetailRouteRef.current === routeKey) return;
+    openedDetailRouteRef.current = routeKey;
+
+    api.post(`/boards/${post.id}/view`)
+      .then(({ data }) => {
+        setPosts((current) => current.map((item) => (
+          item.id === post.id ? { ...item, viewCount: data.view_count } : item
+        )));
+        setSelectedPost((current) => (
+          current?.id === post.id ? { ...current, viewCount: data.view_count } : current
+        ));
+      })
+      .catch(() => { /* 조회수 반영 실패는 열람을 막지 않음 */ });
+  }, [detailPostId, hasDetailRoute, isLoadingPosts, posts, routeBoardType]);
 
   useEffect(() => {
-    if (selectedPost || isWriting) {
+    if (selectedPost || isWriting || hasDetailRoute) {
       document.querySelector('.page-overlay.active')?.scrollTo({ top: 0, behavior: 'smooth' });
     }
-  }, [selectedPost, isWriting]);
+  }, [hasDetailRoute, isWriting, selectedPost]);
 
   /* 페이지네이션 (공지사항·연구 탭 공용, 탭 전환 시 1페이지로 초기화) */
   const noticeSlice = notices.slice((noticePage - 1) * PAGE_SIZE, noticePage * PAGE_SIZE);
@@ -446,6 +526,7 @@ export default function BoardPage({ user = null }) {
     setIsWriting(false);
     setEditingPost(null);
     setSubmitError('');
+    navigate(getBoardListPath(nextTab));
   };
 
   // 폼 제출 → 바로 저장하지 않고 확인 모달을 띄움
@@ -470,6 +551,7 @@ export default function BoardPage({ user = null }) {
       setIsWriting(false);
       setSelectedPost(null);
       setNoticePage(1);
+      navigate(getBoardListPath(tab));
     } catch (err) {
       setSubmitError(err.response?.data?.detail || '저장 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
     } finally {
@@ -491,6 +573,7 @@ export default function BoardPage({ user = null }) {
       setSelectedPost(null);
       setDeleteTarget(null);
       setNoticePage(1);
+      navigate(getBoardListPath(tab));
     } catch (err) {
       setDeleteError(err.response?.data?.detail || '삭제 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
     } finally {
@@ -498,15 +581,18 @@ export default function BoardPage({ user = null }) {
     }
   };
 
-  // 상세보기 열기: 조회수 +1 후 화면·목록에 반영
+  // 공지사항·연구 글만 고유 URL로 이동한다. FAQ는 기존의 목록 내 아코디언을 유지한다.
   const openPost = (post) => {
-    setSelectedPost(post);
-    api.post(`/boards/${post.id}/view`)
-      .then(({ data }) => {
-        setPosts((prev) => prev.map((p) => (p.id === post.id ? { ...p, viewCount: data.view_count } : p)));
-        setSelectedPost((prev) => (prev && prev.id === post.id ? { ...prev, viewCount: data.view_count } : prev));
-      })
-      .catch(() => { /* 조회수 반영 실패는 열람을 막지 않음 */ });
+    if (post.type === 'notice' || post.type === 'general' || post.type === 'research') {
+      navigate(getPostPath(post));
+      return;
+    }
+  };
+
+  const closePostDetail = () => {
+    const listTab = selectedPost?.type === 'research' ? 'research' : 'notice';
+    setSelectedPost(null);
+    if (hasDetailRoute) navigate(getBoardListPath(listTab));
   };
 
   const openDeleteModal = (post) => {
@@ -519,7 +605,7 @@ export default function BoardPage({ user = null }) {
     setDeleteError('');
   };
 
-  if (selectedPost || isWriting) {
+  if (selectedPost || isWriting || hasDetailRoute) {
     return (
       <>
         <div className="board-page-shell">
@@ -542,17 +628,28 @@ export default function BoardPage({ user = null }) {
                   onSubmit={requestSave}
                   onSectionChange={(section) => { setTab(section); setNoticePage(1); }}
                 />
-              ) : (
+              ) : selectedPost ? (
                 <BoardDetail
                   post={selectedPost}
                   previousPost={previousPost}
                   nextPost={nextPost}
-                  onBack={() => setSelectedPost(null)}
+                  onBack={closePostDetail}
                   onSelectPost={openPost}
                   onEdit={() => { setEditingPost(selectedPost); setIsWriting(true); }}
                   onDelete={() => openDeleteModal(selectedPost)}
                   canEdit={isAdmin}
                 />
+              ) : (
+                <div className="pg-card" style={{ marginTop: 28, textAlign: 'center' }}>
+                  <p style={{ margin: 0, color: detailError ? '#c0392b' : 'var(--ink-soft)' }}>
+                    {detailError || '게시글을 불러오는 중입니다.'}
+                  </p>
+                  {detailError && (
+                    <button type="button" className="pg-btn" style={{ marginTop: 16 }} onClick={() => navigate('/board')}>
+                      목록으로 돌아가기
+                    </button>
+                  )}
+                </div>
               )}
             </section>
           </div>
