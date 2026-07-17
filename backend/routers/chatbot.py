@@ -1,8 +1,10 @@
 import os
+from typing import Literal
 
 import httpx
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, HTTPException, Request, status
+from pydantic import BaseModel, Field
+from services.chatbot_rate_limit import consume_request
 
 router = APIRouter(tags=["chatbot"])
 
@@ -33,16 +35,25 @@ SYSTEM_PROMPT = """당신은 'VLUR CAPTCHA' 서비스의 고객 지원 챗봇입
 
 
 class ChatMessage(BaseModel):
-    role: str  # 'user' | 'assistant'
-    content: str
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=1000)
 
 
 class ChatRequest(BaseModel):
-    messages: list[ChatMessage]
+    messages: list[ChatMessage] = Field(min_length=1, max_length=10)
+
+
+def _client_ip(request: Request) -> str:
+    """프록시 헤더를 명시적으로 신뢰할 때만 실제 클라이언트 IP를 사용한다."""
+    if os.getenv("TRUST_PROXY_HEADERS") == "1":
+        forwarded_for = request.headers.get("x-forwarded-for", "")
+        if forwarded_for:
+            return forwarded_for.split(",", 1)[0].strip()
+    return request.client.host if request.client else "unknown"
 
 
 @router.post("/chatbot")
-async def chat(body: ChatRequest):
+async def chat(body: ChatRequest, request: Request):
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         raise HTTPException(status_code=503, detail="챗봇 서비스가 아직 설정되지 않았습니다.")
@@ -55,6 +66,18 @@ async def chat(body: ChatRequest):
     ]
     if not history:
         raise HTTPException(status_code=400, detail="메시지가 비어 있습니다.")
+
+    retry_after = consume_request(_client_ip(request))
+    if retry_after is not None:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail={
+                "code": "chatbot_rate_limited",
+                "message": f"챗봇 요청이 많습니다. {retry_after}초 후 다시 시도해 주세요.",
+                "retry_after": retry_after,
+            },
+            headers={"Retry-After": str(retry_after)},
+        )
 
     async with httpx.AsyncClient(timeout=30.0) as client:
         try:

@@ -212,7 +212,7 @@ export default function ChatbotWidget() {
     setLoading(true);
 
     try {
-      const history = withUser.map(m => ({
+      const history = withUser.slice(-10).map(m => ({
         role: m.type === 'user' ? 'user' : 'assistant',
         content: m.text,
       }));
@@ -223,8 +223,10 @@ export default function ChatbotWidget() {
         ...withUser,
         {
           type: 'bot',
-          text: err.response?.data?.detail
-            || '죄송해요, 지금은 답변을 드리기 어려워요. 잠시 후 다시 시도하거나 아래 자주 묻는 질문을 이용해 주세요.',
+          text: typeof err.response?.data?.detail === 'string'
+            ? err.response.data.detail
+            : err.response?.data?.detail?.message
+              || '죄송해요, 지금은 답변을 드리기 어려워요. 잠시 후 다시 시도하거나 아래 자주 묻는 질문을 이용해 주세요.',
         },
       ]);
     } finally {
