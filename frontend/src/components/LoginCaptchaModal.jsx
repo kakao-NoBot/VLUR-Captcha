@@ -55,7 +55,7 @@ const OPTION_LABELS = {
   airplane: '비행기', car: '자동차', bicycle: '자전거', apple: '사과',
 };
 
-export default function LoginCaptchaModal({ challenge, busy, error, onVerify, onRefresh, onClose }) {
+export default function LoginCaptchaModal({ challenge, busy, error, onVerify, onClose }) {
   const [selected, setSelected] = useState(null);
   const [dragging, setDragging] = useState(null);
   const dropRef = useRef(null);
@@ -166,12 +166,6 @@ export default function LoginCaptchaModal({ challenge, busy, error, onVerify, on
           ) : null}
 
           {error && <p className="login-captcha-error" role="alert">{error}</p>}
-
-          <div className="login-captcha-actions">
-            <button type="button" className="login-captcha-new" onClick={onRefresh} disabled={busy}>
-              {busy ? '확인 중...' : '새로운 문제'}
-            </button>
-          </div>
         </div>
 
         {dragging && (
