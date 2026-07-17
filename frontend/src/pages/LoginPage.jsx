@@ -6,6 +6,7 @@ import ClearableInput from '../components/ClearableInput';
 import api from '../api/axios';
 import PasswordInput from '../components/PasswordInput';
 import EmailInput from '../components/EmailInput';
+import LoginCaptchaModal from '../components/LoginCaptchaModal';
 
 /* ── 인증코드 재발송 타이머 (3분) ── */
 const PASSWORD_RESET_CODE_TTL = 180; // 초 단위 (3분)
@@ -380,6 +381,9 @@ export default function LoginPage({ openPage, closePage, onLogin }) {
   const [attempted, setAttempted] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [captchaChallenge, setCaptchaChallenge] = useState(null);
+  const [captchaError, setCaptchaError] = useState('');
+  const [captchaBusy, setCaptchaBusy] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem('auto_login');
@@ -397,7 +401,22 @@ export default function LoginPage({ openPage, closePage, onLogin }) {
   const isValid = loginId.trim() && password.trim();
   const errorStyle = { border: '1.5px solid #c0392b' };
 
-  const handleLogin = async () => {
+  const requestLoginCaptcha = async () => {
+    if (!loginId.trim()) return;
+    setCaptchaBusy(true);
+    setCaptchaError('');
+    try {
+      const { data } = await api.post('/auth/login-captcha', { user_id: loginId.trim() });
+      setCaptchaChallenge(data);
+    } catch (err) {
+      setCaptchaChallenge(null);
+      setError(err.response?.data?.detail || '보안 확인 문제를 불러오지 못했습니다.');
+    } finally {
+      setCaptchaBusy(false);
+    }
+  };
+
+  const handleLogin = async (captchaToken = null) => {
     if (!isValid) { setAttempted(true); return; }
     setLoading(true);
     setError('');
@@ -405,6 +424,7 @@ export default function LoginPage({ openPage, closePage, onLogin }) {
       const { data } = await api.post('/auth/login', {
         user_id: loginId.trim(),
         password,
+        ...(captchaToken ? { captcha_token: captchaToken } : {}),
       });
       localStorage.setItem('access_token', data.access_token);
       localStorage.setItem('user', JSON.stringify(data.user));
@@ -415,9 +435,33 @@ export default function LoginPage({ openPage, closePage, onLogin }) {
       }
       onLogin(data.user);
     } catch (err) {
+      if (err.response?.data?.detail?.code === 'captcha_required') {
+        setError('');
+        requestLoginCaptcha();
+        return;
+      }
       setError(err.response?.data?.detail || '로그인 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const verifyLoginCaptcha = async (answer) => {
+    if (!captchaChallenge) return;
+    setCaptchaBusy(true);
+    setCaptchaError('');
+    try {
+      const { data } = await api.post('/auth/login-captcha/verify', {
+        user_id: loginId.trim(),
+        challenge_id: captchaChallenge.challenge_id,
+        answer,
+      });
+      setCaptchaChallenge(null);
+      await handleLogin(data.captcha_token);
+    } catch (err) {
+      setCaptchaError(err.response?.data?.detail || 'CAPTCHA 확인에 실패했습니다.');
+    } finally {
+      setCaptchaBusy(false);
     }
   };
 
@@ -557,7 +601,6 @@ export default function LoginPage({ openPage, closePage, onLogin }) {
               cursor: isValid && !loading ? 'pointer' : 'not-allowed',
               opacity: loading ? 0.7 : 1,
             }}
-            onClick={handleLogin}
             disabled={loading}
           >
             {loading ? '로그인 중...' : '로그인'}
@@ -704,6 +747,16 @@ export default function LoginPage({ openPage, closePage, onLogin }) {
       )}
       {modal === 'findPw' && (
         <FindPwModal onClose={() => setModal(null)} />
+      )}
+      {captchaChallenge && (
+        <LoginCaptchaModal
+          challenge={captchaChallenge}
+          busy={captchaBusy}
+          error={captchaError}
+          onVerify={verifyLoginCaptcha}
+          onRefresh={requestLoginCaptcha}
+          onClose={() => setCaptchaChallenge(null)}
+        />
       )}
     </>
   );
