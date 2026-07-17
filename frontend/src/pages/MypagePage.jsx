@@ -1323,7 +1323,7 @@ function UsageTab() {
       </div>
       <div className="pg-card" style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 10 }}>
-          <span>이번 달 CAPTCHA 발급량</span>
+          <span style={{ fontWeight: 600 }}>이번 달 CAPTCHA 발급량</span>
           <strong>
             {usageLoading
               ? '불러오는 중...'
