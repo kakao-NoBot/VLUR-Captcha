@@ -51,6 +51,10 @@ const PAGE_PATHS = {
 function PageShell({ onBack, openPage, isLoggedIn, onLogout, user, children }) {
   useEffect(() => {
     window.scrollTo(0, 0);
+    document.body.classList.add('overlay-open');
+    return () => {
+      document.body.classList.remove('overlay-open');
+    };
   }, []);
 
   return (

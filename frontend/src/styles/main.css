@@ -50,6 +50,9 @@ input::-ms-reveal,
 input::-ms-clear {
   display: none;
 }
+body.overlay-open {
+  overflow: hidden;
+}
 
 /* NAV */
 
