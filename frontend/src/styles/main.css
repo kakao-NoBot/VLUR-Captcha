@@ -348,7 +348,20 @@ h1 .hl::after {
   transition: .16s;
 }
 .drop.hot { border-color: var(--orange); background: var(--peach); transform: scale(1.01); }
+.drop.blocked { border-color: var(--bad, #d8492f); background: rgba(216,73,47,.08); }
 .drop.done { border-style: solid; border-color: var(--ok); background: #F1FBF6; }
+.drag-waypoint {
+  position: absolute; transform: translate(-50%, -50%);
+  width: 34px; height: 34px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700; font-family: var(--disp);
+  border: 2px dashed var(--line); color: var(--muted); background: var(--paper);
+  transition: .18s; pointer-events: none;
+}
+.drag-waypoint.visited {
+  border-style: solid; border-color: var(--ok); color: #fff; background: var(--ok);
+  box-shadow: 0 0 0 4px rgba(46,158,107,.16);
+}
 .drop .cart {
   width: 46px; height: 46px; flex: 0 0 46px; display: flex; align-items: center; justify-content: center;
   background: var(--card); border: 1.5px solid var(--line); border-radius: 12px;
