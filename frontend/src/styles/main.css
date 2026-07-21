@@ -349,7 +349,7 @@ h1 .hl::after {
   background-size: 6px 6px; opacity: .6;
 }
 .ghost {
-  position: fixed; z-index: 999; width: 74px; height: 74px; pointer-events: none;
+  position: fixed; z-index: 10000; width: 74px; height: 74px; pointer-events: none;
   border-radius: 14px; border: 1.5px solid var(--orange); background: var(--card);
   display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-md);
   transform: translate(-50%,-50%) rotate(-4deg);
