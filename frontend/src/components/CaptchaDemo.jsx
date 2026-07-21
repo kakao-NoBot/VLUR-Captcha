@@ -1,6 +1,7 @@
 // CaptchaDemo.jsx
 
 import React, { useState, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import bananaAsciiDocs from '../assets/banana_ascii_docs.png';
 import bananaAscii from '../assets/banana_ascii.jpg';
 import bearAsciiDocs from '../assets/bear_ascii_docs.png';
@@ -298,10 +299,11 @@ function DropZone({ dropState, missedHint }) {
 
 function GhostTile({ ghost }) {
   if (!ghost) return null;
-  return (
+  return createPortal(
     <div className="ghost" style={{ left: ghost.x, top: ghost.y, position: 'fixed' }}>
       {GLYPHS[ghost.key]}
-    </div>
+    </div>,
+    document.body
   );
 }
 
