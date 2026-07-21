@@ -45,6 +45,7 @@ export default function Hero({ openPage }) {
 
       {demoOpen && createPortal(
         <div
+          className="demo-modal-backdrop"
           onClick={() => setDemoOpen(false)}
           style={{
             position: 'fixed',
@@ -53,6 +54,7 @@ export default function Hero({ openPage }) {
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
+            padding: 24,
             zIndex: 9999,
           }}
         >
