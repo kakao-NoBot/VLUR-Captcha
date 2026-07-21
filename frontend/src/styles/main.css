@@ -272,6 +272,19 @@ h1 .hl::after {
     box-shadow: var(--shadow-md);
     overflow: hidden;
 }
+.demo-modal-backdrop .demo {
+  flex-shrink: 0;
+  transform-origin: center;
+}
+@media (max-height: 960px) {
+  .demo-modal-backdrop .demo { transform: scale(.9); }
+}
+@media (max-height: 820px) {
+  .demo-modal-backdrop .demo { transform: scale(.78); }
+}
+@media (max-height: 680px) {
+  .demo-modal-backdrop .demo { transform: scale(.64); }
+}
 .demo-top {
   display: flex; align-items: center; gap: 10px; padding: 13px 18px;
   border-bottom: 1px solid var(--line-soft); background: linear-gradient(var(--peach),var(--card));
@@ -289,9 +302,8 @@ h1 .hl::after {
   display: flex;
   flex-direction: column;
 }
-.demo-body .demo-foot {
-  margin-top: auto;
-}
+.demo-body .drop { margin-bottom: 20px; }
+.demo-body .demo-foot { margin-top: auto; }
 .demo-q {
   position: relative; display: flex; align-items: center; justify-content: center; gap: 10px;
   background: var(--peach); border: 1px dashed var(--peach-deep); border-radius: 14px;
@@ -299,6 +311,8 @@ h1 .hl::after {
 }
 .demo-q .question-image {
   display: block; flex: 0 1 auto; width: min(680px, 100%); min-width: 0; height: auto;
+  /* The source artwork has a white canvas; blend it into the peach question panel. */
+  mix-blend-mode: multiply;
 }
 .demo-q .drag-ic {
   position: absolute; right: 16px;
@@ -312,6 +326,7 @@ h1 .hl::after {
 .captcha-reference img {
   display: block; width: 420px; max-width: 85%; height: auto;
   border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow-sm);
+  mix-blend-mode: multiply;
 }
 .tiles { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-top: 16px; }
 .tiles.choice-tiles { max-width: 650px; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 14px auto 0; }
@@ -436,7 +451,10 @@ h1 .hl::after {
 }
 .login-captcha-question.is-drag { margin-top: 12px; padding: 0; }
 .login-captcha-question.is-identify { padding: 10px 14px; }
-.login-captcha-question img { display: block; width: auto; max-width: 100%; height: auto; object-fit: contain; }
+.login-captcha-question img {
+  display: block; width: auto; max-width: 100%; height: auto; object-fit: contain;
+  mix-blend-mode: multiply;
+}
 .login-captcha-question.is-drag img { max-height: min(108px, 15dvh); }
 .login-captcha-question.is-identify img { max-height: min(240px, 30dvh); }
 .login-captcha-options { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; width: min(100%, 460px); margin: 26px auto 0; }
@@ -1027,6 +1045,7 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
     width: min(220px, calc(100vw - 36px));
   }
   .tiles { gap: 8px; }
+  .demo-modal-backdrop { padding: 12px !important; }
   .cta-band { padding: 36px 26px; }
 }
 
