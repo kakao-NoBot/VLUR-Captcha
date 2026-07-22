@@ -113,6 +113,35 @@ def _generate_site_key() -> str:
     return f"pk-aicap_prod_{secrets.token_urlsafe(24)}"
 
 
+# 유형1(type1_drag)/유형2(type2_identify) 질문 이미지 — CaptchaDemo.jsx의 QUESTIONS_TYPE1/2와 동일한 3문항.
+CAPTCHA_QUESTION_IMAGES = (
+    # (filename, label, captcha_type)
+    ("/static/captcha/banana_ascii_docs.png", "바나나", "type1_drag"),
+    ("/static/captcha/bear_ascii_docs.png", "곰", "type1_drag"),
+    ("/static/captcha/Aircraft_ascii_docs.png", "비행기", "type1_drag"),
+    ("/static/captcha/banana_ascii.jpg", "바나나", "type2_identify"),
+    ("/static/captcha/bear_ascii.png", "곰", "type2_identify"),
+    ("/static/captcha/Aircraft_ascii.png", "비행기", "type2_identify"),
+)
+
+# 보기 타일 사진 — CaptchaDemo.jsx의 PHOTOS/TILE_NAMES와 동일한 12종.
+CAPTCHA_OPTION_IMAGES = (
+    # (filename, label)
+    ("/static/captcha/examples/banana_26.jpg", "바나나"),
+    ("/static/captcha/examples/carrots_11.jpg", "당근"),
+    ("/static/captcha/examples/cherry_6.jpg", "체리"),
+    ("/static/captcha/examples/broccoli_5.jpg", "브로콜리"),
+    ("/static/captcha/examples/cat_5.jpg", "고양이"),
+    ("/static/captcha/examples/dog_7.jpg", "강아지"),
+    ("/static/captcha/examples/bear_25.jpg", "곰"),
+    ("/static/captcha/examples/chicken_10.jpeg", "치킨"),
+    ("/static/captcha/examples/Aircraft_3.jpg", "비행기"),
+    ("/static/captcha/examples/Car_1.jpg", "자동차"),
+    ("/static/captcha/examples/bicycle_9.jpg", "자전거"),
+    ("/static/captcha/examples/apple_18.jpg", "사과"),
+)
+
+
 def run_migrations() -> None:
     conn = get_conn()
     with conn:
@@ -282,4 +311,38 @@ def run_migrations() -> None:
             )
             if cur.rowcount:
                 print("[migrate] 기존 Site Key 허용 Origin을 호스트명으로 변환")
+
+            # 10) captcha_images.captcha_type — 질문 이미지가 유형1(도식 스타일)/유형2(사실적 스타일) 중
+            # 어느 프론트 탭에 속하는지 표시. 보기(option) 이미지는 두 유형이 공유하므로 NULL로 둔다.
+            if not _column_exists(cur, "captcha_images", "captcha_type"):
+                cur.execute(
+                    """ALTER TABLE captcha_images
+                       ADD COLUMN captcha_type ENUM('type1_drag','type2_identify') NULL
+                       COMMENT '질문(role=question) 이미지가 속한 프론트 탭. 보기 이미지는 NULL(공유 풀)'
+                       AFTER role"""
+                )
+                print("[migrate] captcha_images.captcha_type 컬럼 추가")
+
+            # 11) captcha_images — 공개 challenge/verify API가 서빙할 질문·보기 이미지 시드.
+            # filename UNIQUE는 아니지만 NOT EXISTS 가드로 재실행해도 중복 삽입되지 않는다.
+            cur.executemany(
+                """INSERT INTO captcha_images (site_id, role, captcha_type, render_type, filename, label, instruction)
+                   SELECT NULL, 'question', %s, 'ascii_art', %s, %s, CONCAT('이미지 속 대상: ', %s)
+                   WHERE NOT EXISTS (SELECT 1 FROM captcha_images WHERE filename = %s)""",
+                [
+                    (captcha_type, filename, label, label, filename)
+                    for filename, label, captcha_type in CAPTCHA_QUESTION_IMAGES
+                ],
+            )
+            if cur.rowcount:
+                print(f"[migrate] captcha_images 질문 이미지 시드 ({cur.rowcount}건)")
+
+            cur.executemany(
+                """INSERT INTO captcha_images (site_id, role, captcha_type, render_type, filename, label, instruction)
+                   SELECT NULL, 'option', NULL, 'real_photo', %s, %s, NULL
+                   WHERE NOT EXISTS (SELECT 1 FROM captcha_images WHERE filename = %s)""",
+                [(filename, label, filename) for filename, label in CAPTCHA_OPTION_IMAGES],
+            )
+            if cur.rowcount:
+                print(f"[migrate] captcha_images 보기 이미지 시드 ({cur.rowcount}건)")
         conn.commit()

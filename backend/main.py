@@ -1,5 +1,8 @@
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from db import get_conn, wait_for_database
 from routers import auth as auth_router
@@ -11,6 +14,7 @@ from routers import email_verification as email_verification_router
 from routers import password_reset as password_reset_router
 from routers import api_keys as api_keys_router
 from routers import usage as usage_router
+from routers import captcha_public as captcha_public_router
 from migrations import run_migrations
 
 load_dotenv()
@@ -26,10 +30,16 @@ def apply_migrations():
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["http://localhost:5173", "http://localhost:5298"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+
+app.mount(
+    "/static/captcha",
+    StaticFiles(directory=str(Path(__file__).parent / "static" / "captcha")),
+    name="captcha-assets",
 )
 
 app.include_router(auth_router.router)
@@ -41,6 +51,7 @@ app.include_router(email_verification_router.router)
 app.include_router(password_reset_router.router)
 app.include_router(api_keys_router.router)
 app.include_router(usage_router.router)
+app.include_router(captcha_public_router.router)
 
 
 @app.get("/health")
