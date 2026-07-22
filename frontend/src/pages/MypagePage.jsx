@@ -6,6 +6,7 @@ import PasswordInput, { EyeOpen, EyeOff } from '../components/PasswordInput';
 import EmailInput from '../components/EmailInput';
 import ClearableInput from '../components/ClearableInput';
 import api from '../api/axios';
+import { CAPTCHA_THEME_PRESETS, normalizeHexColor, resolveCaptchaTheme } from '../utils/captchaTheme';
 import kakaopayLogo from '../assets/kakao-pay-logo.png';
 import tossLogo from '../assets/toss.png';
 
@@ -487,6 +488,25 @@ function addMonths(dateString, months) {
   return date.toISOString().slice(0, 10);
 }
 
+function CaptchaThemePreview({ theme }) {
+  const palette = resolveCaptchaTheme(theme);
+  return (
+    <div className="captcha-theme-preview" style={{ '--captcha-accent': palette.accent, '--captcha-soft': palette.soft, '--captcha-foreground': palette.foreground }}>
+      <div className="captcha-theme-preview-head">
+        <span className="captcha-theme-preview-mark" aria-hidden="true">V</span>
+        <div>
+          <strong>사람인지 확인해 주세요</strong>
+          <small>아래 이미지와 같은 항목을 선택하세요.</small>
+        </div>
+      </div>
+      <div className="captcha-theme-preview-options" aria-hidden="true">
+        <span /><span className="selected">✓</span><span />
+      </div>
+      <button type="button" tabIndex={-1}>확인</button>
+    </div>
+  );
+}
+
 /* ── SC-08 API Key 탭 ── */
 function ApiKeyTab({ closePage }) {
   const [loading, setLoading] = useState(true);
@@ -503,6 +523,11 @@ function ApiKeyTab({ closePage }) {
   const [guideStep, setGuideStep] = useState(null);
   const [actionPending, setActionPending] = useState(false);
   const [actionError, setActionError] = useState('');
+  const [captchaTheme, setCaptchaTheme] = useState('orange');
+  const [savedCaptchaTheme, setSavedCaptchaTheme] = useState('orange');
+  const [themeCustomizationAllowed, setThemeCustomizationAllowed] = useState(true);
+  const [themeMessage, setThemeMessage] = useState('');
+  const [themeError, setThemeError] = useState('');
 
   useEffect(() => {
     let ignore = false;
@@ -515,6 +540,10 @@ function ApiKeyTab({ closePage }) {
           setApiKey(data.api_key || null);
           setSiteKey(data.api_key?.site_key || '');
           setSiteDomain(data.api_key?.site_domain || '');
+          const currentTheme = data.api_key?.captcha_theme || 'orange';
+          setCaptchaTheme(currentTheme);
+          setSavedCaptchaTheme(currentTheme);
+          setThemeCustomizationAllowed(data.theme_customization_allowed !== false);
         }
       } catch (err) {
         if (!ignore) setActionError(err.response?.data?.detail || 'API Key 정보를 불러오지 못했습니다.');
@@ -548,6 +577,10 @@ function ApiKeyTab({ closePage }) {
   }
   setSiteKey(data.site_key || data.api_key?.site_key || '');
   setSiteDomain(data.api_key?.site_domain || '');
+  if (data.api_key?.captcha_theme) {
+    setCaptchaTheme(data.api_key.captcha_theme);
+    setSavedCaptchaTheme(data.api_key.captcha_theme);
+  }
   setActionError('');
 };
 
@@ -619,6 +652,25 @@ const doReissue = async () => {
       setSiteDomain(data.api_key?.site_domain || '');
     } catch (err) {
       setActionError(err.response?.data?.detail || '사이트 도메인 저장에 실패했습니다.');
+    } finally {
+      setActionPending(false);
+    }
+  };
+
+  const saveCaptchaTheme = async () => {
+    if (!themeCustomizationAllowed || captchaTheme === savedCaptchaTheme) return;
+    setActionPending(true);
+    setThemeError('');
+    setThemeMessage('');
+    try {
+      const { data } = await api.put('/api-keys/current/theme', { theme: captchaTheme });
+      const nextTheme = data.captcha_theme || captchaTheme;
+      setSavedCaptchaTheme(nextTheme);
+      setCaptchaTheme(nextTheme);
+      setApiKey((current) => ({ ...current, captcha_theme: nextTheme }));
+      setThemeMessage('테마가 저장되었습니다. 다음 CAPTCHA부터 바로 적용됩니다.');
+    } catch (err) {
+      setThemeError(err.response?.data?.detail || 'CAPTCHA 테마를 저장하지 못했습니다.');
     } finally {
       setActionPending(false);
     }
@@ -705,6 +757,8 @@ const doReissue = async () => {
   const expiresAt = apiKey.created_at ? addMonths(issuedAt, 1) : '-';
   const displayedKey = visible && plainKey ? plainKey : apiKey.masked_key;
   const isKeyActive = apiKey.is_active !== false;
+  const isThemeValid = Boolean(CAPTCHA_THEME_PRESETS[captchaTheme] || normalizeHexColor(captchaTheme));
+  const resolvedTheme = resolveCaptchaTheme(captchaTheme);
 
   return (
     <>
@@ -811,6 +865,65 @@ const doReissue = async () => {
           ) : (
             <p className="api-key-field-help">example.com처럼 프로토콜과 경로를 제외한 호스트명만 입력해 주세요.</p>
           )}
+        </section>
+
+        <section className="pg-card api-key-section api-key-theme-section" aria-labelledby="captcha-theme-heading">
+          <div className="api-key-section-heading">
+            <div>
+              <h4 id="captcha-theme-heading">CAPTCHA 테마 색상</h4>
+              <p className="api-key-field-help">이 API Key로 표시되는 CAPTCHA의 강조 색상입니다.</p>
+            </div>
+            {!themeCustomizationAllowed && <span className="api-key-status inactive"><i aria-hidden="true" />관리자 제한</span>}
+          </div>
+
+          <div className="captcha-theme-layout">
+            <fieldset className="captcha-theme-picker" disabled={!themeCustomizationAllowed || actionPending || !isKeyActive}>
+              <legend className="sr-only">CAPTCHA HEX 색상 지정</legend>
+              <div className="captcha-theme-custom selected">
+                <label htmlFor="captcha-theme-hex">브랜드 HEX 색상</label>
+                <div>
+                  <input
+                    className="captcha-theme-color-input"
+                    type="color"
+                    value={normalizeHexColor(captchaTheme) || resolvedTheme.accent}
+                    onChange={(event) => { setCaptchaTheme(event.target.value.toUpperCase()); setThemeMessage(''); setThemeError(''); }}
+                    aria-label="CAPTCHA 테마 색상 선택"
+                  />
+                  <input
+                    id="captcha-theme-hex"
+                    className="pg-input captcha-theme-hex-input"
+                    type="text"
+                    inputMode="text"
+                    autoComplete="off"
+                    spellCheck={false}
+                    maxLength={7}
+                    placeholder="#7C5CE7"
+                    value={CAPTCHA_THEME_PRESETS[captchaTheme]?.accent || captchaTheme}
+                    onChange={(event) => { setCaptchaTheme(event.target.value); setThemeMessage(''); setThemeError(''); }}
+                    onBlur={() => {
+                      const normalized = normalizeHexColor(captchaTheme);
+                      if (normalized) setCaptchaTheme(normalized);
+                    }}
+                  />
+                </div>
+                {!isThemeValid && <p className="api-key-field-error">#RRGGBB 형식으로 입력해 주세요.</p>}
+              </div>
+              <button
+                className="pg-btn primary captcha-theme-save"
+                type="button"
+                onClick={saveCaptchaTheme}
+                disabled={!themeCustomizationAllowed || actionPending || !isKeyActive || !isThemeValid || captchaTheme === savedCaptchaTheme}
+              >
+                {actionPending ? '저장 중...' : '테마 저장'}
+              </button>
+              {!themeCustomizationAllowed && (
+                <p className="api-key-field-error">관리자가 이 계정의 테마 변경 권한을 제한했습니다.</p>
+              )}
+              {themeMessage && <p className="api-key-theme-success" role="status">{themeMessage}</p>}
+              {themeError && <p className="api-key-field-error" role="alert">{themeError}</p>}
+            </fieldset>
+            <CaptchaThemePreview theme={captchaTheme} />
+          </div>
         </section>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>

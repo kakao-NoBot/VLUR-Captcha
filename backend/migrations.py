@@ -181,6 +181,15 @@ def run_migrations() -> None:
                 )
                 print("[migrate] users.api_key_suspended 컬럼 추가")
 
+            if not _column_exists(cur, "users", "theme_customization_allowed"):
+                cur.execute(
+                    """ALTER TABLE users
+                       ADD COLUMN theme_customization_allowed BOOLEAN NOT NULL DEFAULT TRUE
+                       COMMENT '고객이 CAPTCHA 테마를 직접 변경할 수 있는지 여부'
+                       AFTER api_key_suspended"""
+                )
+                print("[migrate] users.theme_customization_allowed 컬럼 추가")
+
             # 4) users 예약 요금제 변경/해지 컬럼
             if not _column_exists(cur, "users", "pending_plan_id"):
                 cur.execute(
@@ -293,6 +302,15 @@ def run_migrations() -> None:
                        AFTER site_key"""
                 )
                 print("[migrate] api_keys.site_domain 컬럼 추가")
+
+            if not _column_exists(cur, "api_keys", "captcha_theme"):
+                cur.execute(
+                    """ALTER TABLE api_keys
+                       ADD COLUMN captcha_theme VARCHAR(24) NOT NULL DEFAULT 'orange'
+                       COMMENT 'CAPTCHA 위젯 색상 프리셋 ID 또는 HEX 색상'
+                       AFTER site_domain"""
+                )
+                print("[migrate] api_keys.captcha_theme 컬럼 추가")
 
             # 초기 Origin 방식으로 저장된 값을 호스트명 형식으로 변환한다.
             cur.execute(

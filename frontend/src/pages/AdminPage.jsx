@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import api from '../api/axios';
+import { CAPTCHA_THEME_PRESETS, normalizeHexColor, resolveCaptchaTheme } from '../utils/captchaTheme';
 
 const ADMIN_TABS = [
   { id: 'dashboard', label: '대시보드' },
@@ -106,6 +107,8 @@ function mapAdminUser(row) {
     joinedAt: row.created_at ? String(row.created_at).slice(0, 10) : '-',
     status: keyActive ? '활성' : '비활성',
     apiKey: row.masked_api_key || '미발급',
+    captchaTheme: row.captcha_theme || 'orange',
+    themeCustomizationAllowed: row.theme_customization_allowed !== false && row.theme_customization_allowed !== 0,
   };
 
   if (row.company_name) {
@@ -869,6 +872,125 @@ function InquiryDetailModal({ detail, onClose, onStatusChange }) {
   );
 }
 
+function AdminCaptchaPreview({ theme }) {
+  const palette = resolveCaptchaTheme(theme);
+  return (
+    <div className="admin-theme-preview" style={{ '--captcha-accent': palette.accent, '--captcha-soft': palette.soft, '--captcha-foreground': palette.foreground }}>
+      <div className="admin-theme-preview-head">
+        <span aria-hidden="true">V</span>
+        <div><strong>사람인지 확인해 주세요</strong><small>같은 이미지를 선택하세요.</small></div>
+      </div>
+      <div className="admin-theme-preview-tiles" aria-hidden="true"><i /><i className="selected">✓</i><i /></div>
+      <b>확인</b>
+    </div>
+  );
+}
+
+function ThemeSettingsModal({ user, onClose, onSaved }) {
+  const [theme, setTheme] = useState(user?.captchaTheme || 'orange');
+  const [allowed, setAllowed] = useState(user?.themeCustomizationAllowed !== false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+  if (!user) return null;
+  const resolvedTheme = resolveCaptchaTheme(theme);
+  const isThemeValid = Boolean(CAPTCHA_THEME_PRESETS[theme] || normalizeHexColor(theme));
+
+  const save = async () => {
+    setSaving(true);
+    setError('');
+    let savedTheme = CAPTCHA_THEME_PRESETS[theme] ? theme : normalizeHexColor(theme);
+    try {
+      if (user.apiKey !== '미발급' && theme !== user.captchaTheme) {
+        const { data } = await api.patch(`/admin/users/${user.internalId}/api-key-theme`, { theme: savedTheme });
+        savedTheme = data.captcha_theme || savedTheme;
+      }
+      if (allowed !== user.themeCustomizationAllowed) {
+        await api.patch(`/admin/users/${user.internalId}/theme-permission`, { allowed });
+      }
+      onSaved({ theme: user.apiKey === '미발급' ? user.captchaTheme : savedTheme, allowed });
+      onClose();
+    } catch (err) {
+      setError(err.response?.data?.detail || '테마 설정을 저장하지 못했습니다.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <AdminModalShell
+      eyebrow="CAPTCHA THEME"
+      title={`${user.company || user.name || user.userId} 테마 설정`}
+      onClose={onClose}
+      labelledBy="admin-theme-settings-title"
+      footer={(
+        <div className="admin-theme-footer">
+          <button type="button" className="pg-btn" onClick={onClose}>취소</button>
+          <button type="button" className="pg-btn primary" onClick={save} disabled={saving || !isThemeValid}>
+            {saving ? '저장 중...' : '설정 저장'}
+          </button>
+        </div>
+      )}
+    >
+      <div className="admin-theme-modal-grid">
+        <div>
+          <div className="admin-theme-custom selected">
+            <label htmlFor="admin-captcha-theme-hex">브랜드 HEX 색상</label>
+            <div>
+              <input
+                type="color"
+                value={normalizeHexColor(theme) || resolvedTheme.accent}
+                onChange={(event) => { setTheme(event.target.value.toUpperCase()); setError(''); }}
+                aria-label="관리자 CAPTCHA 테마 색상 선택"
+                disabled={user.apiKey === '미발급'}
+              />
+              <input
+                id="admin-captcha-theme-hex"
+                className="pg-input"
+                type="text"
+                maxLength={7}
+                autoComplete="off"
+                spellCheck={false}
+                placeholder="#7C5CE7"
+                value={CAPTCHA_THEME_PRESETS[theme]?.accent || theme}
+                onChange={(event) => { setTheme(event.target.value); setError(''); }}
+                onBlur={() => {
+                  const normalized = normalizeHexColor(theme);
+                  if (normalized) setTheme(normalized);
+                }}
+                disabled={user.apiKey === '미발급'}
+              />
+            </div>
+            {!isThemeValid && <p className="admin-theme-error">#RRGGBB 형식으로 입력해 주세요.</p>}
+          </div>
+          <button
+            type="button"
+            className="admin-theme-reset"
+            onClick={() => setTheme('orange')}
+            disabled={user.apiKey === '미발급' || theme === 'orange'}
+          >기본 색상으로 초기화</button>
+
+          <label className="admin-theme-permission">
+            <input type="checkbox" checked={allowed} onChange={(event) => setAllowed(event.target.checked)} />
+            <span><strong>고객 직접 변경 허용</strong><small>끄면 마이페이지에서 색상을 볼 수만 있습니다.</small></span>
+          </label>
+          {user.apiKey === '미발급' && <p className="admin-theme-error">API Key 발급 후 색상을 지정할 수 있습니다.</p>}
+          {error && <p className="admin-theme-error" role="alert">{error}</p>}
+        </div>
+        <AdminCaptchaPreview theme={theme} />
+      </div>
+    </AdminModalShell>
+  );
+}
+
 const INQUIRY_PAGE_SIZE = 10;
 const USAGE_PLAN_PAGE_SIZE = 5;
 const COMPLETED_INQUIRY_PAGE_SIZE = 10;
@@ -953,6 +1075,7 @@ export default function AdminPage() {
   const [logs, setLogs] = useState(MOCK_LOGS);
   const [selectedScoreLog, setSelectedScoreLog] = useState(null);
   const [selectedInquiryDetail, setSelectedInquiryDetail] = useState(null);
+  const [selectedThemeUser, setSelectedThemeUser] = useState(null);
   const [openStatusMenu, setOpenStatusMenu] = useState(null);
   const [toast, setToast] = useState(null);
   const [generalPage, setGeneralPage] = useState(1);
@@ -1302,6 +1425,17 @@ const usagePlanSummary = useMemo(() => {
     setSites((prev) => prev.map((site) => (
       site.domain === domain ? { ...site, status: nextStatus } : site
     )));
+  };
+
+  const applySavedThemeSettings = ({ theme, allowed }) => {
+    const update = (users) => users.map((user) => (
+      user.internalId === selectedThemeUser?.internalId
+        ? { ...user, captchaTheme: theme, themeCustomizationAllowed: allowed }
+        : user
+    ));
+    setPersonalUsers(update);
+    setBusinessUsers(update);
+    setToast({ type: 'success', message: 'CAPTCHA 테마 설정이 저장되었습니다.' });
   };
 
   // 문의 행 렌더링 (진행 중 테이블 / 답변 완료 테이블 양쪽에서 재사용)
@@ -1919,6 +2053,7 @@ const usagePlanSummary = useMemo(() => {
                   { key: 'email', label: '이메일', width: 200 },
                   { key: 'plan', label: '요금제', width: 90 },
                   { key: 'apiKey', label: 'API Key', width: 90 },
+                  { key: 'captchaTheme', label: 'CAPTCHA 테마', width: 130 },
                   { key: 'joinedAt', label: '가입일', width: 120 },
                   { key: 'status', label: '상태', width: 120 },
                 ];
@@ -1928,7 +2063,7 @@ const usagePlanSummary = useMemo(() => {
                   <>
                     <AdminTable
                       tableClassName="admin-fixed-table admin-left-table"
-                      tableStyle={{ tableLayout: 'fixed', width: 910 }}
+                      tableStyle={{ tableLayout: 'fixed', width: 1040 }}
                       columns={columns}
                       emptyMessage={usersLoading ? '사용자 정보를 불러오는 중입니다.' : '검색 결과가 없습니다.'}
                       rows={pageRows.map((user) => {
@@ -1940,6 +2075,13 @@ const usagePlanSummary = useMemo(() => {
                             <td>{user.email}</td>
                             <td>{user.plan}</td>
                             <td>{user.apiKey === '미발급' ? '미발급' : '발급'}</td>
+                            <td>
+                              <button type="button" className="admin-theme-cell" onClick={() => setSelectedThemeUser(user)}>
+                                <span style={{ background: resolveCaptchaTheme(user.captchaTheme).accent }} aria-hidden="true" />
+                                {CAPTCHA_THEME_PRESETS[user.captchaTheme]?.label || user.captchaTheme}
+                                {!user.themeCustomizationAllowed && <small>잠금</small>}
+                              </button>
+                            </td>
                             <td>{user.joinedAt}</td>
                             <td>
                               <StatusDropdown
@@ -1968,6 +2110,7 @@ const usagePlanSummary = useMemo(() => {
                   { key: 'email', label: '이메일', width: 200 },
                   { key: 'plan', label: '요금제', width: 90 },
                   { key: 'apiKey', label: 'API Key', width: 90 },
+                  { key: 'captchaTheme', label: 'CAPTCHA 테마', width: 130 },
                   { key: 'siteCount', label: '등록 사이트 수', width: 120 },
                   { key: 'monthlyLimit', label: '월 호출 한도', width: 110 },
                   { key: 'status', label: '상태', width: 120 },
@@ -1978,7 +2121,7 @@ const usagePlanSummary = useMemo(() => {
                   <>
                     <AdminTable
                       tableClassName="admin-fixed-table admin-left-table"
-                      tableStyle={{ tableLayout: 'fixed', width: 1180 }}
+                      tableStyle={{ tableLayout: 'fixed', width: 1310 }}
                       columns={columns}
                       emptyMessage={usersLoading ? '사용자 정보를 불러오는 중입니다.' : '검색 결과가 없습니다.'}
                       rows={pageRows.map((user) => {
@@ -1991,6 +2134,13 @@ const usagePlanSummary = useMemo(() => {
                             <td>{user.email}</td>
                             <td>{user.plan}</td>
                             <td>{user.apiKey === '미발급' ? '미발급' : '발급'}</td>
+                            <td>
+                              <button type="button" className="admin-theme-cell" onClick={() => setSelectedThemeUser(user)}>
+                                <span style={{ background: resolveCaptchaTheme(user.captchaTheme).accent }} aria-hidden="true" />
+                                {CAPTCHA_THEME_PRESETS[user.captchaTheme]?.label || user.captchaTheme}
+                                {!user.themeCustomizationAllowed && <small>잠금</small>}
+                              </button>
+                            </td>
                             <td>{user.siteCount}</td>
                             <td>{formatNumber(user.monthlyLimit)}</td>
                             <td>
@@ -2255,6 +2405,13 @@ const usagePlanSummary = useMemo(() => {
               prev ? { ...prev, inquiry: { ...prev.inquiry, status: option } } : prev
             ));
           }}
+        />
+      )}
+      {selectedThemeUser && (
+        <ThemeSettingsModal
+          user={selectedThemeUser}
+          onClose={() => setSelectedThemeUser(null)}
+          onSaved={applySavedThemeSettings}
         />
       )}
       {toast && (
