@@ -1,6 +1,6 @@
 // CaptchaDemo.jsx
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import bananaAsciiDocs from '../assets/banana_ascii_docs.png';
 import bananaAscii from '../assets/banana_ascii.jpg';
@@ -21,7 +21,14 @@ import airplanePhoto from '../assets/examples/Aircraft_3.jpg';
 import carPhoto from '../assets/examples/Car_1.jpg';
 import bicyclePhoto from '../assets/examples/bicycle_9.jpg';
 import applePhoto from '../assets/examples/apple_18.jpg';
-import { CAPTCHA_THEME_PRESETS, mixHexColors, normalizeHexColor, resolveCaptchaTheme } from '../utils/captchaTheme';
+import {
+  CAPTCHA_THEME_PRESETS,
+  hexToHsv,
+  hsvToHex,
+  mixHexColors,
+  normalizeHexColor,
+  resolveCaptchaTheme,
+} from '../utils/captchaTheme';
 
 /* ── 보기 이미지 ── */
 const PHOTOS = {
@@ -423,8 +430,12 @@ function DragCaptcha() {
 export default function CaptchaDemo({ onClick, onClose }) {
   const [type, setType] = useState(1);
   const [theme, setTheme] = useState('orange');
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const pickerRef = useRef(null);
   const palette = buildDemoPalette(theme);
   const normalizedCustomHex = normalizeHexColor(theme);
+  const pickerHex = normalizedCustomHex || palette.accent;
+  const pickerHsv = hexToHsv(pickerHex);
   const demoThemeStyle = {
     '--orange': palette.accent,
     '--orange-2': palette.accentDeep,
@@ -436,6 +447,33 @@ export default function CaptchaDemo({ onClick, onClose }) {
     '--captcha-on-accent': palette.foreground,
   };
 
+  useEffect(() => {
+    if (!pickerOpen) return undefined;
+
+    const handleOutsidePointer = (event) => {
+      if (!pickerRef.current?.contains(event.target)) setPickerOpen(false);
+    };
+    const handleEscape = (event) => {
+      if (event.key !== 'Escape') return;
+      event.stopPropagation();
+      setPickerOpen(false);
+    };
+
+    document.addEventListener('pointerdown', handleOutsidePointer);
+    document.addEventListener('keydown', handleEscape, true);
+    return () => {
+      document.removeEventListener('pointerdown', handleOutsidePointer);
+      document.removeEventListener('keydown', handleEscape, true);
+    };
+  }, [pickerOpen]);
+
+  const updateSaturation = (event) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const saturation = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
+    const value = 1 - Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height));
+    setTheme(hsvToHex({ h: pickerHsv.h, s: saturation * 100, v: value * 100 }));
+  };
+
   return (
     <div className={`demo theme-experience-demo captcha-type-${type}`} id="demo" onClick={onClick} style={demoThemeStyle}>
       <div className="demo-theme-toolbar">
@@ -443,13 +481,15 @@ export default function CaptchaDemo({ onClick, onClose }) {
           <strong>CAPTCHA 테마 체험</strong>
           <span>컬러 피커 또는 색상 값을 바꾸면 바로 반영됩니다.</span>
         </div>
-        <div className="demo-theme-controls">
+        <div className="demo-theme-controls" ref={pickerRef}>
           <div className="demo-theme-hex selected">
-            <input
-              type="color"
-              value={normalizedCustomHex || palette.accent}
-              onChange={(event) => setTheme(event.target.value.toUpperCase())}
-              aria-label="체험할 HEX 색상 선택"
+            <button
+              type="button"
+              className="demo-theme-swatch"
+              aria-label="색상 선택창 열기"
+              aria-expanded={pickerOpen}
+              onClick={() => setPickerOpen((open) => !open)}
+              style={{ '--swatch-color': pickerHex }}
             />
             <input
               type="text"
@@ -464,6 +504,57 @@ export default function CaptchaDemo({ onClick, onClose }) {
               placeholder="#7C5CE7"
             />
           </div>
+          {pickerOpen && (
+            <div className="demo-color-popover" role="dialog" aria-label="테마 색상 선택">
+              <div className="demo-color-popover-head">
+                <div>
+                  <span style={{ background: pickerHex }} />
+                  <strong>색상 선택</strong>
+                </div>
+                <button type="button" onClick={() => setPickerOpen(false)} aria-label="색상 선택창 닫기">×</button>
+              </div>
+
+              <div
+                className="demo-color-field"
+                style={{ '--picker-hue': `hsl(${pickerHsv.h} 100% 50%)` }}
+                onPointerDown={(event) => {
+                  event.currentTarget.setPointerCapture(event.pointerId);
+                  updateSaturation(event);
+                }}
+                onPointerMove={(event) => {
+                  if (event.currentTarget.hasPointerCapture(event.pointerId)) updateSaturation(event);
+                }}
+                onPointerUp={(event) => event.currentTarget.releasePointerCapture(event.pointerId)}
+                onPointerCancel={(event) => event.currentTarget.releasePointerCapture(event.pointerId)}
+                role="slider"
+                aria-label="채도와 밝기 선택"
+                aria-valuetext={pickerHex}
+                tabIndex={0}
+              >
+                <span
+                  className="demo-color-field-cursor"
+                  style={{ left: `${pickerHsv.s}%`, top: `${100 - pickerHsv.v}%`, background: pickerHex }}
+                />
+              </div>
+
+              <div className="demo-color-hue-row">
+                <span className="demo-color-preview" style={{ background: pickerHex }} />
+                <input
+                  type="range"
+                  min="0"
+                  max="359"
+                  value={pickerHsv.h}
+                  onChange={(event) => setTheme(hsvToHex({ ...pickerHsv, h: Number(event.target.value) }))}
+                  aria-label="색조 선택"
+                />
+              </div>
+
+              <div className="demo-color-popover-foot">
+                <code>{pickerHex}</code>
+                <button type="button" onClick={() => setPickerOpen(false)}>선택 완료</button>
+              </div>
+            </div>
+          )}
         </div>
         {onClose && (
           <button type="button" className="demo-theme-close" onClick={onClose} aria-label="체험창 닫기">×</button>
