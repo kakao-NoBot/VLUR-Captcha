@@ -8,6 +8,7 @@ from urllib.parse import urlsplit
 from fastapi import Header, HTTPException, Request, status
 
 from db import get_conn
+from services.captcha_theme import DEFAULT_CAPTCHA_THEME
 
 
 def _request_hostname(request: Request) -> str | None:
@@ -28,7 +29,7 @@ def get_site_key_context(
     with conn:
         with conn.cursor() as cur:
             cur.execute(
-                """SELECT api_key_id, user_id, site_domain
+                """SELECT api_key_id, user_id, site_domain, captcha_theme
                    FROM api_keys
                    WHERE site_key = %s
                      AND is_active = TRUE
@@ -56,4 +57,8 @@ def get_site_key_context(
             detail="이 요청 출처는 Site Key에 등록된 도메인과 일치하지 않습니다.",
         )
 
-    return {"api_key_id": key_row["api_key_id"], "user_id": key_row["user_id"]}
+    return {
+        "api_key_id": key_row["api_key_id"],
+        "user_id": key_row["user_id"],
+        "captcha_theme": key_row["captcha_theme"] or DEFAULT_CAPTCHA_THEME,
+    }

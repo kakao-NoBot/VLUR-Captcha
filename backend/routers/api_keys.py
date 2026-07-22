@@ -11,6 +11,12 @@ from pydantic import BaseModel
 
 from auth.deps import get_current_admin, get_current_user
 from db import get_conn
+from services.captcha_theme import (
+    CAPTCHA_THEME_PRESETS,
+    DEFAULT_CAPTCHA_THEME,
+    normalize_captcha_theme,
+    serialize_captcha_theme,
+)
 
 
 router = APIRouter(tags=["api-keys"])
@@ -100,6 +106,7 @@ def _serialize_api_key(row: dict | None) -> dict | None:
         "masked_key": row["key_name"] or "마스킹 정보 없음",
         "site_key": row["site_key"],
         "site_domain": row["site_domain"],
+        "captcha_theme": row.get("captcha_theme") or DEFAULT_CAPTCHA_THEME,
         "created_at": row["created_at"],
         "expired_at": row["expired_at"],
         "is_active": bool(row["is_active"]),
@@ -116,7 +123,8 @@ def _issue_api_key(user_id: str, replace: bool, site_domain: str) -> dict:
     with conn:
         with conn.cursor() as cur:
             cur.execute(
-                """SELECT u.plan_id, pl.plan_name, u.api_key_suspended
+                """SELECT u.plan_id, pl.plan_name, u.api_key_suspended,
+                          u.theme_customization_allowed
                    FROM users u
                    LEFT JOIN plans pl ON pl.plan_id = u.plan_id
                    WHERE u.user_id = %s AND u.user_status = 'active'
@@ -141,7 +149,7 @@ def _issue_api_key(user_id: str, replace: bool, site_domain: str) -> dict:
                 )
 
             cur.execute(
-                """SELECT api_key_id
+                """SELECT api_key_id, captcha_theme
                    FROM api_keys
                    WHERE user_id = %s AND is_active = TRUE
                      AND (expired_at IS NULL OR expired_at > NOW())
@@ -165,15 +173,22 @@ def _issue_api_key(user_id: str, replace: bool, site_domain: str) -> dict:
                     (user_id,),
                 )
 
+            captcha_theme = (
+                active_key.get("captcha_theme")
+                if replace and active_key
+                else DEFAULT_CAPTCHA_THEME
+            ) or DEFAULT_CAPTCHA_THEME
             cur.execute(
                 """INSERT INTO api_keys
-                       (api_key_hash, user_id, plan_id, key_name, site_key, site_domain, created_at, expired_at, is_active)
-                   VALUES (%s, %s, %s, %s, %s, %s, NOW(), NULL, TRUE)""",
-                (api_key_hash, user_id, user["plan_id"], masked_key, site_key, site_domain),
+                       (api_key_hash, user_id, plan_id, key_name, site_key, site_domain,
+                        captcha_theme, created_at, expired_at, is_active)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, NOW(), NULL, TRUE)""",
+                (api_key_hash, user_id, user["plan_id"], masked_key, site_key, site_domain, captcha_theme),
             )
             api_key_id = cur.lastrowid
             cur.execute(
-                """SELECT api_key_id, key_name, site_key, site_domain, created_at, expired_at, is_active
+                """SELECT api_key_id, key_name, site_key, site_domain, captcha_theme,
+                          created_at, expired_at, is_active
                    FROM api_keys WHERE api_key_id = %s""",
                 (api_key_id,),
             )
@@ -194,7 +209,8 @@ def get_current_api_key(current_user: dict = Depends(get_current_user)):
     with conn:
         with conn.cursor() as cur:
             cur.execute(
-                """SELECT u.plan_id, u.subscription_date, pl.plan_name
+                """SELECT u.plan_id, u.subscription_date, u.theme_customization_allowed,
+                          pl.plan_name
                    FROM users u
                    LEFT JOIN plans pl ON pl.plan_id = u.plan_id
                    WHERE u.user_id = %s""",
@@ -206,7 +222,8 @@ def get_current_api_key(current_user: dict = Depends(get_current_user)):
 
             # is_active 컬럼을 그대로 신뢰 소스로 사용한다 (관리자가 직접 제어하는 값).
             cur.execute(
-                """SELECT api_key_id, key_name, site_key, site_domain, created_at, expired_at, is_active
+                """SELECT api_key_id, key_name, site_key, site_domain, captcha_theme,
+                          created_at, expired_at, is_active
                    FROM api_keys
                    WHERE user_id = %s
                    ORDER BY api_key_id DESC
@@ -223,7 +240,12 @@ def get_current_api_key(current_user: dict = Depends(get_current_user)):
             "activated_at": user["subscription_date"],
         }
 
-    return {"plan": plan, "api_key": _serialize_api_key(api_key)}
+    return {
+        "plan": plan,
+        "api_key": _serialize_api_key(api_key),
+        "theme_customization_allowed": bool(user["theme_customization_allowed"]),
+        "theme_presets": CAPTCHA_THEME_PRESETS,
+    }
 
 
 class SiteDomainRequest(BaseModel):
@@ -291,7 +313,8 @@ def _reissue_secret_key(user_id: str) -> dict:
                 (api_key_hash, masked_key, active_key["api_key_id"]),
             )
             cur.execute(
-                """SELECT api_key_id, key_name, site_key, site_domain, created_at, expired_at, is_active
+                """SELECT api_key_id, key_name, site_key, site_domain, captcha_theme,
+                          created_at, expired_at, is_active
                    FROM api_keys WHERE api_key_id = %s""",
                 (active_key["api_key_id"],),
             )
@@ -332,7 +355,8 @@ def _reissue_site_key(user_id: str, site_domain: str | None) -> dict:
                 (new_site_key, final_domain, active_key["api_key_id"]),
             )
             cur.execute(
-                """SELECT api_key_id, key_name, site_key, site_domain, created_at, expired_at, is_active
+                """SELECT api_key_id, key_name, site_key, site_domain, captcha_theme,
+                          created_at, expired_at, is_active
                    FROM api_keys WHERE api_key_id = %s""",
                 (active_key["api_key_id"],),
             )
@@ -395,7 +419,8 @@ def update_current_api_key_site_domain(
                 (site_domain, api_key["api_key_id"]),
             )
             cur.execute(
-                """SELECT api_key_id, key_name, site_key, site_domain, created_at, expired_at, is_active
+                """SELECT api_key_id, key_name, site_key, site_domain, captcha_theme,
+                          created_at, expired_at, is_active
                    FROM api_keys WHERE api_key_id = %s""",
                 (api_key["api_key_id"],),
             )
@@ -403,6 +428,66 @@ def update_current_api_key_site_domain(
         conn.commit()
 
     return {"api_key": _serialize_api_key(updated)}
+
+
+class UpdateCaptchaThemeRequest(BaseModel):
+    theme: str
+
+
+def _validate_captcha_theme(theme: str) -> str:
+    normalized = normalize_captcha_theme(theme)
+    if not normalized:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="테마는 제공된 프리셋 또는 #RRGGBB 형식의 HEX 색상이어야 합니다.",
+        )
+    return normalized
+
+
+@router.put("/api-keys/current/theme")
+def update_current_api_key_theme(
+    body: UpdateCaptchaThemeRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    """고객이 현재 API Key의 CAPTCHA 색상 프리셋을 변경한다."""
+    captcha_theme = _validate_captcha_theme(body.theme)
+    conn = get_conn()
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT theme_customization_allowed
+                   FROM users
+                   WHERE user_id = %s AND user_status = 'active'
+                   FOR UPDATE""",
+                (current_user["sub"],),
+            )
+            user = cur.fetchone()
+            if not user:
+                raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
+            if not user["theme_customization_allowed"]:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="관리자가 CAPTCHA 테마 변경 권한을 제한했습니다.",
+                )
+
+            cur.execute(
+                """SELECT api_key_id FROM api_keys
+                   WHERE user_id = %s AND is_active = TRUE
+                     AND (expired_at IS NULL OR expired_at > NOW())
+                   ORDER BY api_key_id DESC LIMIT 1 FOR UPDATE""",
+                (current_user["sub"],),
+            )
+            api_key = cur.fetchone()
+            if not api_key:
+                raise HTTPException(status_code=404, detail="활성 API Key를 찾을 수 없습니다.")
+
+            cur.execute(
+                "UPDATE api_keys SET captcha_theme = %s WHERE api_key_id = %s",
+                (captcha_theme, api_key["api_key_id"]),
+            )
+        conn.commit()
+
+    return {"captcha_theme": captcha_theme, "theme": serialize_captcha_theme(captcha_theme)}
 
 
 @router.get("/admin/api-keys")
@@ -413,11 +498,13 @@ def list_users_with_api_keys(admin: dict = Depends(get_current_admin)):
         with conn.cursor() as cur:
             cur.execute(
                 """SELECT u.user_id, u.user_name, u.email, u.company_name, u.contact_name,
-                          u.user_status, u.created_at, pl.plan_name, pl.api_limit,
+                          u.user_status, u.created_at, u.theme_customization_allowed,
+                          pl.plan_name, pl.api_limit,
                           COALESCE(s.site_count, 0) AS site_count,
                           ak.api_key_id, ak.key_name AS masked_api_key,
                           ak.created_at AS api_key_created_at,
-                          ak.is_active AS api_key_active
+                          ak.is_active AS api_key_active,
+                          COALESCE(ak.captcha_theme, 'orange') AS captcha_theme
                    FROM users u
                    LEFT JOIN plans pl ON pl.plan_id = u.plan_id
                    LEFT JOIN (
@@ -438,11 +525,82 @@ def list_users_with_api_keys(admin: dict = Depends(get_current_admin)):
             )
             users = cur.fetchall()
 
-    return {"users": users}
+    return {"users": users, "theme_presets": CAPTCHA_THEME_PRESETS}
 
 
 class UpdateApiKeyStatusRequest(BaseModel):
     status: str  # 'active' | 'inactive'
+
+
+class UpdateThemePermissionRequest(BaseModel):
+    allowed: bool
+
+
+@router.patch("/admin/users/{user_id}/api-key-theme")
+def update_user_api_key_theme(
+    user_id: str,
+    body: UpdateCaptchaThemeRequest,
+    admin: dict = Depends(get_current_admin),
+):
+    """관리자가 고객의 최신 API Key 테마를 변경하거나 기본값으로 초기화한다."""
+    captcha_theme = _validate_captcha_theme(body.theme)
+    conn = get_conn()
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT role FROM users WHERE user_id = %s FOR UPDATE",
+                (user_id,),
+            )
+            target = cur.fetchone()
+            if not target:
+                raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
+            if target["role"] != "user":
+                raise HTTPException(status_code=403, detail="관리자 계정의 테마는 제어할 수 없습니다.")
+
+            cur.execute(
+                """SELECT api_key_id FROM api_keys
+                   WHERE user_id = %s
+                   ORDER BY api_key_id DESC LIMIT 1 FOR UPDATE""",
+                (user_id,),
+            )
+            api_key = cur.fetchone()
+            if not api_key:
+                raise HTTPException(status_code=404, detail="발급된 API Key가 없습니다.")
+            cur.execute(
+                "UPDATE api_keys SET captcha_theme = %s WHERE api_key_id = %s",
+                (captcha_theme, api_key["api_key_id"]),
+            )
+        conn.commit()
+
+    return {"user_id": user_id, "captcha_theme": captcha_theme}
+
+
+@router.patch("/admin/users/{user_id}/theme-permission")
+def update_user_theme_permission(
+    user_id: str,
+    body: UpdateThemePermissionRequest,
+    admin: dict = Depends(get_current_admin),
+):
+    """관리자가 고객의 마이페이지 테마 변경 권한을 허용하거나 제한한다."""
+    conn = get_conn()
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT role FROM users WHERE user_id = %s FOR UPDATE",
+                (user_id,),
+            )
+            target = cur.fetchone()
+            if not target:
+                raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
+            if target["role"] != "user":
+                raise HTTPException(status_code=403, detail="관리자 계정의 권한은 제어할 수 없습니다.")
+            cur.execute(
+                "UPDATE users SET theme_customization_allowed = %s WHERE user_id = %s",
+                (body.allowed, user_id),
+            )
+        conn.commit()
+
+    return {"user_id": user_id, "theme_customization_allowed": body.allowed}
 
 
 @router.patch("/admin/users/{user_id}/api-key-status")

@@ -9,8 +9,13 @@ export default function Hero({ openPage }) {
 
   useEffect(() => {
     document.body.style.overflow = demoOpen ? 'hidden' : '';
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') setDemoOpen(false);
+    };
+    if (demoOpen) window.addEventListener('keydown', handleKeyDown);
     return () => {
       document.body.style.overflow = '';
+      window.removeEventListener('keydown', handleKeyDown);
     };
   }, [demoOpen]);
 
@@ -58,7 +63,7 @@ export default function Hero({ openPage }) {
             zIndex: 9999,
           }}
         >
-          <CaptchaDemo onClick={(e) => e.stopPropagation()} />
+          <CaptchaDemo onClick={(e) => e.stopPropagation()} onClose={() => setDemoOpen(false)} />
         </div>,
         document.body
       )}

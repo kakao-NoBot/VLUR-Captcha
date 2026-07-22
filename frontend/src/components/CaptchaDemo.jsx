@@ -21,6 +21,7 @@ import airplanePhoto from '../assets/examples/Aircraft_3.jpg';
 import carPhoto from '../assets/examples/Car_1.jpg';
 import bicyclePhoto from '../assets/examples/bicycle_9.jpg';
 import applePhoto from '../assets/examples/apple_18.jpg';
+import { CAPTCHA_THEME_PRESETS, mixHexColors, normalizeHexColor, resolveCaptchaTheme } from '../utils/captchaTheme';
 
 /* ── 보기 이미지 ── */
 const PHOTOS = {
@@ -48,6 +49,18 @@ const TILE_NAMES = {
   cat: '고양이', dog: '강아지', bear: '곰', chicken: '치킨',
   airplane: '비행기', car: '자동차', bicycle: '자전거', apple: '사과',
 };
+
+function buildDemoPalette(theme) {
+  const resolved = resolveCaptchaTheme(theme);
+  return {
+    ...resolved,
+    accentDeep: mixHexColors(resolved.accent, '#000000', 0.18),
+    highlight: mixHexColors(resolved.accent, '#FFFFFF', 0.25),
+    softDeep: mixHexColors(resolved.accent, '#FFFFFF', 0.78),
+    line: mixHexColors(resolved.accent, '#FFFFFF', 0.72),
+    lineSoft: mixHexColors(resolved.accent, '#FFFFFF', 0.84),
+  };
+}
 
 function shuffle(arr) {
   const a = [...arr];
@@ -141,7 +154,7 @@ const WAYPOINTS = [
   { left: '28%', top: 50 },
   { left: '72%', top: 128 },
 ];
-const WAYPOINT_RADIUS_PX = 30; // 이 반경 안으로 포인터가 들어오면 통과로 인정
+const WAYPOINT_RADIUS_PX = 41; // 표시 크기에 맞춰 통과 판정 범위도 함께 확대
 const DROP_ZONE_ID = 'captcha-drop-drag';
 
 function useWaypointDrag(questions) {
@@ -253,10 +266,14 @@ function useWaypointDrag(questions) {
   return { state, question, selected, ghost, dropState, visited, missedHint, screen, waypointRefs, reset, onPointerDown };
 }
 
-function WaypointTrack({ waypointRefs, visited }) {
+function WaypointTrack({ waypointRefs, visited, compact = false }) {
+  const waypoints = compact
+    ? [{ left: '28%', top: 40 }, { left: '72%', top: 100 }]
+    : WAYPOINTS;
+
   return (
-    <div style={{ position: 'relative', height: DRAG_GAP_PX }}>
-      {WAYPOINTS.map((wp, i) => (
+    <div style={{ position: 'relative', height: compact ? 136 : DRAG_GAP_PX }}>
+      {waypoints.map((wp, i) => (
         <div
           key={i}
           ref={el => { waypointRefs.current[i] = el; }}
@@ -279,7 +296,7 @@ function DropZone({ dropState, missedHint }) {
       // onClick 없음 — 드래그로 놓아야만 제출됨
     >
       <div className="cart">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#F0691E" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="9" cy="21" r="1"/><circle cx="18" cy="21" r="1"/>
           <path d="M2.5 3h2l2.2 12.4a1.6 1.6 0 0 0 1.6 1.3h8.4a1.6 1.6 0 0 0 1.6-1.2L21.5 7H6"/>
         </svg>
@@ -318,7 +335,7 @@ function MatchDragCaptcha() {
   if (screen === 'fail')    return <FailScreen onReset={reset} />;
 
   return (
-    <div className="demo-body">
+    <div className="demo-body demo-body-type2">
       <div className="demo-q">
         <span>아래 <b style={{ color: 'var(--orange)' }}>이미지</b>에 해당하는 보기를 경유 지점을 지나 끌어다 놓아주세요</span>
       </div>
@@ -341,7 +358,7 @@ function MatchDragCaptcha() {
         ))}
       </div>
 
-      <WaypointTrack waypointRefs={waypointRefs} visited={visited} />
+      <WaypointTrack waypointRefs={waypointRefs} visited={visited} compact />
       <DropZone dropState={dropState} missedHint={missedHint} />
 
       <div className="demo-foot" style={{ justifyContent: 'flex-end' }}>
@@ -403,11 +420,55 @@ function DragCaptcha() {
 /* ══════════════════════════════════════
    메인 래퍼 — 유형 탭 토글
 ══════════════════════════════════════ */
-export default function CaptchaDemo({ onClick }) {
+export default function CaptchaDemo({ onClick, onClose }) {
   const [type, setType] = useState(1);
+  const [theme, setTheme] = useState('orange');
+  const palette = buildDemoPalette(theme);
+  const normalizedCustomHex = normalizeHexColor(theme);
+  const demoThemeStyle = {
+    '--orange': palette.accent,
+    '--orange-2': palette.accentDeep,
+    '--gold': palette.highlight,
+    '--peach': palette.soft,
+    '--peach-deep': palette.softDeep,
+    '--line': palette.line,
+    '--line-soft': palette.lineSoft,
+    '--captcha-on-accent': palette.foreground,
+  };
 
   return (
-    <div className="demo" id="demo" onClick={onClick}>
+    <div className={`demo theme-experience-demo captcha-type-${type}`} id="demo" onClick={onClick} style={demoThemeStyle}>
+      <div className="demo-theme-toolbar">
+        <div className="demo-theme-title">
+          <strong>CAPTCHA 테마 체험</strong>
+          <span>컬러 피커 또는 색상 값을 바꾸면 바로 반영됩니다.</span>
+        </div>
+        <div className="demo-theme-controls">
+          <div className="demo-theme-hex selected">
+            <input
+              type="color"
+              value={normalizedCustomHex || palette.accent}
+              onChange={(event) => setTheme(event.target.value.toUpperCase())}
+              aria-label="체험할 HEX 색상 선택"
+            />
+            <input
+              type="text"
+              maxLength={7}
+              value={CAPTCHA_THEME_PRESETS[theme]?.accent || theme}
+              onChange={(event) => setTheme(event.target.value)}
+              onBlur={() => {
+                const normalized = normalizeHexColor(theme);
+                if (normalized) setTheme(normalized);
+              }}
+              aria-label="체험할 HEX 색상 입력"
+              placeholder="#7C5CE7"
+            />
+          </div>
+        </div>
+        {onClose && (
+          <button type="button" className="demo-theme-close" onClick={onClose} aria-label="체험창 닫기">×</button>
+        )}
+      </div>
       <div className="demo-top">
         <div className="dots">
           <i style={{ background: type === 1 ? 'var(--orange)' : 'var(--line)' }}/>
@@ -421,9 +482,9 @@ export default function CaptchaDemo({ onClick }) {
               style={{
                 fontFamily: 'var(--disp)', fontSize: 11, fontWeight: 700,
                 letterSpacing: '.1em', padding: '3px 10px', borderRadius: 8,
-                border: type === t ? 'none' : '1.5px solid var(--line)',
-                background: type === t ? 'linear-gradient(90deg, var(--gold), var(--orange))' : 'var(--paper)',
-                color: type === t ? 'var(--paper)' : 'var(--muted)',
+                border: type === t ? 'none' : '1.5px solid color-mix(in srgb, var(--orange) 40%, var(--line))',
+                background: type === t ? 'linear-gradient(90deg, var(--gold), var(--orange))' : 'color-mix(in srgb, var(--orange) 10%, var(--card))',
+                color: type === t ? 'var(--captcha-on-accent, var(--paper))' : 'var(--orange-2)',
                 cursor: 'pointer', transition: '.15s',
               }}
             >

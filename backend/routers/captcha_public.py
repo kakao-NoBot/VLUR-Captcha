@@ -13,6 +13,7 @@ from pydantic import BaseModel
 
 from auth.site_key import get_site_key_context
 from db import get_conn
+from services.captcha_theme import serialize_captcha_theme
 from services.bot_score import SCORE_HIGH, SCORE_LOW, compute_bot_suspicion
 
 router = APIRouter(prefix="/api/v1/captcha", tags=["captcha-public"])
@@ -137,6 +138,7 @@ def create_challenge(
     return {
         "challenge_token": challenge_token,
         "captcha_type": body.captcha_type,
+        "theme": serialize_captcha_theme(site_ctx["captcha_theme"]),
         "expires_in": CHALLENGE_TTL_SECONDS,
         "question_image_url": question["filename"],
         "options": [
