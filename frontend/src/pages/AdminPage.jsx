@@ -25,7 +25,7 @@ const INQUIRY_TYPE_TABS = [
 ];
 
 const INQUIRY_STATUS_OPTIONS = ['접수', '검토', '답변'];
-const MANAGE_STATUS_OPTIONS = ['활성', '점검', '비활성'];
+const MANAGE_STATUS_OPTIONS = ['활성', '비활성'];
 const USER_STATUS_OPTIONS = ['활성', '비활성'];
 const PLAN_MONTHLY_LIMITS = {
   Basic: 100000,
@@ -38,20 +38,6 @@ const INQUIRY_STATUS_TONE = {
   '검토': 'warning',
   '답변': 'success',
 };
-
-const DASHBOARD_STATS = [
-  { label: '전체 사용자 수', value: '1,284', note: '일반/기업 계정 합산' },
-  { label: '오늘 CAPTCHA 발급 수', value: '32,410', note: 'type1/type2 합산' },
-  { label: '오늘 CAPTCHA 검증 수', value: '30,982', note: '성공/실패 포함' },
-  { label: '평균 성공률', value: '96.8%', note: '최근 24시간 기준' },
-  { label: '봇 차단률', value: '8.7%', note: 'drag trace 판별 기준' },
-];
-
-const MOCK_SITES = [
-  { name: 'VLUR Demo Shop', domain: 'shop.vlur-demo.kr', owner: 'VLUR Commerce', plan: 'Enterprise', monthlyLimit: PLAN_MONTHLY_LIMITS.Enterprise, monthlyUsage: 312000, status: '활성', createdAt: '2026-06-03' },
-  { name: 'AI Study Portal', domain: 'study.example.io', owner: 'AI Study Lab', plan: 'Pro', monthlyLimit: PLAN_MONTHLY_LIMITS.Pro, monthlyUsage: 68400, status: '활성', createdAt: '2026-06-12' },
-  { name: 'Secure Board', domain: 'board.sample.kr', owner: 'Secure Board Inc.', plan: 'Basic', monthlyLimit: PLAN_MONTHLY_LIMITS.Basic, monthlyUsage: 12850, status: '비활성', createdAt: '2026-06-21' },
-];
 
 const INQUIRY_STATUS_BACKEND_TO_LABEL = {
   new: '접수',
@@ -189,72 +175,12 @@ function getScoreBreakdown(botScore) {
   return raw;
 }
 
-// duration과 botScore가 서로 설명되도록 구성 (반응이 너무 빠르거나 느릴수록 점수 상승)
-const MOCK_LOGS = [
-  { time: '2026-07-06 14:52', site: 'VLUR Secure Mall',  captchaType: 'type1_drag',     duration: '2.1초', botScore: 12 },
-  { time: '2026-07-06 14:47', site: 'Mega Ticket',       captchaType: 'type2_identify', duration: '1.9초', botScore: 9  },
-  { time: '2026-07-06 14:41', site: 'K-Event',           captchaType: 'type1_drag',     duration: '2.4초', botScore: 18 },
-  { time: '2026-07-06 14:35', site: 'Commerce Lab Global', captchaType: 'type2_identify', duration: '0.4초', botScore: 79 },
-  { time: '2026-07-06 14:28', site: 'AI Study Portal',   captchaType: 'type1_drag',     duration: '3.6초', botScore: 44 },
-  { time: '2026-07-06 14:20', site: 'Secure Study',      captchaType: 'type2_identify', duration: '1.7초', botScore: 11 },
-  { time: '2026-07-06 14:12', site: 'Demo Shop Plus',    captchaType: 'type1_drag',     duration: '0.5초', botScore: 68 },
-  { time: '2026-07-06 14:05', site: 'K-Event Arena',     captchaType: 'type2_identify', duration: '2.0초', botScore: 14 },
-  { time: '2026-07-06 13:58', site: 'Mega Ticket',       captchaType: 'type1_drag',     duration: '4.1초', botScore: 51 },
-  { time: '2026-07-06 13:50', site: 'VLUR Demo Shop',    captchaType: 'type2_identify', duration: '1.6초', botScore: 7  },
-  { time: '2026-07-06 13:44', site: 'Secure Board',      captchaType: 'type1_drag',     duration: '0.3초', botScore: 86 },
-  { time: '2026-07-06 13:37', site: 'Ticket Demo',       captchaType: 'type2_identify', duration: '2.2초', botScore: 16 },
-  { time: '2026-07-06 13:29', site: 'Commerce Lab',      captchaType: 'type1_drag',     duration: '1.8초', botScore: 10 },
-  { time: '2026-07-06 13:22', site: 'AI Study Portal',   captchaType: 'type2_identify', duration: '3.8초', botScore: 47 },
-  { time: '2026-07-06 13:15', site: 'K-Event',           captchaType: 'type1_drag',     duration: '0.6초', botScore: 63 },
-  { time: '2026-07-06 13:08', site: 'VLUR Secure Mall',  captchaType: 'type2_identify', duration: '2.3초', botScore: 13 },
-  { time: '2026-07-06 13:01', site: 'Secure Study',      captchaType: 'type1_drag',     duration: '1.9초', botScore: 8  },
-  { time: '2026-07-06 12:54', site: 'Demo Shop Plus',    captchaType: 'type2_identify', duration: '0.4초', botScore: 82 },
-  { time: '2026-07-06 12:47', site: 'Mega Ticket',       captchaType: 'type1_drag',     duration: '2.5초', botScore: 20 },
-  { time: '2026-07-06 12:39', site: 'Commerce Lab Global', captchaType: 'type2_identify', duration: '3.4초', botScore: 42 },
-  { time: '2026-07-06 12:32', site: 'K-Event Arena',     captchaType: 'type1_drag',     duration: '1.7초', botScore: 9  },
-  { time: '2026-07-06 12:25', site: 'VLUR Demo Shop',    captchaType: 'type2_identify', duration: '0.5초', botScore: 71 },
-  { time: '2026-07-06 12:18', site: 'Secure Board',      captchaType: 'type1_drag',     duration: '2.0초', botScore: 15 },
-  { time: '2026-07-06 12:10', site: 'Ticket Demo',       captchaType: 'type2_identify', duration: '4.3초', botScore: 55 },
-  { time: '2026-07-06 12:03', site: 'AI Study Portal',   captchaType: 'type1_drag',     duration: '1.8초', botScore: 11 },
-].map((log) => ({ ...log, result: getResultFromScore(log.botScore) }));
-
-const PLAN_USAGE = [
-  { plan: 'Basic', accounts: 812, used: 92000, limit: PLAN_MONTHLY_LIMITS.Basic },
-  { plan: 'Pro', accounts: 386, used: 492000, limit: PLAN_MONTHLY_LIMITS.Pro },
-  { plan: 'Enterprise', accounts: 86, used: 736000, limit: PLAN_MONTHLY_LIMITS.Enterprise },
-];
-
 const PLAN_USAGE_TABS = ['Basic', 'Pro', 'Enterprise'];
 const PLAN_USAGE_SORT_OPTIONS = [
   { value: 'calls_desc', label: '호출량 많은 순' },
   { value: 'usage_desc', label: '사용률 높은 순' },
   { value: 'fail_rate_desc', label: '실패율 높은 순' },
   { value: 'recent_desc', label: '최근 호출순' },
-];
-
-const PLAN_USAGE_DETAILS = [
-  { id: 1, plan: 'Basic', userName: '김준수', email: 'junsu@example.com', siteName: 'VLUR Demo Shop', monthlyCalls: 82000, monthlyLimit: PLAN_MONTHLY_LIMITS.Basic, successCount: 79500, failCount: 2500, botBlockedCount: 1100, lastCalledAt: '2026-07-06' },
-  { id: 2, plan: 'Basic', userName: '한서연', email: 'seoyeon@example.com', siteName: 'Secure Board', monthlyCalls: 92000, monthlyLimit: PLAN_MONTHLY_LIMITS.Basic, successCount: 88700, failCount: 3300, botBlockedCount: 980, lastCalledAt: '2026-07-06' },
-  { id: 3, plan: 'Basic', userName: '오지훈', email: 'jihun@example.com', siteName: 'Ticket Demo', monthlyCalls: 78000, monthlyLimit: PLAN_MONTHLY_LIMITS.Basic, successCount: 73900, failCount: 4100, botBlockedCount: 1400, lastCalledAt: '2026-07-05' },
-  { id: 4, plan: 'Basic', userName: '문가영', email: 'gayoung@example.com', siteName: 'Commerce Lab', monthlyCalls: 51000, monthlyLimit: PLAN_MONTHLY_LIMITS.Basic, successCount: 49700, failCount: 1300, botBlockedCount: 430, lastCalledAt: '2026-07-03' },
-  { id: 5, plan: 'Pro', userName: '이민지', email: 'minji@example.com', siteName: 'AI Study Portal', monthlyCalls: 484000, monthlyLimit: PLAN_MONTHLY_LIMITS.Pro, successCount: 466000, failCount: 18000, botBlockedCount: 6500, lastCalledAt: '2026-07-06' },
-  { id: 6, plan: 'Pro', userName: '정하늘', email: 'haneul@example.com', siteName: 'K-Event', monthlyCalls: 492000, monthlyLimit: PLAN_MONTHLY_LIMITS.Pro, successCount: 471500, failCount: 20500, botBlockedCount: 7600, lastCalledAt: '2026-07-06' },
-  { id: 7, plan: 'Pro', userName: '최유진', email: 'yujin@example.com', siteName: 'Demo Shop Plus', monthlyCalls: 412000, monthlyLimit: PLAN_MONTHLY_LIMITS.Pro, successCount: 399100, failCount: 12900, botBlockedCount: 5100, lastCalledAt: '2026-07-05' },
-  { id: 8, plan: 'Pro', userName: '강태오', email: 'taeo@example.com', siteName: 'Secure Study', monthlyCalls: 395000, monthlyLimit: PLAN_MONTHLY_LIMITS.Pro, successCount: 380800, failCount: 14200, botBlockedCount: 5200, lastCalledAt: '2026-07-03' },
-  { id: 9, plan: 'Enterprise', userName: '박도윤', email: 'doyoon@example.com', siteName: 'Mega Ticket', monthlyCalls: 712000, monthlyLimit: PLAN_MONTHLY_LIMITS.Enterprise, successCount: 686000, failCount: 26000, botBlockedCount: 11800, lastCalledAt: '2026-07-06' },
-  { id: 10, plan: 'Enterprise', userName: '서예린', email: 'yerin@example.com', siteName: 'Commerce Lab Global', monthlyCalls: 764000, monthlyLimit: PLAN_MONTHLY_LIMITS.Enterprise, successCount: 734000, failCount: 30000, botBlockedCount: 13600, lastCalledAt: '2026-07-06' },
-  { id: 11, plan: 'Enterprise', userName: '장민호', email: 'minho@example.com', siteName: 'K-Event Arena', monthlyCalls: 605000, monthlyLimit: PLAN_MONTHLY_LIMITS.Enterprise, successCount: 587000, failCount: 18000, botBlockedCount: 8100, lastCalledAt: '2026-07-05' },
-  { id: 12, plan: 'Enterprise', userName: '윤다정', email: 'dajeong@example.com', siteName: 'VLUR Secure Mall', monthlyCalls: 782000, monthlyLimit: PLAN_MONTHLY_LIMITS.Enterprise, successCount: 748000, failCount: 34000, botBlockedCount: 16100, lastCalledAt: '2026-07-03' },
-];
-
-const BOT_BLOCK_TREND = [
-  { label: '6/27', value: 6.8 },
-  { label: '6/28', value: 7.4 },
-  { label: '6/29', value: 6.9 },
-  { label: '6/30', value: 8.1 },
-  { label: '7/1', value: 8.5 },
-  { label: '7/2', value: 8.2 },
-  { label: '7/3', value: 8.7 },
 ];
 
 function parseSafeDate(value) {
@@ -283,7 +209,7 @@ function clampUsageToLimit(used, limit) {
 }
 
 function getPlanMonthlyLimit(plan, fallbackLimit) {
-  return PLAN_MONTHLY_LIMITS[plan] ?? Number(fallbackLimit || 0);
+  return Number(fallbackLimit || 0) || PLAN_MONTHLY_LIMITS[plan] || 0;
 }
 
 function formatUsage(used, limit) {
@@ -431,6 +357,7 @@ function StatusDropdown({ status, options, isOpen, onToggle, onSelect, resolveTo
 
 function BotTrendChart({ data }) {
   const [hoverIndex, setHoverIndex] = useState(null);
+  if (!data || data.length === 0) return null;
   const width = 640;
   const height = 160;
   const paddingX = 24;
@@ -1071,8 +998,13 @@ export default function AdminPage() {
   const [businessUsers, setBusinessUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(true);
   const [usersError, setUsersError] = useState('');
-  const [sites, setSites] = useState(MOCK_SITES);
-  const [logs, setLogs] = useState(MOCK_LOGS);
+  const [sites, setSites] = useState([]);
+  const [sitesError, setSitesError] = useState('');
+  const [logs, setLogs] = useState([]);
+  const [dashboardStats, setDashboardStats] = useState(null);
+  const [botTrend, setBotTrend] = useState([]);
+  const [planUsage, setPlanUsage] = useState([]);
+  const [planUsageDetails, setPlanUsageDetails] = useState([]);
   const [selectedScoreLog, setSelectedScoreLog] = useState(null);
   const [selectedInquiryDetail, setSelectedInquiryDetail] = useState(null);
   const [selectedThemeUser, setSelectedThemeUser] = useState(null);
@@ -1169,6 +1101,91 @@ export default function AdminPage() {
     return () => { ignore = true; };
   }, []);
 
+  useEffect(() => {
+    let ignore = false;
+    (async () => {
+      try {
+        const { data } = await api.get('/admin/dashboard/summary');
+        if (!ignore) setDashboardStats(data);
+      } catch {
+        if (!ignore) setDashboardStats(null);
+      }
+    })();
+    return () => { ignore = true; };
+  }, []);
+
+  useEffect(() => {
+    let ignore = false;
+    (async () => {
+      try {
+        const { data } = await api.get('/admin/dashboard/bot-trend');
+        if (!ignore) setBotTrend(data.trend || []);
+      } catch {
+        if (!ignore) setBotTrend([]);
+      }
+    })();
+    return () => { ignore = true; };
+  }, []);
+
+  useEffect(() => {
+    let ignore = false;
+    (async () => {
+      try {
+        const { data } = await api.get('/admin/dashboard/plan-usage');
+        if (!ignore) setPlanUsage(data.plans || []);
+      } catch {
+        if (!ignore) setPlanUsage([]);
+      }
+    })();
+    return () => { ignore = true; };
+  }, []);
+
+  useEffect(() => {
+    let ignore = false;
+    (async () => {
+      try {
+        const { data } = await api.get(`/admin/dashboard/plan-usage/${activeUsagePlan}`);
+        if (!ignore) setPlanUsageDetails(data.rows || []);
+      } catch {
+        if (!ignore) setPlanUsageDetails([]);
+      }
+    })();
+    return () => { ignore = true; };
+  }, [activeUsagePlan]);
+
+  useEffect(() => {
+    let ignore = false;
+    (async () => {
+      try {
+        const { data } = await api.get('/admin/dashboard/logs');
+        const rows = (data.logs || []).map((log) => ({ ...log, result: getResultFromScore(log.botScore) }));
+        if (!ignore) setLogs(rows);
+      } catch {
+        if (!ignore) setLogs([]);
+      }
+    })();
+    return () => { ignore = true; };
+  }, []);
+
+  useEffect(() => {
+    let ignore = false;
+    (async () => {
+      try {
+        const { data } = await api.get('/admin/sites');
+        if (!ignore) {
+          setSites(data.sites || []);
+          setSitesError('');
+        }
+      } catch (err) {
+        if (!ignore) {
+          setSites([]);
+          setSitesError(err.response?.data?.detail || '사이트 정보를 불러오지 못했습니다.');
+        }
+      }
+    })();
+    return () => { ignore = true; };
+  }, []);
+
   const filteredUsers = useMemo(() => {
     const query = userSearch.trim().toLowerCase();
     if (!query) return activeUsers;
@@ -1239,7 +1256,7 @@ export default function AdminPage() {
 
   const usagePlanRows = useMemo(() => {
     const query = usagePlanSearch.trim().toLowerCase();
-    const baseRows = PLAN_USAGE_DETAILS.filter((row) => row.plan === activeUsagePlan);
+    const baseRows = planUsageDetails;
     const searchedRows = query
       ? baseRows.filter((row) => (
         Object.values(row).some((value) => String(value).toLowerCase().includes(query))
@@ -1258,12 +1275,10 @@ export default function AdminPage() {
       if (usagePlanSort === 'recent_desc') return b.lastCalledAt.localeCompare(a.lastCalledAt);
       return bMonthlyCalls - aMonthlyCalls;
     });
-  }, [activeUsagePlan, usagePlanSearch, usagePlanSort]);
+  }, [planUsageDetails, usagePlanSearch, usagePlanSort]);
 
   // 검색어와 무관하게 항상 선택된 요금제 "전체" 데이터를 기준으로 계산 (검색 필터링 영향 X)
-const usagePlanBaseRows = useMemo(() => (
-  PLAN_USAGE_DETAILS.filter((row) => row.plan === activeUsagePlan)
-), [activeUsagePlan]);
+const usagePlanBaseRows = planUsageDetails;
 
 const usagePlanSummary = useMemo(() => {
   const rows = usagePlanBaseRows;
@@ -1421,10 +1436,22 @@ const usagePlanSummary = useMemo(() => {
     }
   };
 
-  const updateSiteStatus = (domain, nextStatus) => {
-    setSites((prev) => prev.map((site) => (
-      site.domain === domain ? { ...site, status: nextStatus } : site
-    )));
+  const updateSiteStatus = async (apiKeyId, nextStatus) => {
+    let previousStatus = null;
+    setSites((prev) => prev.map((site) => {
+      if (site.apiKeyId === apiKeyId) previousStatus = site.status;
+      return site.apiKeyId === apiKeyId ? { ...site, status: nextStatus } : site;
+    }));
+    setSitesError('');
+
+    try {
+      await api.patch(`/admin/sites/${apiKeyId}/status`, { status: nextStatus });
+    } catch (err) {
+      setSites((prev) => prev.map((site) => (
+        site.apiKeyId === apiKeyId ? { ...site, status: previousStatus ?? site.status } : site
+      )));
+      setSitesError(err.response?.data?.detail || '사이트 상태를 변경하지 못했습니다.');
+    }
   };
 
   const applySavedThemeSettings = ({ theme, allowed }) => {
@@ -1790,7 +1817,13 @@ const usagePlanSummary = useMemo(() => {
               </div>
 
               <div className="admin-stat-grid">
-                {DASHBOARD_STATS.map((stat) => (
+                {[
+                  { label: '전체 사용자 수', value: dashboardStats ? formatNumber(dashboardStats.total_users) : '-', note: '일반/기업 계정 합산' },
+                  { label: '오늘 CAPTCHA 발급 수', value: dashboardStats ? formatNumber(dashboardStats.today_issued) : '-', note: 'type1/type2 합산' },
+                  { label: '오늘 CAPTCHA 검증 수', value: dashboardStats ? formatNumber(dashboardStats.today_verified) : '-', note: '성공/실패 포함' },
+                  { label: '오늘 완료율', value: dashboardStats ? `${dashboardStats.success_rate}%` : '-', note: '발급 대비 검증 완료 비율' },
+                  { label: '오늘 봇 차단률', value: dashboardStats ? `${dashboardStats.bot_block_rate}%` : '-', note: 'BiLSTM 모델 판정 기준' },
+                ].map((stat) => (
                   <article className="admin-stat-card" key={stat.label}>
                     <span>{stat.label}</span>
                     <strong style={STAT_VALUE_STYLE}>{stat.value}</strong>
@@ -1843,7 +1876,7 @@ const usagePlanSummary = useMemo(() => {
                     <span>월 호출량</span>
                   </div>
                   <div className="admin-plan-usage-list">
-                    {PLAN_USAGE.map((plan) => (
+                    {planUsage.map((plan) => (
                       <button
                         type="button"
                         className="admin-plan-usage-row admin-plan-usage-button"
@@ -1865,7 +1898,7 @@ const usagePlanSummary = useMemo(() => {
                     <h3 id="admin-bot-trend-title" className="pg-h3">봇 차단 추이</h3>
                     <span>최근 7일</span>
                   </div>
-                  <BotTrendChart data={BOT_BLOCK_TREND} />
+                  <BotTrendChart data={botTrend} />
                 </section>
               </div>
             </section>
@@ -2204,11 +2237,11 @@ const usagePlanSummary = useMemo(() => {
                       columns={columns}
                       emptyMessage="검색 결과가 없습니다."
                       rows={pageRows.map((site) => {
-                        const menuKey = `site-${site.domain}`;
+                        const menuKey = `site-${site.apiKeyId}`;
                         const monthlyLimit = getPlanMonthlyLimit(site.plan, site.monthlyLimit);
                         const monthlyUsage = clampUsageToLimit(site.monthlyUsage, monthlyLimit);
                         return (
-                          <tr key={site.domain}>
+                          <tr key={site.apiKeyId}>
                             <td>{site.name}</td>
                             <td>{site.domain}</td>
                             <td>{site.owner}</td>
@@ -2222,7 +2255,7 @@ const usagePlanSummary = useMemo(() => {
                                 isOpen={openStatusMenu === menuKey}
                                 onToggle={() => setOpenStatusMenu(openStatusMenu === menuKey ? null : menuKey)}
                                 onSelect={(option) => {
-                                  updateSiteStatus(site.domain, option);
+                                  updateSiteStatus(site.apiKeyId, option);
                                   setOpenStatusMenu(null);
                                 }}
                               />

@@ -9,6 +9,8 @@ COPY requirements.txt .
 
 # 패키지 설치
 RUN pip install --upgrade pip
+# torch는 CPU 전용 wheel을 명시 설치(기본 인덱스는 CUDA 포함 풀 wheel이라 수 GB로 불필요하게 큼)
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
 RUN pip install --no-cache-dir -r requirements.txt
 
 # 프로젝트 복사
