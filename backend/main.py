@@ -15,6 +15,7 @@ from routers import password_reset as password_reset_router
 from routers import api_keys as api_keys_router
 from routers import usage as usage_router
 from routers import captcha_public as captcha_public_router
+from routers import admin_dashboard as admin_dashboard_router
 from migrations import run_migrations
 
 load_dotenv()
@@ -52,6 +53,7 @@ app.include_router(password_reset_router.router)
 app.include_router(api_keys_router.router)
 app.include_router(usage_router.router)
 app.include_router(captcha_public_router.router)
+app.include_router(admin_dashboard_router.router)
 
 
 @app.get("/health")
