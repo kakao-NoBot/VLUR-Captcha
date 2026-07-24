@@ -14,7 +14,7 @@ from pydantic import BaseModel
 from auth.site_key import get_site_key_context
 from db import get_conn
 from services.captcha_theme import serialize_captcha_theme
-from services.bot_score import SCORE_HIGH, SCORE_LOW, compute_bot_suspicion
+from services.drag_classifier import build_record, classify
 
 router = APIRouter(prefix="/api/v1/captcha", tags=["captcha-public"])
 
@@ -165,6 +165,10 @@ class VerifyRequest(BaseModel):
     drop_position: dict | None = None
     drag_trace: list[DragSample] = []
     response_time_ms: int | None = None
+    pointer_type: str | None = None
+    waypoints: list[dict] = []
+    start_center: dict | None = None
+    drop_center: dict | None = None
 
 
 @router.post("/verify")
@@ -225,13 +229,15 @@ def verify_challenge(
                 conn.commit()
                 return {"verified": False, "ambiguous": False, "blocked": False}
 
-            analysis = compute_bot_suspicion(drag_trace)
-            score_fraction = round(analysis["score"] / 100, 5)
+            start_center = body.start_center or (drag_trace[0] if drag_trace else {"x": 0, "y": 0})
+            drop_center = body.drop_center or (drag_trace[-1] if drag_trace else {"x": 0, "y": 0})
+            record = build_record(drag_trace, body.pointer_type, body.waypoints, start_center, drop_center)
+            analysis = classify(record)
 
-            if analysis["score"] >= SCORE_HIGH:
+            if analysis["tier"] == "blocked":
                 new_status, is_bot, verification_status = "failed", True, "failed"
                 result = {"verified": False, "ambiguous": False, "blocked": True}
-            elif analysis["score"] >= SCORE_LOW:
+            elif analysis["tier"] == "ambiguous":
                 new_status, is_bot, verification_status = "expired", None, "pending"
                 result = {"verified": False, "ambiguous": True, "blocked": False}
             else:
@@ -239,6 +245,7 @@ def verify_challenge(
                 result = {"verified": True, "ambiguous": False, "blocked": False}
 
             one_time_token = secrets.token_urlsafe(32) if new_status == "verified" else None
+            score_fraction = round(analysis["bot_probability"], 5)
 
             cur.execute(
                 "UPDATE captchas SET captcha_status = %s WHERE captcha_id = %s",
@@ -248,19 +255,21 @@ def verify_challenge(
                 """INSERT INTO captcha_verifications
                        (captcha_id, site_id, api_key_id, captcha_type, selected_option_id,
                         selected_image_id, drop_position, drag_trace, is_correct, is_bot,
-                        bot_score, verification_status, one_time_token, response_time_ms, verified_at)
-                   VALUES (%s, NULL, %s, %s, %s, %s, %s, %s, TRUE, %s, %s, %s, %s, %s, NOW())""",
+                        bot_score, model_version, verification_status, one_time_token,
+                        response_time_ms, verified_at)
+                   VALUES (%s, NULL, %s, %s, %s, %s, %s, %s, TRUE, %s, %s, %s, %s, %s, %s, NOW())""",
                 (
                     captcha["captcha_id"], site_ctx["api_key_id"], captcha["captcha_type"],
                     option["option_id"], option["image_id"], drop_position_json, drag_trace_json,
-                    is_bot, score_fraction, verification_status, one_time_token, body.response_time_ms,
+                    is_bot, score_fraction, analysis["model_version"], verification_status,
+                    one_time_token, body.response_time_ms,
                 ),
             )
             _bump_usage(cur, site_ctx["user_id"], issued=0, verified=1)
         conn.commit()
 
-    result["botScore"] = analysis["score"]
-    result["reasons"] = analysis["reasons"]
+    result["botScore"] = round(analysis["bot_probability"] * 100)
+    result["reasons"] = [f"모델 판정 (봇 확률 {analysis['bot_probability']:.1%}, 모델 {analysis['model_version']})"]
     if one_time_token:
         result["token"] = one_time_token
     return result
