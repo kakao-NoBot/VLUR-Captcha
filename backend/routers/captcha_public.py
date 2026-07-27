@@ -7,7 +7,9 @@ import hashlib
 import json
 import random
 import secrets
+import time
 
+import pymysql
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
@@ -20,10 +22,27 @@ router = APIRouter(prefix="/api/v1/captcha", tags=["captcha-public"])
 
 CHALLENGE_TTL_SECONDS = 120
 CAPTCHA_TYPES = ("type1_drag", "type2_identify")
+DEADLOCK_ERRNO = 1213
 
 
 def _hash_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def _retry_on_deadlock(fn, max_attempts: int = 5):
+    """usage_daily_stats에 대한 INSERT IGNORE + UPDATE 두 단계가 동시 요청(같은 유저·같은 날짜
+    행)에서 InnoDB 갭 락끼리 충돌해 가끔 데드락(1213)을 낸다. 트랜잭션 전체가 이미 롤백된
+    상태로 에러가 올라오므로, 매 시도마다 새 커넥션으로 처음부터 재시도해도 부작용이 없다.
+    동시 재시도끼리 다시 부딪히는 걸 줄이려고 재시도 사이에 짧은 랜덤 지연(지터)을 둔다.
+    """
+    for attempt in range(1, max_attempts + 1):
+        try:
+            return fn()
+        except pymysql.err.OperationalError as exc:
+            if exc.args and exc.args[0] == DEADLOCK_ERRNO and attempt < max_attempts:
+                time.sleep(random.uniform(0.02, 0.08) * attempt)
+                continue
+            raise
 
 
 def _bump_usage(cur, user_id: str, issued: int, verified: int) -> None:
@@ -60,79 +79,83 @@ def create_challenge(
             detail="captcha_type은 'type1_drag' 또는 'type2_identify'여야 합니다.",
         )
 
-    conn = get_conn()
-    with conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """SELECT image_id, filename, label FROM captcha_images
-                   WHERE role = 'question' AND captcha_type = %s
-                   ORDER BY RAND() LIMIT 1""",
-                (body.captcha_type,),
-            )
-            question = cur.fetchone()
-            if not question:
-                raise HTTPException(status_code=503, detail="문제 이미지를 찾을 수 없습니다.")
+    def _do():
+        conn = get_conn()
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """SELECT image_id, filename, label FROM captcha_images
+                       WHERE role = 'question' AND captcha_type = %s
+                       ORDER BY RAND() LIMIT 1""",
+                    (body.captcha_type,),
+                )
+                question = cur.fetchone()
+                if not question:
+                    raise HTTPException(status_code=503, detail="문제 이미지를 찾을 수 없습니다.")
 
-            cur.execute(
-                """SELECT image_id, filename, label FROM captcha_images
-                   WHERE role = 'option' AND filename LIKE '/static/captcha/%%' AND label = %s
-                   LIMIT 1""",
-                (question["label"],),
-            )
-            correct_option = cur.fetchone()
-            if not correct_option:
-                raise HTTPException(status_code=503, detail="정답 보기 이미지를 찾을 수 없습니다.")
+                cur.execute(
+                    """SELECT image_id, filename, label FROM captcha_images
+                       WHERE role = 'option' AND filename LIKE '/static/captcha/%%' AND label = %s
+                       LIMIT 1""",
+                    (question["label"],),
+                )
+                correct_option = cur.fetchone()
+                if not correct_option:
+                    raise HTTPException(status_code=503, detail="정답 보기 이미지를 찾을 수 없습니다.")
 
-            cur.execute(
-                """SELECT image_id, filename, label FROM captcha_images
-                   WHERE role = 'option' AND filename LIKE '/static/captcha/%%' AND image_id <> %s
-                   ORDER BY RAND() LIMIT 3""",
-                (correct_option["image_id"],),
-            )
-            distractors = cur.fetchall()
+                cur.execute(
+                    """SELECT image_id, filename, label FROM captcha_images
+                       WHERE role = 'option' AND filename LIKE '/static/captcha/%%' AND image_id <> %s
+                       ORDER BY RAND() LIMIT 3""",
+                    (correct_option["image_id"],),
+                )
+                distractors = cur.fetchall()
 
-            options = [correct_option, *distractors]
-            random.shuffle(options)
+                options = [correct_option, *distractors]
+                random.shuffle(options)
 
-            challenge_token = secrets.token_urlsafe(32)
-            cur.execute(
-                """INSERT INTO captchas
-                       (site_id, captcha_type, question_image_id, target_label,
-                        answer_image_id, answer_payload, challenge_token_hash,
-                        captcha_status, expires_at)
-                   VALUES (NULL, %s, %s, %s, %s, %s, %s, 'issued',
-                           DATE_ADD(NOW(), INTERVAL %s SECOND))""",
-                (
-                    body.captcha_type,
-                    question["image_id"],
-                    question["label"],
-                    correct_option["image_id"],
-                    json.dumps({"correct_image_id": correct_option["image_id"]}),
-                    _hash_token(challenge_token),
-                    CHALLENGE_TTL_SECONDS,
-                ),
-            )
-            captcha_id = cur.lastrowid
+                challenge_token = secrets.token_urlsafe(32)
+                cur.execute(
+                    """INSERT INTO captchas
+                           (site_id, captcha_type, question_image_id, target_label,
+                            answer_image_id, answer_payload, challenge_token_hash,
+                            captcha_status, expires_at)
+                       VALUES (NULL, %s, %s, %s, %s, %s, %s, 'issued',
+                               DATE_ADD(NOW(), INTERVAL %s SECOND))""",
+                    (
+                        body.captcha_type,
+                        question["image_id"],
+                        question["label"],
+                        correct_option["image_id"],
+                        json.dumps({"correct_image_id": correct_option["image_id"]}),
+                        _hash_token(challenge_token),
+                        CHALLENGE_TTL_SECONDS,
+                    ),
+                )
+                captcha_id = cur.lastrowid
 
-            cur.executemany(
-                """INSERT INTO captcha_options
-                       (captcha_id, image_id, position, is_correct_server_side)
-                   VALUES (%s, %s, %s, %s)""",
-                [
-                    (captcha_id, opt["image_id"], position, opt["image_id"] == correct_option["image_id"])
-                    for position, opt in enumerate(options)
-                ],
-            )
+                cur.executemany(
+                    """INSERT INTO captcha_options
+                           (captcha_id, image_id, position, is_correct_server_side)
+                       VALUES (%s, %s, %s, %s)""",
+                    [
+                        (captcha_id, opt["image_id"], position, opt["image_id"] == correct_option["image_id"])
+                        for position, opt in enumerate(options)
+                    ],
+                )
 
-            cur.execute(
-                """SELECT option_id, image_id, position FROM captcha_options
-                   WHERE captcha_id = %s ORDER BY position""",
-                (captcha_id,),
-            )
-            saved_options = cur.fetchall()
+                cur.execute(
+                    """SELECT option_id, image_id, position FROM captcha_options
+                       WHERE captcha_id = %s ORDER BY position""",
+                    (captcha_id,),
+                )
+                saved_options = cur.fetchall()
 
-            _bump_usage(cur, site_ctx["user_id"], issued=1, verified=0)
-        conn.commit()
+                _bump_usage(cur, site_ctx["user_id"], issued=1, verified=0)
+            conn.commit()
+        return question, options, challenge_token, saved_options
+
+    question, options, challenge_token, saved_options = _retry_on_deadlock(_do)
 
     image_lookup = {opt["image_id"]: opt for opt in options}
     return {
@@ -181,95 +204,100 @@ def verify_challenge(
     drag_trace_json = json.dumps(drag_trace)
     drop_position_json = json.dumps(body.drop_position) if body.drop_position else None
 
-    conn = get_conn()
-    with conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """SELECT captcha_id, captcha_type FROM captchas
-                   WHERE challenge_token_hash = %s
-                     AND captcha_status = 'issued'
-                     AND expires_at > NOW()
-                   FOR UPDATE""",
-                (token_hash,),
-            )
-            captcha = cur.fetchone()
-            if not captcha:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="만료되었거나 존재하지 않는 인증 요청입니다.",
-                )
-
-            cur.execute(
-                """SELECT option_id, image_id, is_correct_server_side FROM captcha_options
-                   WHERE captcha_id = %s AND option_id = %s""",
-                (captcha["captcha_id"], body.selected_option_id),
-            )
-            option = cur.fetchone()
-            if not option:
-                raise HTTPException(status_code=422, detail="유효하지 않은 보기입니다.")
-
-            if not option["is_correct_server_side"]:
+    def _do():
+        conn = get_conn()
+        with conn:
+            with conn.cursor() as cur:
                 cur.execute(
-                    "UPDATE captchas SET captcha_status = 'failed' WHERE captcha_id = %s",
-                    (captcha["captcha_id"],),
+                    """SELECT captcha_id, captcha_type FROM captchas
+                       WHERE challenge_token_hash = %s
+                         AND captcha_status = 'issued'
+                         AND expires_at > NOW()
+                       FOR UPDATE""",
+                    (token_hash,),
+                )
+                captcha = cur.fetchone()
+                if not captcha:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail="만료되었거나 존재하지 않는 인증 요청입니다.",
+                    )
+
+                cur.execute(
+                    """SELECT option_id, image_id, is_correct_server_side FROM captcha_options
+                       WHERE captcha_id = %s AND option_id = %s""",
+                    (captcha["captcha_id"], body.selected_option_id),
+                )
+                option = cur.fetchone()
+                if not option:
+                    raise HTTPException(status_code=422, detail="유효하지 않은 보기입니다.")
+
+                if not option["is_correct_server_side"]:
+                    cur.execute(
+                        "UPDATE captchas SET captcha_status = 'failed' WHERE captcha_id = %s",
+                        (captcha["captcha_id"],),
+                    )
+                    cur.execute(
+                        """INSERT INTO captcha_verifications
+                               (captcha_id, site_id, api_key_id, captcha_type, selected_option_id,
+                                selected_image_id, drop_position, drag_trace, is_correct,
+                                verification_status, response_time_ms, verified_at)
+                           VALUES (%s, NULL, %s, %s, %s, %s, %s, %s, FALSE, 'failed', %s, NOW())""",
+                        (
+                            captcha["captcha_id"], site_ctx["api_key_id"], captcha["captcha_type"],
+                            option["option_id"], option["image_id"], drop_position_json,
+                            drag_trace_json, body.response_time_ms,
+                        ),
+                    )
+                    _bump_usage(cur, site_ctx["user_id"], issued=0, verified=1)
+                    conn.commit()
+                    return {"verified": False, "ambiguous": False, "blocked": False}, None, None
+
+                start_center = body.start_center or (drag_trace[0] if drag_trace else {"x": 0, "y": 0})
+                drop_center = body.drop_center or (drag_trace[-1] if drag_trace else {"x": 0, "y": 0})
+                record = build_record(drag_trace, body.pointer_type, body.waypoints, start_center, drop_center)
+                analysis = classify(record)
+
+                if analysis["tier"] == "blocked":
+                    new_status, is_bot, verification_status = "failed", True, "failed"
+                    result = {"verified": False, "ambiguous": False, "blocked": True}
+                elif analysis["tier"] == "ambiguous":
+                    new_status, is_bot, verification_status = "expired", None, "pending"
+                    result = {"verified": False, "ambiguous": True, "blocked": False}
+                else:
+                    new_status, is_bot, verification_status = "verified", False, "passed"
+                    result = {"verified": True, "ambiguous": False, "blocked": False}
+
+                one_time_token = secrets.token_urlsafe(32) if new_status == "verified" else None
+                score_fraction = round(analysis["bot_probability"], 5)
+
+                cur.execute(
+                    "UPDATE captchas SET captcha_status = %s WHERE captcha_id = %s",
+                    (new_status, captcha["captcha_id"]),
                 )
                 cur.execute(
                     """INSERT INTO captcha_verifications
                            (captcha_id, site_id, api_key_id, captcha_type, selected_option_id,
-                            selected_image_id, drop_position, drag_trace, is_correct,
-                            verification_status, response_time_ms, verified_at)
-                       VALUES (%s, NULL, %s, %s, %s, %s, %s, %s, FALSE, 'failed', %s, NOW())""",
+                            selected_image_id, drop_position, drag_trace, is_correct, is_bot,
+                            bot_score, model_version, verification_status, one_time_token,
+                            response_time_ms, verified_at)
+                       VALUES (%s, NULL, %s, %s, %s, %s, %s, %s, TRUE, %s, %s, %s, %s, %s, %s, NOW())""",
                     (
                         captcha["captcha_id"], site_ctx["api_key_id"], captcha["captcha_type"],
-                        option["option_id"], option["image_id"], drop_position_json,
-                        drag_trace_json, body.response_time_ms,
+                        option["option_id"], option["image_id"], drop_position_json, drag_trace_json,
+                        is_bot, score_fraction, analysis["model_version"], verification_status,
+                        one_time_token, body.response_time_ms,
                     ),
                 )
                 _bump_usage(cur, site_ctx["user_id"], issued=0, verified=1)
-                conn.commit()
-                return {"verified": False, "ambiguous": False, "blocked": False}
+            conn.commit()
+        return result, analysis, one_time_token
 
-            start_center = body.start_center or (drag_trace[0] if drag_trace else {"x": 0, "y": 0})
-            drop_center = body.drop_center or (drag_trace[-1] if drag_trace else {"x": 0, "y": 0})
-            record = build_record(drag_trace, body.pointer_type, body.waypoints, start_center, drop_center)
-            analysis = classify(record)
+    result, analysis, one_time_token = _retry_on_deadlock(_do)
 
-            if analysis["tier"] == "blocked":
-                new_status, is_bot, verification_status = "failed", True, "failed"
-                result = {"verified": False, "ambiguous": False, "blocked": True}
-            elif analysis["tier"] == "ambiguous":
-                new_status, is_bot, verification_status = "expired", None, "pending"
-                result = {"verified": False, "ambiguous": True, "blocked": False}
-            else:
-                new_status, is_bot, verification_status = "verified", False, "passed"
-                result = {"verified": True, "ambiguous": False, "blocked": False}
-
-            one_time_token = secrets.token_urlsafe(32) if new_status == "verified" else None
-            score_fraction = round(analysis["bot_probability"], 5)
-
-            cur.execute(
-                "UPDATE captchas SET captcha_status = %s WHERE captcha_id = %s",
-                (new_status, captcha["captcha_id"]),
-            )
-            cur.execute(
-                """INSERT INTO captcha_verifications
-                       (captcha_id, site_id, api_key_id, captcha_type, selected_option_id,
-                        selected_image_id, drop_position, drag_trace, is_correct, is_bot,
-                        bot_score, model_version, verification_status, one_time_token,
-                        response_time_ms, verified_at)
-                   VALUES (%s, NULL, %s, %s, %s, %s, %s, %s, TRUE, %s, %s, %s, %s, %s, %s, NOW())""",
-                (
-                    captcha["captcha_id"], site_ctx["api_key_id"], captcha["captcha_type"],
-                    option["option_id"], option["image_id"], drop_position_json, drag_trace_json,
-                    is_bot, score_fraction, analysis["model_version"], verification_status,
-                    one_time_token, body.response_time_ms,
-                ),
-            )
-            _bump_usage(cur, site_ctx["user_id"], issued=0, verified=1)
-        conn.commit()
-
-    result["botScore"] = round(analysis["bot_probability"] * 100)
-    result["reasons"] = [f"모델 판정 (봇 확률 {analysis['bot_probability']:.1%}, 모델 {analysis['model_version']})"]
+    if analysis is not None:
+        result["botScore"] = round(analysis["bot_probability"] * 100)
+        result["reasons"] = [f"모델 판정 (봇 확률 {analysis['bot_probability']:.1%}, 모델 {analysis['model_version']})"]
     if one_time_token:
         result["token"] = one_time_token
     return result
