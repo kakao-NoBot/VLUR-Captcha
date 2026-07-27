@@ -281,7 +281,7 @@ function DropZone({ dropState, missedHint }) {
           : dropState === 'blocked'
           ? <><b style={{ color: 'var(--bad, #d8492f)' }}>경유 지점을 먼저 지나주세요</b><span>1·2번 지점을 통과한 뒤 놓아주세요</span></>
           : missedHint
-          ? <><b style={{ color: 'var(--bad, #d8492f)' }}>경유 지점을 놓쳤어요</b><span>다시 시도해 주세요</span></>
+          ? <><b style={{ color: 'var(--bad, #d8492f)' }}>경유점을 순서대로 이동해주세요</b><span>다시 시도해 주세요</span></>
           : <><b>여기로 드롭</b><span>경유 지점 1·2를 지나 끌어주세요</span></>}
       </div>
     </div>
