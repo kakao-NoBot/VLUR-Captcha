@@ -159,25 +159,18 @@ function FailScreen({ onReset }) {
 // 타일과 드롭존 사이 여백(px) — 이 값을 키우면 드래그 거리가 길어짐
 const DRAG_GAP_PX = 180; // 260 → 180으로 축소, 장바구니를 위로 당김
 
-// 드래그 경로가 지나야 하는 경유 지점 (gap 영역 기준 좌: %, 상: px)
-const WAYPOINTS = [
-  { left: '28%', top: 50 },
-  { left: '72%', top: 128 },
-];
-const WAYPOINT_RADIUS_PX = 41; // 표시 크기에 맞춰 통과 판정 범위도 함께 확대
-const DROP_ZONE_ID = 'captcha-drop-drag';
-
-function useWaypointDrag(questions) {
+function useWaypointDrag(questions, trackHeight) {
   const [state, setState] = useState(() => {
     const qi = Math.floor(Math.random() * questions.length);
     return { qi, tiles: buildOptions(questions[qi].correctKey) };
   });
+  const [waypoints, setWaypoints] = useState(() => randomWaypoints(trackHeight));
   const [selected, setSelected] = useState(null);
   const [solved, setSolved] = useState(false);
   const [dropState, setDropState] = useState('idle');
   const [ghost, setGhost] = useState(null);
-  const [screen, setScreen] = useState(null); // null | 'success' | 'fail'
-  const [visited, setVisited] = useState(() => WAYPOINTS.map(() => false));
+  const [screen, setScreen] = useState(null);
+  const [visited, setVisited] = useState(() => waypoints.map(() => false));
   const [missedHint, setMissedHint] = useState(false);
 
   const selectedRef = useRef(null);
@@ -195,13 +188,15 @@ function useWaypointDrag(questions) {
       const qi = pickIndex(questions.length, prev.qi);
       return { qi, tiles: buildOptions(questions[qi].correctKey) };
     });
+    const nextWaypoints = randomWaypoints(trackHeight);
+    setWaypoints(nextWaypoints);
+    setVisited(nextWaypoints.map(() => false)); // ← 이 줄이 빠져 있었음
     setSelected(null);
     setSolved(false);
     setDropState('idle');
     setScreen(null);
-    setVisited(WAYPOINTS.map(() => false));
     setMissedHint(false);
-  }, [questions]);
+  }, [questions, trackHeight]);
 
   const submit = useCallback((tileKey) => {
     if (tileKey === question.correctKey) {
@@ -214,13 +209,12 @@ function useWaypointDrag(questions) {
     }
   }, [question]);
 
-  // 드래그(포인터 다운→이동→드롭)로만 제출 가능. 클릭만으로는 제출되지 않음.
   const onPointerDown = useCallback((e, key) => {
     if (solvedRef.current) return;
     setSelected(key);
     setGhost({ key, x: e.clientX, y: e.clientY });
     setMissedHint(false);
-    const freshVisited = WAYPOINTS.map(() => false);
+    const freshVisited = waypoints.map(() => false); // ← WAYPOINTS.length 대신 현재 waypoints 사용
     visitedRef.current = freshVisited;
     setVisited(freshVisited);
 
@@ -228,22 +222,29 @@ function useWaypointDrag(questions) {
       setGhost({ key, x: ev.clientX, y: ev.clientY });
 
       let changed = false;
+      let prevPassed = true;
       const nextVisited = visitedRef.current.map((wasVisited, i) => {
-        if (wasVisited) return true;
+        if (!prevPassed) return wasVisited;        // 이전 지점을 아직 못 지났으면 이 지점은 판정 안 함
+        if (wasVisited) return true;                // 이미 지난 지점은 유지 (prevPassed 그대로 true)
+
         const el = waypointRefs.current[i];
-        if (!el) return wasVisited;
+        if (!el) { prevPassed = false; return wasVisited; }
         const r = el.getBoundingClientRect();
         const cx = r.left + r.width / 2;
         const cy = r.top + r.height / 2;
         const dist = Math.hypot(ev.clientX - cx, ev.clientY - cy);
-        if (dist <= WAYPOINT_RADIUS_PX) { changed = true; return true; }
+        if (dist <= WAYPOINT_RADIUS_PX) {
+          changed = true;
+          return true;
+        }
+        prevPassed = false;                          // 아직 이 지점도 못 지났으니 다음 지점은 잠금
         return wasVisited;
       });
+
       if (changed) {
         visitedRef.current = nextVisited;
         setVisited(nextVisited);
       }
-
       const drop = document.getElementById(DROP_ZONE_ID);
       if (drop) {
         const r = drop.getBoundingClientRect();
@@ -271,18 +272,14 @@ function useWaypointDrag(questions) {
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp, { once: true });
     e.preventDefault();
-  }, [submit]);
+  }, [submit, waypoints]);
 
-  return { state, question, selected, ghost, dropState, visited, missedHint, screen, waypointRefs, reset, onPointerDown };
+  return { state, question, selected, ghost, dropState, visited, missedHint, screen, waypoints, waypointRefs, reset, onPointerDown };
 }
 
-function WaypointTrack({ waypointRefs, visited, compact = false }) {
-  const waypoints = compact
-    ? [{ left: '28%', top: 40 }, { left: '72%', top: 100 }]
-    : WAYPOINTS;
-
+function WaypointTrack({ waypointRefs, visited, waypoints, height }) {
   return (
-    <div style={{ position: 'relative', height: compact ? 136 : DRAG_GAP_PX }}>
+    <div style={{ position: 'relative', height }}>
       {waypoints.map((wp, i) => (
         <div
           key={i}
@@ -296,6 +293,36 @@ function WaypointTrack({ waypointRefs, visited, compact = false }) {
     </div>
   );
 }
+
+// 경유 지점을 매 문제/시도마다 다른 위치에 배치
+const WAYPOINT_LEFT_MIN = 15;   // %
+const WAYPOINT_LEFT_MAX = 85;   // %
+const WAYPOINT_TOP_MARGIN = 24; // px, 트랙 상/하 여백
+const WAYPOINT_MIN_GAP = 110;   // 두 지점이 너무 가깝게 겹치지 않게 하는 최소 거리(px 환산)
+
+function randomWaypoints(trackHeight, count = 2) {
+  const points = [];
+  let attempts = 0;
+  while (points.length < count && attempts < 60) {
+    attempts++;
+    const leftPct = WAYPOINT_LEFT_MIN + Math.random() * (WAYPOINT_LEFT_MAX - WAYPOINT_LEFT_MIN);
+    const top = WAYPOINT_TOP_MARGIN + Math.random() * (trackHeight - WAYPOINT_TOP_MARGIN * 2);
+    const leftPx = leftPct * 3.6; // 컨테이너 폭 대략치로 스케일 변환
+    const tooClose = points.some(p => Math.hypot(leftPx - p.leftPx, top - p.top) < WAYPOINT_MIN_GAP);
+    if (!tooClose) points.push({ left: `${leftPct.toFixed(1)}%`, top: Math.round(top), leftPx });
+  }
+  while (points.length < count) { // 재시도 초과 시 균등 분산으로 폴백
+    const i = points.length;
+    const leftPct = WAYPOINT_LEFT_MIN + (i * (WAYPOINT_LEFT_MAX - WAYPOINT_LEFT_MIN)) / Math.max(1, count - 1);
+    const top = WAYPOINT_TOP_MARGIN + Math.random() * (trackHeight - WAYPOINT_TOP_MARGIN * 2);
+    points.push({ left: `${leftPct.toFixed(1)}%`, top: Math.round(top) });
+  }
+  return points.map(({ left, top }) => ({ left, top }));
+}
+
+const WAYPOINT_RADIUS_PX = 41;
+const DROP_ZONE_ID = 'captcha-drop-drag';
+const COMPACT_TRACK_HEIGHT = 136; // 유형2(MatchDragCaptcha)용 트랙 높이
 
 function DropZone({ dropState, missedHint }) {
   const dropClass = `drop${dropState === 'hot' ? ' hot' : ''}${dropState === 'blocked' ? ' blocked' : ''}${dropState === 'done' ? ' done' : ''}`;
@@ -338,8 +365,8 @@ function GhostTile({ ghost }) {
    4지선다 보기 중 정답을 경유 지점을 지나 드롭존까지 드래그
 ══════════════════════════════════════ */
 function MatchDragCaptcha() {
-  const { state, question, selected, ghost, dropState, visited, missedHint, screen, waypointRefs, reset, onPointerDown } =
-    useWaypointDrag(QUESTIONS_TYPE2);
+  const { state, question, selected, ghost, dropState, visited, missedHint, screen, waypoints, waypointRefs, reset, onPointerDown } =
+    useWaypointDrag(QUESTIONS_TYPE2, COMPACT_TRACK_HEIGHT);
 
   if (screen === 'success') return <SuccessScreen onReset={reset} />;
   if (screen === 'fail')    return <FailScreen onReset={reset} />;
@@ -368,7 +395,7 @@ function MatchDragCaptcha() {
         ))}
       </div>
 
-      <WaypointTrack waypointRefs={waypointRefs} visited={visited} compact />
+      <WaypointTrack waypointRefs={waypointRefs} visited={visited} waypoints={waypoints} height={COMPACT_TRACK_HEIGHT} />
       <DropZone dropState={dropState} missedHint={missedHint} />
 
       <div className="demo-foot" style={{ justifyContent: 'flex-end' }}>
@@ -384,8 +411,8 @@ function MatchDragCaptcha() {
    드래그-투-타깃 CAPTCHA
 ══════════════════════════════════════ */
 function DragCaptcha() {
-  const { state, question, selected, ghost, dropState, visited, missedHint, screen, waypointRefs, reset, onPointerDown } =
-    useWaypointDrag(QUESTIONS_TYPE1);
+  const { state, question, selected, ghost, dropState, visited, missedHint, screen, waypoints, waypointRefs, reset, onPointerDown } =
+    useWaypointDrag(QUESTIONS_TYPE1, DRAG_GAP_PX);
 
   if (screen === 'success') return <SuccessScreen onReset={reset} />;
   if (screen === 'fail')    return <FailScreen onReset={reset} />;
@@ -415,7 +442,7 @@ function DragCaptcha() {
         ))}
       </div>
 
-      <WaypointTrack waypointRefs={waypointRefs} visited={visited} />
+      <WaypointTrack waypointRefs={waypointRefs} visited={visited} waypoints={waypoints} height={DRAG_GAP_PX} />
       <DropZone dropState={dropState} missedHint={missedHint} />
 
       <div className="demo-foot" style={{ justifyContent: 'flex-end' }}>
