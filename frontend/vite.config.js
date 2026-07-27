@@ -16,6 +16,10 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
+      '/static': {
+        target: 'http://backend:8000',
+        changeOrigin: true,
+      },
     },
   },
 });
