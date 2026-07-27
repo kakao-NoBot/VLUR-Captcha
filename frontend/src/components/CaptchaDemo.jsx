@@ -506,8 +506,10 @@ const MAX_ACCENT_VALUE = 92;
   const updateSaturation = (event) => {
     const rect = event.currentTarget.getBoundingClientRect();
     const saturation = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
-    const value = 1 - Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height));
-    setTheme(hsvToHex({ h: pickerHsv.h, s: saturation * 100, v: clampAccentValue(value * 100) }));
+    const verticalRatio = Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height));
+    // 박스 세로 전체를 안전 밝기 범위(MIN~MAX)에 그대로 매핑 — 맨 위 = MAX, 맨 아래 = MIN
+    const value = MAX_ACCENT_VALUE - verticalRatio * (MAX_ACCENT_VALUE - MIN_ACCENT_VALUE);
+    setTheme(hsvToHex({ h: pickerHsv.h, s: saturation * 100, v: value }));
   };
 
   return (
@@ -572,7 +574,11 @@ const MAX_ACCENT_VALUE = 92;
               >
                 <span
                   className="demo-color-field-cursor"
-                  style={{ left: `${pickerHsv.s}%`, top: `${100 - pickerHsv.v}%`, background: pickerHex }}
+                  style={{
+                    left: `${pickerHsv.s}%`,
+                    top: `${((MAX_ACCENT_VALUE - pickerHsv.v) / (MAX_ACCENT_VALUE - MIN_ACCENT_VALUE)) * 100}%`,
+                    background: pickerHex,
+                  }}
                 />
               </div>
 
