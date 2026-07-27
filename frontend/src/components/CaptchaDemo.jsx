@@ -59,13 +59,16 @@ const TILE_NAMES = {
 
 function buildDemoPalette(theme) {
   const resolved = resolveCaptchaTheme(theme);
+  const accentHsv = hexToHsv(resolved.accent);
+  const safeAccent = accentHsv.v < 50 ? hsvToHex({ ...accentHsv, v: 50 }) : resolved.accent;
   return {
     ...resolved,
-    accentDeep: mixHexColors(resolved.accent, '#000000', 0.18),
-    highlight: mixHexColors(resolved.accent, '#FFFFFF', 0.25),
-    softDeep: mixHexColors(resolved.accent, '#FFFFFF', 0.78),
-    line: mixHexColors(resolved.accent, '#FFFFFF', 0.72),
-    lineSoft: mixHexColors(resolved.accent, '#FFFFFF', 0.84),
+    accent: safeAccent,
+    accentDeep: mixHexColors(safeAccent, '#000000', 0.18),
+    highlight: mixHexColors(safeAccent, '#FFFFFF', 0.25),
+    softDeep: mixHexColors(safeAccent, '#FFFFFF', 0.78),
+    line: mixHexColors(safeAccent, '#FFFFFF', 0.72),
+    lineSoft: mixHexColors(safeAccent, '#FFFFFF', 0.84),
   };
 }
 
@@ -467,11 +470,17 @@ export default function CaptchaDemo({ onClick, onClose }) {
     };
   }, [pickerOpen]);
 
+  // 밝기가 너무 낮으면(거의 검정) 다크모드에서, 너무 높으면(거의 흰색) 라이트모드에서
+// accent 색이 배경과 구분되지 않아 위젯 전체가 안 보이게 됨 — 최소/최대 밝기를 강제
+const MIN_ACCENT_VALUE = 50;
+const MAX_ACCENT_VALUE = 92;
+  const clampAccentValue = (v) => Math.min(MAX_ACCENT_VALUE, Math.max(MIN_ACCENT_VALUE, v));
+
   const updateSaturation = (event) => {
     const rect = event.currentTarget.getBoundingClientRect();
     const saturation = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
     const value = 1 - Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height));
-    setTheme(hsvToHex({ h: pickerHsv.h, s: saturation * 100, v: value * 100 }));
+    setTheme(hsvToHex({ h: pickerHsv.h, s: saturation * 100, v: clampAccentValue(value * 100) }));
   };
 
   return (
@@ -498,7 +507,10 @@ export default function CaptchaDemo({ onClick, onClose }) {
               onChange={(event) => setTheme(event.target.value)}
               onBlur={() => {
                 const normalized = normalizeHexColor(theme);
-                if (normalized) setTheme(normalized);
+                if (normalized) {
+                  const hsv = hexToHsv(normalized);
+                  setTheme(hsvToHex({ ...hsv, v: clampAccentValue(hsv.v) }));
+                }
               }}
               aria-label="체험할 HEX 색상 입력"
               placeholder="#7C5CE7"
@@ -544,7 +556,7 @@ export default function CaptchaDemo({ onClick, onClose }) {
                   min="0"
                   max="359"
                   value={pickerHsv.h}
-                  onChange={(event) => setTheme(hsvToHex({ ...pickerHsv, h: Number(event.target.value) }))}
+                  onChange={(event) => setTheme(hsvToHex({ ...pickerHsv, h: Number(event.target.value), v: clampAccentValue(pickerHsv.v) }))}
                   aria-label="색조 선택"
                 />
               </div>

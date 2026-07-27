@@ -313,7 +313,11 @@ h1 .hl::after {
   box-shadow: 0 8px 22px -18px rgba(36,27,21,.45);
   transition: border-color .16s ease, box-shadow .16s ease, background .16s ease;
 }
-.demo-theme-hex.selected { border-color: color-mix(in srgb, var(--orange) 55%, var(--line)); background: color-mix(in srgb, var(--peach) 52%, var(--card)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--orange) 10%, transparent), 0 12px 28px -22px var(--orange); }
+.demo-theme-hex.selected {
+  border-color: color-mix(in srgb, var(--orange) 55%, var(--line));
+  background: color-mix(in srgb, var(--orange) 14%, var(--card));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--orange) 10%, transparent), 0 12px 28px -22px var(--orange);
+}
 .demo-theme-swatch {
   width: 28px; height: 28px; flex: 0 0 28px; padding: 0; overflow: hidden;
   border: 2px solid var(--card); border-radius: 50%; background: var(--swatch-color); cursor: pointer;
@@ -444,7 +448,8 @@ h1 .hl::after {
 }
 .demo-top {
   display: flex; align-items: center; gap: 10px; padding: 13px 18px;
-  border-bottom: 1px solid var(--line-soft); background: linear-gradient(var(--peach),var(--card));
+  border-bottom: 1px solid var(--line-soft);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--orange) 7%, var(--card)), var(--card));
 }
 .demo-top .dots { display: flex; gap: 6px; }
 .demo-top .dots i { width: 10px; height: 10px; border-radius: 50%; display: block; background: var(--line); }
@@ -465,6 +470,7 @@ h1 .hl::after {
   position: relative; display: flex; align-items: center; justify-content: center; gap: 10px;
   background: var(--peach); border: 1px dashed var(--peach-deep); border-radius: 14px;
   padding: 14px 16px; font-weight: 700; font-size: 18px; letter-spacing: -.02em;
+  color: #241B15;
 }
 .demo-q .question-image {
   display: block; flex: 0 1 auto; width: min(680px, 100%); min-width: 0; height: auto;
@@ -480,10 +486,10 @@ h1 .hl::after {
 .captcha-reference {
   display: flex; justify-content: center; margin-top: 16px;
 }
-.captcha-reference img {
-  display: block; width: 420px; max-width: 85%; height: auto;
-  border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow-sm);
-  mix-blend-mode: multiply;
+.captcha-reference img,
+.demo-q .question-image,
+.login-captcha-question img {
+  background: #FBEBDD; /* multiply 블렌드용 고정 밝은 배경 — 다크모드 --card 색과 무관하게 항상 보이도록 */
 }
 .tiles { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-top: 16px; }
 .tiles.choice-tiles { max-width: 650px; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 14px auto 0; }
@@ -529,7 +535,11 @@ h1 .hl::after {
   );
   transition: .16s;
 }
-.drop.hot { border-color: var(--orange); background: var(--peach); transform: scale(1.01); }
+.drop.hot {
+  border-color: var(--orange);
+  background: color-mix(in srgb, var(--orange) 20%, var(--card));
+  transform: scale(1.01);
+}
 .drop.blocked { border-color: var(--bad, #d8492f); background: rgba(216,73,47,.08); }
 .drop.done { border-style: solid; border-color: var(--ok); background: #F1FBF6; }
 .drag-waypoint {
@@ -4386,6 +4396,52 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
 }
 [data-theme="dark"] .guide-ui-type-badge-choice { border-color: var(--orange); color: var(--orange); }
 [data-theme="dark"] .guide-ui-type-badge-drag { border-color: var(--ok); color: var(--ok); }
+
+/* ── 상태 뱃지/드롭다운: 정의만 되어있던 --status-badge-* 변수를 실제로 연결 ── */
+[data-theme="dark"] .admin-badge { background: var(--status-badge-bg); border-color: var(--line); }
+[data-theme="dark"] .admin-badge.success { color: var(--status-badge-ink-success); box-shadow: var(--status-badge-fx); border-color: transparent; }
+[data-theme="dark"] .admin-badge.warning { color: var(--status-badge-ink-warning); box-shadow: var(--status-badge-fx); border-color: transparent; }
+[data-theme="dark"] .admin-badge.danger  { color: var(--status-badge-ink-danger);  box-shadow: var(--status-badge-fx); border-color: transparent; }
+
+[data-theme="dark"] .admin-usage-status-badge.정상 { background: var(--status-badge-bg); color: var(--status-badge-ink-success); box-shadow: var(--status-badge-fx); }
+[data-theme="dark"] .admin-usage-status-badge.주의 { background: var(--status-badge-bg); color: var(--status-badge-ink-warning); box-shadow: var(--status-badge-fx); }
+[data-theme="dark"] .admin-usage-status-badge.위험 { background: var(--status-badge-bg); color: var(--status-badge-ink-danger);  box-shadow: var(--status-badge-fx); }
+
+[data-theme="dark"] .admin-inquiry-status-trigger {
+  background: var(--status-badge-bg); border-color: var(--line); color: var(--ink-soft); box-shadow: none;
+}
+[data-theme="dark"] .admin-inquiry-status-trigger.status-done    { color: var(--status-badge-ink-success); box-shadow: var(--status-badge-fx); border-color: transparent; }
+[data-theme="dark"] .admin-inquiry-status-trigger.status-review  { color: var(--status-badge-ink-warning); box-shadow: var(--status-badge-fx); border-color: transparent; }
+[data-theme="dark"] .admin-inquiry-status-trigger.status-received{ color: var(--status-badge-ink-danger);  box-shadow: var(--status-badge-fx); border-color: transparent; }
+
+[data-theme="dark"] .admin-inquiry-status-menu { background: var(--card); border-color: var(--line); box-shadow: 0 18px 40px rgba(0,0,0,.55); }
+[data-theme="dark"] .admin-inquiry-status-option { background: var(--card); color: var(--ink-soft); }
+[data-theme="dark"] .admin-inquiry-status-option:hover,
+[data-theme="dark"] .admin-inquiry-status-option:focus-visible,
+[data-theme="dark"] .admin-inquiry-status-option.is-selected { background: var(--peach); color: var(--orange); }
+[data-theme="dark"] .admin-inquiry-status-option.status-done     { background: var(--peach); color: var(--status-badge-ink-success); }
+[data-theme="dark"] .admin-inquiry-status-option.status-review   { background: var(--peach); color: var(--status-badge-ink-warning); }
+[data-theme="dark"] .admin-inquiry-status-option.status-received { background: var(--peach); color: var(--status-badge-ink-danger); }
+
+/* ── 하드코딩된 흰색 배경 → 토큰 기반으로 교체 ── */
+[data-theme="dark"] .admin-hero-chip,
+[data-theme="dark"] .admin-api-key-card,
+[data-theme="dark"] .admin-problem-card,
+[data-theme="dark"] .admin-score-modal {
+  background: linear-gradient(180deg, var(--peach) 0%, var(--paper) 100%);
+}
+[data-theme="dark"] .admin-key-mask-pill,
+[data-theme="dark"] .admin-problem-card dl,
+[data-theme="dark"] .admin-score-summary > div,
+[data-theme="dark"] .admin-score-item,
+[data-theme="dark"] .admin-inquiry-detail-list > div,
+[data-theme="dark"] .admin-inquiry-detail-message {
+  background: rgba(255,255,255,.04);
+}
+[data-theme="dark"] .admin-sidebar { background: linear-gradient(180deg, var(--peach), var(--paper)); }
+[data-theme="dark"] .admin-nav-item.active { background: var(--paper); }
+[data-theme="dark"] .admin-trend-track { background: rgba(255,255,255,.06); }
+[data-theme="dark"] .admin-progress { background: var(--line); }
 
 /* Guide modal API Key issue steps alignment override */
 .guide-modal .guide-issue-step-list,
