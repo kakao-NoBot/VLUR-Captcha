@@ -113,18 +113,22 @@ def _generate_site_key() -> str:
     return f"pk-aicap_prod_{secrets.token_urlsafe(24)}"
 
 
-# 유형1(type1_drag)/유형2(type2_identify) 질문 이미지 — CaptchaDemo.jsx의 QUESTIONS_TYPE1/2와 동일한 3문항.
+# 유형1(type1_drag)/유형2(type2_identify) 질문 이미지.
 CAPTCHA_QUESTION_IMAGES = (
     # (filename, label, captcha_type)
     ("/static/captcha/banana_ascii_docs.png", "바나나", "type1_drag"),
     ("/static/captcha/bear_ascii_docs.png", "곰", "type1_drag"),
     ("/static/captcha/Aircraft_ascii_docs.png", "비행기", "type1_drag"),
+    ("/static/captcha/captcha.png", "오렌지", "type1_drag"),
+    ("/static/captcha/captcha-1.png", "딸기", "type1_drag"),
     ("/static/captcha/banana_ascii.jpg", "바나나", "type2_identify"),
     ("/static/captcha/bear_ascii.png", "곰", "type2_identify"),
     ("/static/captcha/Aircraft_ascii.png", "비행기", "type2_identify"),
+    ("/static/captcha/captcha_image.png", "딸기", "type2_identify"),
+    ("/static/captcha/image_ascii.png", "키위", "type2_identify"),
 )
 
-# 보기 타일 사진 — CaptchaDemo.jsx의 PHOTOS/TILE_NAMES와 동일한 12종.
+# 보기 타일 사진.
 CAPTCHA_OPTION_IMAGES = (
     # (filename, label)
     ("/static/captcha/examples/banana_26.jpg", "바나나"),
@@ -139,6 +143,9 @@ CAPTCHA_OPTION_IMAGES = (
     ("/static/captcha/examples/Car_1.jpg", "자동차"),
     ("/static/captcha/examples/bicycle_9.jpg", "자전거"),
     ("/static/captcha/examples/apple_18.jpg", "사과"),
+    ("/static/captcha/examples/test1.jpg", "오렌지"),
+    ("/static/captcha/examples/test_1.jpg", "딸기"),
+    ("/static/captcha/examples/test_2.jpg", "키위"),
 )
 
 

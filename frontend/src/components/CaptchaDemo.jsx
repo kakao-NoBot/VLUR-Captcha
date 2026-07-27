@@ -2,25 +2,7 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import bananaAsciiDocs from '../assets/banana_ascii_docs.png';
-import bananaAscii from '../assets/banana_ascii.jpg';
-import bearAsciiDocs from '../assets/bear_ascii_docs.png';
-import aircraftAsciiDocs from '../assets/Aircraft_ascii_docs.png';
-import bearAscii from '../assets/bear_ascii.png';
-import aircraftAscii from '../assets/Aircraft_ascii.png';
-
-import bananaPhoto from '../assets/examples/banana_26.jpg';
-import carrotPhoto from '../assets/examples/carrots_11.jpg';
-import cherryPhoto from '../assets/examples/cherry_6.jpg';
-import broccoliPhoto from '../assets/examples/broccoli_5.jpg';
-import catPhoto from '../assets/examples/cat_5.jpg';
-import dogPhoto from '../assets/examples/dog_7.jpg';
-import bearPhoto from '../assets/examples/bear_25.jpg';
-import chickenPhoto from '../assets/examples/chicken_10.jpeg';
-import airplanePhoto from '../assets/examples/Aircraft_3.jpg';
-import carPhoto from '../assets/examples/Car_1.jpg';
-import bicyclePhoto from '../assets/examples/bicycle_9.jpg';
-import applePhoto from '../assets/examples/apple_18.jpg';
+import api from '../api/axios';
 import {
   CAPTCHA_THEME_PRESETS,
   hexToHsv,
@@ -29,33 +11,6 @@ import {
   normalizeHexColor,
   resolveCaptchaTheme,
 } from '../utils/captchaTheme';
-
-/* ── 보기 이미지 ── */
-const PHOTOS = {
-  banana: bananaPhoto,
-  carrot: carrotPhoto,
-  cherry: cherryPhoto,
-  broccoli: broccoliPhoto,
-  cat: catPhoto,
-  dog: dogPhoto,
-  bear: bearPhoto,
-  chicken: chickenPhoto,
-  airplane: airplanePhoto,
-  car: carPhoto,
-  bicycle: bicyclePhoto,
-  apple: applePhoto,
-};
-
-const GLYPHS = Object.fromEntries(
-  Object.entries(PHOTOS).map(([key, src]) => [key, <img src={src} alt="" className="tile-photo" />])
-);
-
-/* ── 보기 이름 ── */
-const TILE_NAMES = {
-  banana: '바나나', carrot: '당근', cherry: '체리', broccoli: '브로콜리',
-  cat: '고양이', dog: '강아지', bear: '곰', chicken: '치킨',
-  airplane: '비행기', car: '자동차', bicycle: '자전거', apple: '사과',
-};
 
 function buildDemoPalette(theme) {
   const resolved = resolveCaptchaTheme(theme);
@@ -70,47 +25,6 @@ function buildDemoPalette(theme) {
     line: mixHexColors(safeAccent, '#FFFFFF', 0.72),
     lineSoft: mixHexColors(safeAccent, '#FFFFFF', 0.84),
   };
-}
-
-function shuffle(arr) {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
-// 정답 보기 하나 + 나머지 보기 풀에서 무작위로 뽑은 오답 3개로 매번 다른 보기 조합을 만든다
-function buildOptions(correctKey, count = 4) {
-  const pool = Object.keys(PHOTOS).filter((key) => key !== correctKey);
-  const distractors = shuffle(pool).slice(0, count - 1);
-  const options = [correctKey, ...distractors].map((key) => ({
-    key, name: TILE_NAMES[key], correct: key === correctKey,
-  }));
-  return shuffle(options);
-}
-
-/* 유형 1: 드래그형 문제 세트 */
-const QUESTIONS_TYPE1 = [
-  { image: bananaAsciiDocs,   correctKey: 'banana' },
-  { image: bearAsciiDocs,     correctKey: 'bear' },
-  { image: aircraftAsciiDocs, correctKey: 'airplane' },
-];
-
-/* 유형 2: 경유 지점을 지나 정답 보기를 드롭존까지 드래그하는 문제 세트 */
-const QUESTIONS_TYPE2 = [
-  { image: bananaAscii,   correctKey: 'banana' },
-  { image: bearAscii,     correctKey: 'bear' },
-  { image: aircraftAscii, correctKey: 'airplane' },
-];
-
-// 문제 배열에서 이전과 다른 인덱스를 랜덤으로 뽑는다
-function pickIndex(len, exclude) {
-  if (len <= 1) return 0;
-  let idx;
-  do { idx = Math.floor(Math.random() * len); } while (idx === exclude);
-  return idx;
 }
 
 /* ══════════════════════════════════════
@@ -152,18 +66,24 @@ function FailScreen({ onReset }) {
 
 /* ══════════════════════════════════════
    경유 지점 드래그 공통 로직 (유형1·유형2 공용)
-   타일을 드롭존까지 끌고 가는 동안 경유 지점(WAYPOINTS)을 모두 지나야만
+   타일을 드롭존까지 끌고 가는 동안 경유 지점을 순서대로(1→2) 모두 지나야만
    제출이 인정된다 — 드래그 궤적 검증을 시각적으로 보여줌.
+   문제 발급·정답 판정은 전부 /captcha-demo 서버 API가 처리한다 — 정답을
+   프론트 번들에 담아두지 않기 위함.
 ══════════════════════════════════════ */
 
 // 타일과 드롭존 사이 여백(px) — 이 값을 키우면 드래그 거리가 길어짐
 const DRAG_GAP_PX = 180; // 260 → 180으로 축소, 장바구니를 위로 당김
 
-function useWaypointDrag(questions, trackHeight) {
-  const [state, setState] = useState(() => {
-    const qi = Math.floor(Math.random() * questions.length);
-    return { qi, tiles: buildOptions(questions[qi].correctKey) };
-  });
+// 경유 지점을 지난 순서(인덱스)가 1번→2번(0,1,...) 그대로인지 검사.
+// 어느 지점을 먼저 건드리든 표시(체크)는 그대로 되지만, 성공 판정은 이 순서일 때만 통과.
+function isVisitOrderCorrect(visitOrder, count) {
+  return visitOrder.length === count
+    && visitOrder.every((idx, pos) => idx === pos);
+}
+
+function useWaypointDrag(captchaType, trackHeight) {
+  const [challenge, setChallenge] = useState(null); // null | { challengeId, questionImageUrl, tiles }
   const [waypoints, setWaypoints] = useState(() => randomWaypoints(trackHeight));
   const [selected, setSelected] = useState(null);
   const [solved, setSolved] = useState(false);
@@ -176,71 +96,89 @@ function useWaypointDrag(questions, trackHeight) {
   const selectedRef = useRef(null);
   const solvedRef = useRef(false);
   const visitedRef = useRef(visited);
+  const visitOrderRef = useRef([]); // 경유 지점을 처음 지난 순서(인덱스) — 성공 판정은 이 순서가 0,1,...인지로 함
+  const pendingRef = useRef(false);
   const waypointRefs = useRef([]);
   selectedRef.current = selected;
   solvedRef.current = solved;
   visitedRef.current = visited;
 
-  const question = questions[state.qi];
+  const fetchChallenge = useCallback(() => {
+    setChallenge(null);
+    api.post('/captcha-demo/challenge', { captcha_type: captchaType }).then(({ data }) => {
+      setChallenge({
+        challengeId: data.challenge_id,
+        questionImageUrl: data.question_image_url,
+        tiles: data.options.map((o) => ({ key: o.option_key, name: o.label, imageUrl: o.image_url })),
+      });
+    });
+  }, [captchaType]);
+
+  useEffect(() => {
+    fetchChallenge();
+  }, [fetchChallenge]);
 
   const reset = useCallback(() => {
-    setState(prev => {
-      const qi = pickIndex(questions.length, prev.qi);
-      return { qi, tiles: buildOptions(questions[qi].correctKey) };
-    });
     const nextWaypoints = randomWaypoints(trackHeight);
     setWaypoints(nextWaypoints);
-    setVisited(nextWaypoints.map(() => false)); // ← 이 줄이 빠져 있었음
     setSelected(null);
     setSolved(false);
     setDropState('idle');
     setScreen(null);
+    setVisited(nextWaypoints.map(() => false));
+    visitOrderRef.current = [];
     setMissedHint(false);
-  }, [questions, trackHeight]);
+    fetchChallenge();
+  }, [trackHeight, fetchChallenge]);
 
   const submit = useCallback((tileKey) => {
-    if (tileKey === question.correctKey) {
-      setSolved(true);
-      solvedRef.current = true;
-      setDropState('done');
-      setScreen('success');
-    } else {
-      setScreen('fail');
-    }
-  }, [question]);
+    if (pendingRef.current || !challenge) return;
+    pendingRef.current = true;
+    api.post('/captcha-demo/verify', { challenge_id: challenge.challengeId, option_key: tileKey })
+      .then(({ data }) => {
+        if (data.verified) {
+          setSolved(true);
+          solvedRef.current = true;
+          setDropState('done');
+          setScreen('success');
+        } else {
+          setScreen('fail');
+        }
+      })
+      .catch(() => setScreen('fail'))
+      .finally(() => { pendingRef.current = false; });
+  }, [challenge]);
 
-  const onPointerDown = useCallback((e, key) => {
-    if (solvedRef.current) return;
+  // 드래그(포인터 다운→이동→드롭)로만 제출 가능. 클릭만으로는 제출되지 않음.
+  const onPointerDown = useCallback((e, key, imageUrl) => {
+    if (solvedRef.current || !challenge) return;
     setSelected(key);
-    setGhost({ key, x: e.clientX, y: e.clientY });
+    setGhost({ key, imageUrl, x: e.clientX, y: e.clientY });
     setMissedHint(false);
-    const freshVisited = waypoints.map(() => false); // ← WAYPOINTS.length 대신 현재 waypoints 사용
+    const freshVisited = waypoints.map(() => false);
     visitedRef.current = freshVisited;
     setVisited(freshVisited);
+    visitOrderRef.current = [];
 
     const onMove = (ev) => {
-      setGhost({ key, x: ev.clientX, y: ev.clientY });
+      setGhost({ key, imageUrl, x: ev.clientX, y: ev.clientY });
 
       let changed = false;
-      let prevPassed = true;
-      const nextVisited = visitedRef.current.map((wasVisited, i) => {
-        if (!prevPassed) return wasVisited;        // 이전 지점을 아직 못 지났으면 이 지점은 판정 안 함
-        if (wasVisited) return true;                // 이미 지난 지점은 유지 (prevPassed 그대로 true)
-
+      const nextVisited = [...visitedRef.current];
+      for (let i = 0; i < nextVisited.length; i++) {
+        if (nextVisited[i]) continue;
         const el = waypointRefs.current[i];
-        if (!el) { prevPassed = false; return wasVisited; }
+        if (!el) continue;
         const r = el.getBoundingClientRect();
         const cx = r.left + r.width / 2;
         const cy = r.top + r.height / 2;
         const dist = Math.hypot(ev.clientX - cx, ev.clientY - cy);
         if (dist <= WAYPOINT_RADIUS_PX) {
+          nextVisited[i] = true;
+          visitOrderRef.current.push(i);
           changed = true;
-          return true;
         }
-        prevPassed = false;                          // 아직 이 지점도 못 지났으니 다음 지점은 잠금
-        return wasVisited;
-      });
-
+      }
       if (changed) {
         visitedRef.current = nextVisited;
         setVisited(nextVisited);
@@ -249,8 +187,7 @@ function useWaypointDrag(questions, trackHeight) {
       if (drop) {
         const r = drop.getBoundingClientRect();
         const isOver = ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom;
-        const allVisited = visitedRef.current.every(Boolean);
-        setDropState(isOver ? (allVisited ? 'hot' : 'blocked') : 'idle');
+        setDropState(isOver ? (isVisitOrderCorrect(visitOrderRef.current, waypoints.length) ? 'hot' : 'blocked') : 'idle');
       }
     };
     const onUp = (ev) => {
@@ -260,10 +197,10 @@ function useWaypointDrag(questions, trackHeight) {
       if (drop) {
         const r = drop.getBoundingClientRect();
         const isOver = ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom;
-        const allVisited = visitedRef.current.every(Boolean);
-        if (isOver && allVisited && selectedRef.current) {
+        const inOrder = isVisitOrderCorrect(visitOrderRef.current, waypoints.length);
+        if (isOver && inOrder && selectedRef.current) {
           submit(selectedRef.current);
-        } else if (isOver && !allVisited) {
+        } else if (isOver && !inOrder) {
           setMissedHint(true);
         }
       }
@@ -272,9 +209,9 @@ function useWaypointDrag(questions, trackHeight) {
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp, { once: true });
     e.preventDefault();
-  }, [submit, waypoints]);
+  }, [submit, challenge, waypoints]);
 
-  return { state, question, selected, ghost, dropState, visited, missedHint, screen, waypoints, waypointRefs, reset, onPointerDown };
+  return { challenge, selected, ghost, dropState, visited, missedHint, screen, waypoints, waypointRefs, reset, onPointerDown };
 }
 
 function WaypointTrack({ waypointRefs, visited, waypoints, height }) {
@@ -355,21 +292,26 @@ function GhostTile({ ghost }) {
   if (!ghost) return null;
   return createPortal(
     <div className="ghost" style={{ left: ghost.x, top: ghost.y, position: 'fixed' }}>
-      {GLYPHS[ghost.key]}
+      <img src={ghost.imageUrl} alt="" className="tile-photo" />
     </div>,
     document.body
   );
+}
+
+function DemoLoading() {
+  return <div className="demo-body demo-loading">문제를 불러오는 중...</div>;
 }
 
 /* ══════════════════════════════════════
    4지선다 보기 중 정답을 경유 지점을 지나 드롭존까지 드래그
 ══════════════════════════════════════ */
 function MatchDragCaptcha() {
-  const { state, question, selected, ghost, dropState, visited, missedHint, screen, waypoints, waypointRefs, reset, onPointerDown } =
-    useWaypointDrag(QUESTIONS_TYPE2, COMPACT_TRACK_HEIGHT);
+  const { challenge, selected, ghost, dropState, visited, missedHint, screen, waypoints, waypointRefs, reset, onPointerDown } =
+    useWaypointDrag('type2_identify', COMPACT_TRACK_HEIGHT);
 
   if (screen === 'success') return <SuccessScreen onReset={reset} />;
   if (screen === 'fail')    return <FailScreen onReset={reset} />;
+  if (!challenge) return <DemoLoading />;
 
   return (
     <div className="demo-body demo-body-type2">
@@ -378,19 +320,19 @@ function MatchDragCaptcha() {
       </div>
 
       <div className="captcha-reference">
-        <img src={question.image} alt="문제 이미지" />
+        <img src={challenge.questionImageUrl} alt="문제 이미지" />
       </div>
 
       <div className="tiles choice-tiles">
-        {state.tiles.map(tile => (
+        {challenge.tiles.map(tile => (
           <button
             key={tile.key}
             className={`tile${selected === tile.key ? ' sel' : ''}`}
             type="button"
             aria-label={tile.name + ' 선택'}
-            onPointerDown={e => onPointerDown(e, tile.key)}
+            onPointerDown={e => onPointerDown(e, tile.key, tile.imageUrl)}
           >
-            {GLYPHS[tile.key]}
+            <img src={tile.imageUrl} alt="" className="tile-photo" />
           </button>
         ))}
       </div>
@@ -411,33 +353,34 @@ function MatchDragCaptcha() {
    드래그-투-타깃 CAPTCHA
 ══════════════════════════════════════ */
 function DragCaptcha() {
-  const { state, question, selected, ghost, dropState, visited, missedHint, screen, waypoints, waypointRefs, reset, onPointerDown } =
-    useWaypointDrag(QUESTIONS_TYPE1, DRAG_GAP_PX);
+  const { challenge, selected, ghost, dropState, visited, missedHint, screen, waypoints, waypointRefs, reset, onPointerDown } =
+    useWaypointDrag('type1_drag', DRAG_GAP_PX);
 
   if (screen === 'success') return <SuccessScreen onReset={reset} />;
   if (screen === 'fail')    return <FailScreen onReset={reset} />;
+  if (!challenge) return <DemoLoading />;
 
   return (
     <div className="demo-body">
       <div className="demo-q">
         <img
           className="question-image"
-          src={question.image}
+          src={challenge.questionImageUrl}
           alt="문제 이미지"
         />
       </div>
 
       <div className="tiles">
-        {state.tiles.map(item => (
+        {challenge.tiles.map(item => (
           <button
             key={item.key}
             className={`tile${selected === item.key ? ' sel' : ''}`}
             type="button"
             aria-label={item.name + ' 선택'}
-            onPointerDown={e => onPointerDown(e, item.key)}
+            onPointerDown={e => onPointerDown(e, item.key, item.imageUrl)}
             // onClick 선택 로직 없음 — 드래그로만 선택/제출 가능
           >
-            {GLYPHS[item.key]}
+            <img src={item.imageUrl} alt="" className="tile-photo" />
           </button>
         ))}
       </div>
