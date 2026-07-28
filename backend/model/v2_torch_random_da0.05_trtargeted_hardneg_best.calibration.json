@@ -1,0 +1,15 @@
+{
+  "temperature": 1.0,
+  "threshold": 0.8629306554794312,
+  "checkpoint_path": "C:\\Users\\cdkem\\OneDrive\\바탕 화면\\Sniperfactory\\최종 프로젝트-AI CAPTCHA\\drag_captcha_cnn\\ml\\checkpoint4\\v2_torch_random_da0.05_trtargeted_hardneg_best.pt",
+  "checkpoint_sha256": "d0d6b9a2d82ffc7188789079be68b9e3cab161e84007c7184c03be93cbb2f349",
+  "framework": "pytorch",
+  "track": "v2",
+  "split_mode": "random",
+  "preprocessing_mode": "legacy_rotated",
+  "score_direction": "higher_score_means_human",
+  "positive_class": "human (y=1)",
+  "fpr_target": 0.005,
+  "threshold_algorithm": "empirical percentile of validation human scores at target_fpr",
+  "per_pointer_threshold_experiment": null
+}

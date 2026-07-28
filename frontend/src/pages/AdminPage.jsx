@@ -137,14 +137,19 @@ function mapInquiry(row) {
 }
 
 /* ── 봇 점수 판정 기준 ──
-   botScore(0~100, 봇 의심 점수)를 기준으로 판정 결과와 세부 채점표를 계산한다.
-   기준 하나만 바꾸면 목데이터/판정/세부 채점표가 모두 같이 움직이도록 구성. */
+   서버가 최종 인증 결과를 내려주지 않는 레거시 응답의 표시용 fallback 기준.
+   실제 최근 로그의 성공/실패는 서버 verification_status를 사용한다. */
 const BOT_SCORE_THRESHOLD = { FAIL: 70, SUSPECT: 40 };
 
 function getResultFromScore(score) {
+  if (!Number.isFinite(score)) return '미채점';
   if (score >= BOT_SCORE_THRESHOLD.FAIL) return '실패';
   if (score >= BOT_SCORE_THRESHOLD.SUSPECT) return '의심';
   return '성공';
+}
+
+function formatBotScore(score) {
+  return Number.isFinite(score) ? `${score}점` : '미채점';
 }
 
 // 카테고리별 배점 비중 (총 100점 만점 — ScoreGauge의 100점 만점과 통일)
@@ -542,11 +547,12 @@ function UsageMeter({ used, limit }) {
 }
 
 function ScoreGauge({ score, max = 100 }) {
-  const percent = Math.min(100, Math.max(0, (score / max) * 100));
+  const hasScore = Number.isFinite(score);
+  const percent = hasScore ? Math.min(100, Math.max(0, (score / max) * 100)) : 0;
   const radius = 52;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference * (1 - percent / 100);
-  const color = percent >= 60 ? '#c0392b' : percent >= 30 ? '#e0a52c' : '#2ea36b';
+  const color = !hasScore ? 'var(--muted)' : percent >= 60 ? '#c0392b' : percent >= 30 ? '#e0a52c' : '#2ea36b';
 
   return (
     <div style={{ position: 'relative', width: 120, height: 120, flexShrink: 0 }}>
@@ -562,8 +568,10 @@ function ScoreGauge({ score, max = 100 }) {
         position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center',
       }}>
-        <strong style={{ fontSize: 28, fontWeight: 600, color: 'var(--ink)', lineHeight: 1 }}>{score}</strong>
-        <span style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>/ 100점</span>
+        <strong style={{ fontSize: hasScore ? 28 : 16, fontWeight: 600, color: 'var(--ink)', lineHeight: 1 }}>
+          {hasScore ? score : '미채점'}
+        </strong>
+        {hasScore && <span style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>/ 100점</span>}
       </div>
     </div>
   );
@@ -648,7 +656,8 @@ function ScoreDetailModal({ log, onClose }) {
   if (!log) return null;
 
   // 로그의 botScore 기준으로 세부 채점표를 매번 계산 → 게이지/판정/채점표가 항상 일치
-  const breakdown = getScoreBreakdown(log.botScore);
+  const hasScore = Number.isFinite(log.botScore);
+  const breakdown = hasScore ? getScoreBreakdown(log.botScore) : [];
 
   return (
     <AdminModalShell
@@ -669,31 +678,35 @@ function ScoreDetailModal({ log, onClose }) {
             <StatusBadge tone={getStatusTone(log.result)}>{log.result}</StatusBadge>
           </div>
           <p style={{ margin: '10px 0 0', fontSize: 12.5, color: 'var(--ink-soft)', lineHeight: 1.5 }}>
-            점수가 높을수록 봇 의심 가능성이 높습니다.
+            {hasScore
+              ? 'CNN 로짓을 보정한 위험 지수이며, 점수가 높을수록 봇 의심 가능성이 높습니다.'
+              : 'CNN 채점이 적용되기 전에 생성된 과거 인증 로그입니다.'}
           </p>
         </div>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
-        {breakdown.map((item) => {
-          const percent = getPercent(item.score, item.max);
-          return (
-            <div key={item.label} style={{ border: '1px solid var(--line)', borderRadius: 12, padding: '12px 14px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 13 }}>
-                <span style={{ color: 'var(--ink)', fontWeight: 600 }}>{item.label}</span>
-                <b style={{ color: 'var(--orange-2)' }}>{item.score} / {item.max}</b>
+      {hasScore && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
+          {breakdown.map((item) => {
+            const percent = getPercent(item.score, item.max);
+            return (
+              <div key={item.label} style={{ border: '1px solid var(--line)', borderRadius: 12, padding: '12px 14px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 13 }}>
+                  <span style={{ color: 'var(--ink)', fontWeight: 600 }}>{item.label}</span>
+                  <b style={{ color: 'var(--orange-2)' }}>{item.score} / {item.max}</b>
+                </div>
+                <div style={{ height: 6, borderRadius: 999, background: 'var(--line)', overflow: 'hidden' }}>
+                  <div style={{
+                    width: `${percent}%`, height: '100%',
+                    background: 'linear-gradient(90deg, var(--gold), var(--orange))',
+                    borderRadius: 999,
+                  }} />
+                </div>
               </div>
-              <div style={{ height: 6, borderRadius: 999, background: 'var(--line)', overflow: 'hidden' }}>
-                <div style={{
-                  width: `${percent}%`, height: '100%',
-                  background: 'linear-gradient(90deg, var(--gold), var(--orange))',
-                  borderRadius: 999,
-                }} />
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, fontSize: 12, color: 'var(--muted)' }}>
         <span>{log.time}</span>
@@ -701,6 +714,8 @@ function ScoreDetailModal({ log, onClose }) {
         <span>{log.site}</span>
         <span>·</span>
         <span>{log.captchaType}</span>
+        <span>·</span>
+        <span>{log.answerCorrect ? '정답' : '오답'}</span>
       </div>
     </AdminModalShell>
   );
@@ -1158,7 +1173,10 @@ export default function AdminPage() {
     (async () => {
       try {
         const { data } = await api.get('/admin/dashboard/logs');
-        const rows = (data.logs || []).map((log) => ({ ...log, result: getResultFromScore(log.botScore) }));
+        const rows = (data.logs || []).map((log) => ({
+          ...log,
+          result: log.result || getResultFromScore(log.botScore),
+        }));
         if (!ignore) setLogs(rows);
       } catch {
         if (!ignore) setLogs([]);
@@ -1822,7 +1840,7 @@ const usagePlanSummary = useMemo(() => {
                   { label: '오늘 CAPTCHA 발급 수', value: dashboardStats ? formatNumber(dashboardStats.today_issued) : '-', note: 'type1/type2 합산' },
                   { label: '오늘 CAPTCHA 검증 수', value: dashboardStats ? formatNumber(dashboardStats.today_verified) : '-', note: '성공/실패 포함' },
                   { label: '오늘 완료율', value: dashboardStats ? `${dashboardStats.success_rate}%` : '-', note: '발급 대비 검증 완료 비율' },
-                  { label: '오늘 봇 차단률', value: dashboardStats ? `${dashboardStats.bot_block_rate}%` : '-', note: 'BiLSTM 모델 판정 기준' },
+                  { label: '오늘 봇 차단률', value: dashboardStats ? `${dashboardStats.bot_block_rate}%` : '-', note: 'CNN 모델 판정 기준' },
                 ].map((stat) => (
                   <article className="admin-stat-card" key={stat.label}>
                     <span>{stat.label}</span>
@@ -1863,7 +1881,7 @@ const usagePlanSummary = useMemo(() => {
                           <span style={{ flex: '0 0 44px' }}>{log.time.slice(11)}</span>
                           <b style={{ flex: '1 1 0%', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{log.site}</b>
                           <StatusBadge tone={getStatusTone(log.result)} style={{ flex: '0 0 auto' }}>{log.result}</StatusBadge>
-                          <span style={{ flex: '0 0 44px', color: 'var(--orange-2)', fontWeight: 500, textAlign: 'right' }}>{log.botScore}점</span>
+                          <span style={{ flex: '0 0 52px', color: 'var(--orange-2)', fontWeight: 500, textAlign: 'right' }}>{formatBotScore(log.botScore)}</span>
                         </div>
                       );
                     })}
@@ -2410,7 +2428,7 @@ const usagePlanSummary = useMemo(() => {
                             <td>{log.captchaType}</td>
                             <td><StatusBadge tone={getStatusTone(log.result)}>{log.result}</StatusBadge></td>
                             <td>{log.duration}</td>
-                            <td style={{ color: 'var(--orange-2)' }}>{log.botScore}점</td>
+                            <td style={{ color: 'var(--orange-2)' }}>{formatBotScore(log.botScore)}</td>
                           </tr>
                         );
                       })}

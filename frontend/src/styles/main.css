@@ -452,8 +452,44 @@ h1 .hl::after {
   background: linear-gradient(180deg, color-mix(in srgb, var(--orange) 7%, var(--card)), var(--card));
 }
 .demo-top .dots { display: flex; gap: 6px; }
-.demo-top .dots i { width: 10px; height: 10px; border-radius: 50%; display: block; background: var(--line); }
-.demo-top .dots i:first-child { background: var(--orange); }
+.demo-top .dots i {
+  display: block; width: 10px; height: 10px; border-radius: 50%;
+  transition: background-color .18s ease, box-shadow .18s ease, opacity .18s ease;
+}
+.demo-type-indicator.is-active {
+  background: var(--orange);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--orange) 12%, transparent);
+}
+.demo-type-indicator.is-inactive {
+  background: color-mix(in srgb, var(--ink) 18%, var(--card));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 8%, transparent);
+  opacity: .72;
+}
+.demo-type-tabs { display: flex; gap: 4px; margin-left: 12px; }
+.demo-type-tab {
+  padding: 3px 10px;
+  border-radius: 8px;
+  font-family: var(--disp);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  cursor: pointer;
+  transition: border-color .15s ease, background .15s ease, color .15s ease, opacity .15s ease;
+}
+.demo-type-tab.is-active {
+  border: 1.5px solid transparent;
+  background: linear-gradient(90deg, var(--gold), var(--orange));
+  color: var(--captcha-on-accent, var(--paper));
+}
+.demo-type-tab.is-inactive {
+  border: 1.5px solid color-mix(in srgb, var(--orange) 40%, var(--line));
+  background: color-mix(in srgb, var(--orange) 10%, var(--card));
+  color: var(--orange-2);
+}
+.demo-type-tab:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--orange) 24%, transparent);
+  outline-offset: 2px;
+}
 .demo-top .tag {
   margin-left: auto; font-family: var(--disp); font-size: 11px; font-weight: 600;
   letter-spacing: .14em; color: var(--muted); text-transform: uppercase;
@@ -476,6 +512,23 @@ h1 .hl::after {
   display: block; flex: 0 1 auto; width: min(680px, 100%); min-width: 0; height: auto;
   /* The source artwork has a white canvas; blend it into the peach question panel. */
   mix-blend-mode: multiply;
+}
+.demo-q .question-image-dark { display: none; }
+.theme-experience-demo.captcha-type-1 .demo-q.custom-question-art {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.theme-experience-demo.captcha-type-1 .demo-q.custom-question-art .question-image {
+  background: transparent;
+  mix-blend-mode: normal;
+}
+[data-theme="dark"] .theme-experience-demo.captcha-type-1 .demo-q.custom-question-art .question-image-light {
+  display: none;
+}
+[data-theme="dark"] .theme-experience-demo.captcha-type-1 .demo-q.custom-question-art .question-image-dark {
+  display: block;
 }
 .demo-q .drag-ic {
   position: absolute; right: 16px;
@@ -4316,6 +4369,101 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
 [data-theme="dark"] .drop.done { background: #152A20; }
 [data-theme="dark"] .tile::before { background-image: radial-gradient(rgba(255,255,255,.05) 1px, transparent 1.4px); }
 
+/* CAPTCHA 테마 체험: 기존 다크 디자인을 유지하고 테두리만 어두운 브론즈로 통일 */
+[data-theme="dark"] .theme-experience-demo {
+  border-color: transparent;
+}
+[data-theme="dark"] .theme-experience-demo > .demo-theme-toolbar {
+  border-bottom-color: #FF8A3D;
+}
+[data-theme="dark"] .theme-experience-demo .demo-theme-title strong {
+  color: #FF8A3D;
+}
+[data-theme="dark"] .theme-experience-demo .demo-theme-hex.selected {
+  border-color: #FF8A3D;
+  background: var(--card);
+  box-shadow: none;
+}
+[data-theme="dark"] .theme-experience-demo .demo-theme-swatch {
+  box-shadow: 0 0 0 1px #FF8A3D;
+}
+[data-theme="dark"] .theme-experience-demo .demo-theme-close {
+  border-color: #28303F;
+  background: var(--card);
+  color: #A8B1C2;
+}
+[data-theme="dark"] .theme-experience-demo .demo-theme-close:hover,
+[data-theme="dark"] .theme-experience-demo .demo-theme-close:focus-visible {
+  border-color: #FF8A3D;
+  background: var(--card);
+  color: #FF8A3D;
+}
+[data-theme="dark"] .theme-experience-demo .demo-color-popover-head > button:hover,
+[data-theme="dark"] .theme-experience-demo .demo-color-popover-head > button:focus-visible {
+  background: #2A1B15;
+  color: var(--orange);
+}
+[data-theme="dark"] .theme-experience-demo .demo-top {
+  background: var(--card);
+  border-bottom-color: #FF8A3D;
+}
+[data-theme="dark"] .theme-experience-demo .demo-type-indicator.is-active {
+  box-shadow: none;
+}
+[data-theme="dark"] .theme-experience-demo .demo-type-indicator.is-inactive {
+  background: #252D3B;
+  box-shadow: none;
+  opacity: 1;
+}
+[data-theme="dark"] .theme-experience-demo .demo-type-tab.is-active {
+  border-color: #FF8A3D;
+  background: #FF8A3D;
+  color: #10141C;
+  box-shadow: none;
+  outline: none;
+}
+[data-theme="dark"] .theme-experience-demo .demo-type-tab.is-inactive {
+  border-color: #FF8A3D;
+  background: transparent;
+  color: #FF8A3D;
+  box-shadow: none;
+}
+[data-theme="dark"] .theme-experience-demo .demo-q,
+[data-theme="dark"] .theme-experience-demo .tile,
+[data-theme="dark"] .theme-experience-demo .drop,
+[data-theme="dark"] .theme-experience-demo .drop .cart,
+[data-theme="dark"] .theme-experience-demo .demo-foot .reset,
+[data-theme="dark"] .theme-experience-demo .demo-color-popover {
+  border-color: #76503C;
+}
+[data-theme="dark"] .theme-experience-demo .demo-color-popover::before {
+  border-color: #76503C;
+}
+[data-theme="dark"] .theme-experience-demo .tile:not(.sel) {
+  border-color: #28303F;
+}
+[data-theme="dark"] .theme-experience-demo .tile:not(.sel):hover,
+[data-theme="dark"] .theme-experience-demo .tile:not(.sel):focus-visible {
+  border-color: #FF8A3D;
+}
+[data-theme="dark"] .theme-experience-demo .demo-foot .reset {
+  border-color: #28303F;
+  background: var(--card);
+  color: #A8B1C2;
+}
+[data-theme="dark"] .theme-experience-demo .demo-foot .reset:hover,
+[data-theme="dark"] .theme-experience-demo .demo-foot .reset:focus-visible {
+  border-color: #FF8A3D;
+  background: var(--card);
+  color: #FF8A3D;
+  outline: none;
+}
+[data-theme="dark"] .theme-experience-demo .drag-waypoint:not(.visited) {
+  border-color: #FF8A3D;
+  background: var(--card);
+  color: #FF8A3D;
+  box-shadow: none;
+}
 /* ── cta band: 흰 카피가 읽히도록 깊은 엠버 그라데이션 유지 ── */
 [data-theme="dark"] .cta-band { background: linear-gradient(120deg,#93400E,#A96A12); box-shadow: 0 40px 80px -40px rgba(0,0,0,.8); }
 [data-theme="dark"] .cta-band .btn { color: #C2490D; }
