@@ -79,7 +79,7 @@ def issue_challenge(captcha_type: str) -> dict:
         "captcha_type": captcha_type,
         "question_image_url": question_filename,
         "options": [
-            {"option_key": filename, "image_url": filename, "label": label}
+            {"option_key": filename, "image_url": filename}
             for filename, label in options
         ],
         "expires_in": CHALLENGE_TTL_SECONDS,

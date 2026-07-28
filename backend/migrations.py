@@ -9,6 +9,7 @@ import secrets
 from datetime import date, timedelta
 
 from db import get_conn
+from services.captcha_label_hash import hash_label
 
 BOARD_TYPE_ENUM = "ENUM('notice','qna','inquiry','general','faq','research')"
 PLAN_LIMITS = {
@@ -126,26 +127,112 @@ CAPTCHA_QUESTION_IMAGES = (
     ("/static/captcha/Aircraft_ascii.png", "비행기", "type2_identify"),
     ("/static/captcha/captcha_image.png", "딸기", "type2_identify"),
     ("/static/captcha/image_ascii.png", "키위", "type2_identify"),
+    # mainimg 세트 추가분 — assets/examples/mainimg의 *_ascii* 파일 전부를 유형2
+    # 문제로 등록. 각 문제의 정답 보기는 같은 클래스의 다른 번호 사진이어야 하며
+    # (아래 CAPTCHA_OPTION_IMAGES 참고), 아스키 변환에 쓰인 원본 번호와는 절대
+    # 겹치지 않도록 optimg에서 별도로 골랐다.
+    ("/static/captcha/Aircraft_3_ascii.png", "비행기", "type2_identify"),
+    ("/static/captcha/Car_1_ascii.png", "자동차", "type2_identify"),
+    ("/static/captcha/Motorcycle_1_ascii.png", "오토바이", "type2_identify"),
+    ("/static/captcha/Ship_22_ascii.png", "배", "type2_identify"),
+    ("/static/captcha/apple_18_ascii.jpg", "사과", "type2_identify"),
+    ("/static/captcha/banana_26_ascii.jpg", "바나나", "type2_identify"),
+    ("/static/captcha/bed_14_ascii.jpg", "침대", "type2_identify"),
+    ("/static/captcha/bicycle_9_ascii.png", "자전거", "type2_identify"),
+    ("/static/captcha/broccoli_5_ascii.png", "브로콜리", "type2_identify"),
+    ("/static/captcha/carrots_11_ascii.png", "당근", "type2_identify"),
+    ("/static/captcha/cat_5_ascii.png", "고양이", "type2_identify"),
+    ("/static/captcha/chair_103_ascii.jpg", "의자", "type2_identify"),
+    ("/static/captcha/cherry_6_ascii.jpg", "체리", "type2_identify"),
+    ("/static/captcha/chicken_10_ascii.jpg", "치킨", "type2_identify"),
+    ("/static/captcha/corn_23_ascii.png", "옥수수", "type2_identify"),
+    ("/static/captcha/cow_4_ascii.png", "소", "type2_identify"),
+    ("/static/captcha/deer_29_ascii.png", "사슴", "type2_identify"),
+    ("/static/captcha/dog_7_ascii.png", "강아지", "type2_identify"),
+    ("/static/captcha/drums_11_ascii.png", "드럼", "type2_identify"),
+    ("/static/captcha/duck_3_ascii.png", "오리", "type2_identify"),
+    ("/static/captcha/eagle_5_ascii.png", "독수리", "type2_identify"),
+    ("/static/captcha/elephant_4_ascii.png", "코끼리", "type2_identify"),
+    ("/static/captcha/grapes_5_ascii.jpg", "포도", "type2_identify"),
+    ("/static/captcha/guitar_24_ascii.png", "기타", "type2_identify"),
+    ("/static/captcha/hamber_2_ascii.jpg", "햄버거", "type2_identify"),
+    ("/static/captcha/horse_31_ascii.png", "말", "type2_identify"),
+    ("/static/captcha/hotdog_12_ascii.jpg", "핫도그", "type2_identify"),
+    ("/static/captcha/kiwi_29_ascii.jpg", "키위", "type2_identify"),
+    ("/static/captcha/lion_17_ascii.png", "사자", "type2_identify"),
+    ("/static/captcha/mango_12_ascii.jpg", "망고", "type2_identify"),
+    ("/static/captcha/orange_5_ascii.jpg", "오렌지", "type2_identify"),
+    ("/static/captcha/owl_17_ascii.png", "부엉이", "type2_identify"),
+    ("/static/captcha/panda_21_ascii.png", "판다", "type2_identify"),
+    ("/static/captcha/piano_4_ascii.png", "피아노", "type2_identify"),
+    ("/static/captcha/pig_7_ascii.png", "돼지", "type2_identify"),
+    ("/static/captcha/pizza_6_ascii.jpg", "피자", "type2_identify"),
+    ("/static/captcha/potato_14_ascii.png", "감자", "type2_identify"),
+    ("/static/captcha/sheep_6_ascii.png", "양", "type2_identify"),
+    ("/static/captcha/sofa_19_ascii.jpg", "소파", "type2_identify"),
+    ("/static/captcha/sparrow_10_ascii.png", "참새", "type2_identify"),
+    ("/static/captcha/strawberry_28_ascii.jpg", "딸기", "type2_identify"),
+    ("/static/captcha/swan_3_ascii.png", "백조", "type2_identify"),
+    ("/static/captcha/table_24_ascii.jpg", "테이블", "type2_identify"),
+    ("/static/captcha/tiger_25_ascii.png", "호랑이", "type2_identify"),
+    ("/static/captcha/tomato_2_ascii.png", "토마토", "type2_identify"),
+    ("/static/captcha/trumpet_26_ascii.png", "트럼펫", "type2_identify"),
+    ("/static/captcha/violin_18_ascii.png", "바이올린", "type2_identify"),
 )
 
-# 보기 타일 사진.
+# 보기 타일 사진. mainimg 라벨은 optimg의 각 클래스 폴더에서 무작위로 골랐으며,
+# 같은 클래스의 *_ascii 문제 이미지를 만들 때 쓴 번호는 정답 후보에서 제외했다
+# (예: Aircraft_3_ascii의 정답 보기는 Aircraft_3.jpg가 아닌 다른 번호여야 함).
 CAPTCHA_OPTION_IMAGES = (
     # (filename, label)
-    ("/static/captcha/examples/banana_26.jpg", "바나나"),
-    ("/static/captcha/examples/carrots_11.jpg", "당근"),
-    ("/static/captcha/examples/cherry_6.jpg", "체리"),
-    ("/static/captcha/examples/broccoli_5.jpg", "브로콜리"),
-    ("/static/captcha/examples/cat_5.jpg", "고양이"),
-    ("/static/captcha/examples/dog_7.jpg", "강아지"),
     ("/static/captcha/examples/bear_25.jpg", "곰"),
-    ("/static/captcha/examples/chicken_10.jpeg", "치킨"),
-    ("/static/captcha/examples/Aircraft_3.jpg", "비행기"),
-    ("/static/captcha/examples/Car_1.jpg", "자동차"),
-    ("/static/captcha/examples/bicycle_9.jpg", "자전거"),
-    ("/static/captcha/examples/apple_18.jpg", "사과"),
-    ("/static/captcha/examples/test1.jpg", "오렌지"),
-    ("/static/captcha/examples/test_1.jpg", "딸기"),
-    ("/static/captcha/examples/test_2.jpg", "키위"),
+    ("/static/captcha/examples/Aircraft_9.jpg", "비행기"),
+    ("/static/captcha/examples/Car_14.jpg", "자동차"),
+    ("/static/captcha/examples/Motorcycle_24.jpg", "오토바이"),
+    ("/static/captcha/examples/Ship_23.jpg", "배"),
+    ("/static/captcha/examples/apple_12.jpg", "사과"),
+    ("/static/captcha/examples/banana_7.jpg", "바나나"),
+    ("/static/captcha/examples/bed_84.jpg", "침대"),
+    ("/static/captcha/examples/bicycle_7.jpg", "자전거"),
+    ("/static/captcha/examples/broccoli_13.jpg", "브로콜리"),
+    ("/static/captcha/examples/carrots_27.jpg", "당근"),
+    ("/static/captcha/examples/cat_4.jpg", "고양이"),
+    ("/static/captcha/examples/chair_344.jpg", "의자"),
+    ("/static/captcha/examples/cherry_26.jpg", "체리"),
+    ("/static/captcha/examples/chicken_2.jpeg", "치킨"),
+    ("/static/captcha/examples/corn_5.jpg", "옥수수"),
+    ("/static/captcha/examples/cow_12.jpg", "소"),
+    ("/static/captcha/examples/deer_20.jpg", "사슴"),
+    ("/static/captcha/examples/dog_6.jpg", "강아지"),
+    ("/static/captcha/examples/drums_5.jpg", "드럼"),
+    ("/static/captcha/examples/duck_10.jpg", "오리"),
+    ("/static/captcha/examples/eagle_13.jpg", "독수리"),
+    ("/static/captcha/examples/elephant_17.jpg", "코끼리"),
+    ("/static/captcha/examples/grapes_16.jpg", "포도"),
+    ("/static/captcha/examples/guitar_18.jpg", "기타"),
+    ("/static/captcha/examples/hamber_12.jpeg", "햄버거"),
+    ("/static/captcha/examples/horse_20.jpg", "말"),
+    ("/static/captcha/examples/hotdog_17.jpeg", "핫도그"),
+    ("/static/captcha/examples/kiwi_1.jpg", "키위"),
+    ("/static/captcha/examples/lion_26.jpg", "사자"),
+    ("/static/captcha/examples/mango_7.jpg", "망고"),
+    ("/static/captcha/examples/orange_30.jpg", "오렌지"),
+    ("/static/captcha/examples/owl_15.jpg", "부엉이"),
+    ("/static/captcha/examples/panda_17.jpg", "판다"),
+    ("/static/captcha/examples/piano_18.jpg", "피아노"),
+    ("/static/captcha/examples/pig_19.jpg", "돼지"),
+    ("/static/captcha/examples/pizza_13.jpeg", "피자"),
+    ("/static/captcha/examples/potato_1.jpg", "감자"),
+    ("/static/captcha/examples/sheep_12.jpg", "양"),
+    ("/static/captcha/examples/sofa_11.jpg", "소파"),
+    ("/static/captcha/examples/sparrow_19.jpg", "참새"),
+    ("/static/captcha/examples/strawberry_25.jpg", "딸기"),
+    ("/static/captcha/examples/swan_13.jpg", "백조"),
+    ("/static/captcha/examples/table_57.jpg", "테이블"),
+    ("/static/captcha/examples/tiger_34.jpg", "호랑이"),
+    ("/static/captcha/examples/tomato_16.jpg", "토마토"),
+    ("/static/captcha/examples/trumpet_16.jpg", "트럼펫"),
+    ("/static/captcha/examples/violin_25.jpg", "바이올린"),
 )
 
 
@@ -350,12 +437,15 @@ def run_migrations() -> None:
 
             # 11) captcha_images — 공개 challenge/verify API가 서빙할 질문·보기 이미지 시드.
             # filename UNIQUE는 아니지만 NOT EXISTS 가드로 재실행해도 중복 삽입되지 않는다.
+            # label은 DB 덤프·소스만 보고 문제-정답 매핑을 읽을 수 없도록 평문이 아닌
+            # HMAC 해시로 저장한다(정답 판정 시 label = label 등호 비교는 그대로 동작).
+            # instruction도 CONCAT으로 평문 라벨을 새어나가게 하던 것을 해시로 바꿨다.
             cur.executemany(
                 """INSERT INTO captcha_images (site_id, role, captcha_type, render_type, filename, label, instruction)
-                   SELECT NULL, 'question', %s, 'ascii_art', %s, %s, CONCAT('이미지 속 대상: ', %s)
+                   SELECT NULL, 'question', %s, 'ascii_art', %s, %s, CONCAT('이미지 속 대상 해시: ', %s)
                    WHERE NOT EXISTS (SELECT 1 FROM captcha_images WHERE filename = %s)""",
                 [
-                    (captcha_type, filename, label, label, filename)
+                    (captcha_type, filename, hash_label(label), hash_label(label), filename)
                     for filename, label, captcha_type in CAPTCHA_QUESTION_IMAGES
                 ],
             )
@@ -366,8 +456,23 @@ def run_migrations() -> None:
                 """INSERT INTO captcha_images (site_id, role, captcha_type, render_type, filename, label, instruction)
                    SELECT NULL, 'option', NULL, 'real_photo', %s, %s, NULL
                    WHERE NOT EXISTS (SELECT 1 FROM captcha_images WHERE filename = %s)""",
-                [(filename, label, filename) for filename, label in CAPTCHA_OPTION_IMAGES],
+                [(filename, hash_label(label), filename) for filename, label in CAPTCHA_OPTION_IMAGES],
             )
             if cur.rowcount:
                 print(f"[migrate] captcha_images 보기 이미지 시드 ({cur.rowcount}건)")
+
+            # 12) 이 변경 이전에 이미 평문 label로 시드된 행(재실행 가드 때문에 위 INSERT로는
+            # 갱신되지 않음)을 찾아 해시로 되돌려 채운다. 해시는 항상 64자 소문자 hex이므로
+            # 그 형태가 아닌 값만 골라 재실행해도 중복 해시(해시의 해시)가 되지 않는다.
+            cur.execute(
+                """SELECT image_id, label FROM captcha_images
+                   WHERE label IS NOT NULL AND NOT (label REGEXP '^[0-9a-f]{64}$')"""
+            )
+            plaintext_rows = cur.fetchall()
+            if plaintext_rows:
+                cur.executemany(
+                    "UPDATE captcha_images SET label = %s WHERE image_id = %s",
+                    [(hash_label(row["label"]), row["image_id"]) for row in plaintext_rows],
+                )
+                print(f"[migrate] captcha_images 평문 label {len(plaintext_rows)}건 해시로 교체")
         conn.commit()

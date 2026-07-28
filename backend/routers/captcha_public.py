@@ -170,7 +170,6 @@ def create_challenge(
                 "option_id": row["option_id"],
                 "position": row["position"],
                 "image_url": image_lookup[row["image_id"]]["filename"],
-                "label": image_lookup[row["image_id"]]["label"],
             }
             for row in saved_options
         ],
