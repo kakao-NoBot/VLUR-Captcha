@@ -30,13 +30,6 @@ function buildDemoPalette(theme) {
 /* ══════════════════════════════════════
    공통 결과 화면
 ══════════════════════════════════════ */
-// 실제 CNN 모델의 판정을 눈으로 확인할 수 있도록 봇 확률을 함께 보여준다(디버그용) —
-// 정답이 틀려서 실패한 경우(analysis 없음)는 result가 비어 있을 수 있다.
-function ModelResultHint({ result }) {
-  if (!result || typeof result.botScore !== 'number') return null;
-  return <span className="demo-model-hint">모델 판정: 봇 확률 {result.botScore}%{result.ambiguous ? ' · 애매함(재검증 필요)' : ''}</span>;
-}
-
 function SuccessScreen({ onReset, result }) {
   return (
     <div className="demo-body demo-success-body">
@@ -48,7 +41,6 @@ function SuccessScreen({ onReset, result }) {
       <div className="demo-success-msg">
         <strong>검증 성공!</strong>
         <span>사람으로 확인되었습니다</span>
-        <ModelResultHint result={result} />
       </div>
       <button className="demo-retry-btn" onClick={onReset}>다시 체험하기</button>
     </div>
@@ -67,7 +59,6 @@ function FailScreen({ onReset, result }) {
       <div className="demo-success-msg">
         <strong>검증 실패</strong>
         <span>{blockedByModel ? '드래그 궤적이 봇으로 판정되었습니다.' : '정답이 아닙니다. 다시 시도해 보세요.'}</span>
-        <ModelResultHint result={result} />
       </div>
       <button className="demo-retry-btn" onClick={onReset}>다시 체험하기</button>
     </div>
@@ -341,7 +332,7 @@ function DropZone({ dropState, missedHint }) {
           ? <><b style={{ color: 'var(--bad, #d8492f)' }}>경유 지점을 먼저 지나주세요</b><span>1·2번 지점을 통과한 뒤 놓아주세요</span></>
           : missedHint
           ? <><b style={{ color: 'var(--bad, #d8492f)' }}>경유점을 순서대로 이동해주세요</b><span>다시 시도해 주세요</span></>
-          : <><b>여기로 드롭</b><span>경유 지점 1·2를 지나 끌어주세요</span></>}
+          : <><b>여기에 담아주세요.</b><span>경유점을 순서대로 지나 이동하세요</span></>}
       </div>
     </div>
   );
@@ -393,7 +384,7 @@ function MatchDragCaptcha() {
   return (
     <div className="demo-body demo-body-type2">
       <div className="demo-q">
-        <span>아래 <b style={{ color: 'var(--orange)' }}>이미지</b>에 해당하는 보기를 경유 지점을 지나 끌어다 놓아주세요</span>
+        <span>아래 <b style={{ color: 'var(--orange)' }}>이미지</b>와 동일한 대상을 찾아 드래그하세요</span>
       </div>
 
       <div className="captcha-reference">
