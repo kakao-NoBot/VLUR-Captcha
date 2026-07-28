@@ -266,7 +266,7 @@ function useWaypointDrag(captchaType, trackHeight) {
 
 function WaypointTrack({ waypointRefs, visited, waypoints, height }) {
   return (
-    <div style={{ position: 'relative', height }}>
+    <div style={{ position: 'relative', height, marginTop: WAYPOINT_TRACK_TOP_GAP }}>
       {waypoints.map((wp, i) => (
         <div
           key={i}
@@ -284,7 +284,15 @@ function WaypointTrack({ waypointRefs, visited, waypoints, height }) {
 // 경유 지점을 매 문제/시도마다 다른 위치에 배치
 const WAYPOINT_LEFT_MIN = 15;   // %
 const WAYPOINT_LEFT_MAX = 85;   // %
-const WAYPOINT_TOP_MARGIN = 24; // px, 트랙 상/하 여백
+// 트랙 상/하 여백(px) — 경유 지점 원(반지름 WAYPOINT_RADIUS_PX=41)이 트랙 경계를 넘어
+// 위/아래 다른 요소(보기 타일, 드롭존)와 시각적으로 겹치지 않도록 반지름보다 넉넉하게 잡음.
+// 과거 24px이었을 때는 원의 위쪽이 트랙 상단 바깥으로 삐져나와 바로 위 보기 타일과
+// 거의 붙어 보이는 문제가 있었음.
+const WAYPOINT_TOP_MARGIN = 48; // px, 트랙 상/하 여백
+// 트랙 자체와 보기 타일 사이에 추가로 확보하는 고정 여백. 위 WAYPOINT_TOP_MARGIN은
+// 트랙 "내부"에서 첫 경유 지점이 얼마나 아래에서 시작하는지를 정할 뿐이라, 트랙 컨테이너
+// 바로 위에 보기 타일이 붙어 있으면 여전히 가까워 보일 수 있어 이 여백을 별도로 더한다.
+const WAYPOINT_TRACK_TOP_GAP = 24; // px
 const WAYPOINT_MIN_GAP = 110;   // 두 지점이 너무 가깝게 겹치지 않게 하는 최소 거리(px 환산)
 
 function randomWaypoints(trackHeight, count = 2) {
@@ -309,7 +317,9 @@ function randomWaypoints(trackHeight, count = 2) {
 
 const WAYPOINT_RADIUS_PX = 41;
 const DROP_ZONE_ID = 'captcha-drop-drag';
-const COMPACT_TRACK_HEIGHT = 136; // 유형2(MatchDragCaptcha)용 트랙 높이
+// 유형2(MatchDragCaptcha)용 트랙 높이. 상/하 여백(WAYPOINT_TOP_MARGIN)이 48px로 늘어난 만큼
+// 경유 지점 2개가 서로 겹치지 않고 배치될 최소 공간을 확보하기 위해 136 → 176으로 함께 늘림.
+const COMPACT_TRACK_HEIGHT = 176;
 
 function DropZone({ dropState, missedHint }) {
   const dropClass = `drop${dropState === 'hot' ? ' hot' : ''}${dropState === 'blocked' ? ' blocked' : ''}${dropState === 'done' ? ' done' : ''}`;
