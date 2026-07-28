@@ -2,9 +2,7 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import api from '../api/axios';
-import darkType1QuestionImage from '../assets/1_dark_Q.png';
-import lightType1QuestionImage from '../assets/1_light_Q.png';
+import publicCaptchaApi from '../api/publicCaptcha';
 import {
   CAPTCHA_THEME_PRESETS,
   hexToHsv,
@@ -32,7 +30,7 @@ function buildDemoPalette(theme) {
 /* ══════════════════════════════════════
    공통 결과 화면
 ══════════════════════════════════════ */
-function SuccessScreen({ onReset }) {
+function SuccessScreen({ onReset, result }) {
   return (
     <div className="demo-body demo-success-body">
       <div className="demo-check-circle">
@@ -49,7 +47,8 @@ function SuccessScreen({ onReset }) {
   );
 }
 
-function FailScreen({ onReset }) {
+function FailScreen({ onReset, result }) {
+  const blockedByModel = result?.blocked;
   return (
     <div className="demo-body demo-success-body">
       <div className="demo-fail-circle">
@@ -59,7 +58,7 @@ function FailScreen({ onReset }) {
       </div>
       <div className="demo-success-msg">
         <strong>검증 실패</strong>
-        <span>정답이 아닙니다. 다시 시도해 보세요.</span>
+        <span>{blockedByModel ? '드래그 궤적이 봇으로 판정되었습니다.' : '정답이 아닙니다. 다시 시도해 보세요.'}</span>
       </div>
       <button className="demo-retry-btn" onClick={onReset}>다시 체험하기</button>
     </div>
@@ -94,6 +93,8 @@ function useWaypointDrag(captchaType, trackHeight) {
   const [screen, setScreen] = useState(null);
   const [visited, setVisited] = useState(() => waypoints.map(() => false));
   const [missedHint, setMissedHint] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [lastResult, setLastResult] = useState(null);
 
   const selectedRef = useRef(null);
   const solvedRef = useRef(false);
@@ -101,18 +102,35 @@ function useWaypointDrag(captchaType, trackHeight) {
   const visitOrderRef = useRef([]); // 경유 지점을 처음 지난 순서(인덱스) — 성공 판정은 이 순서가 0,1,...인지로 함
   const pendingRef = useRef(false);
   const waypointRefs = useRef([]);
+  // 실제 봇 판별 모델(drag_classifier)에 넘길 드래그 텔레메트리 — 데모 정답 판정과 별개로
+  // 이 값들을 그대로 /api/v1/captcha/verify에 실어 보낸다.
+  const traceRef = useRef([]); // [{x,y,t}], t는 dragStartRef 기준 상대 ms
+  const dragStartRef = useRef(0);
+  const challengeStartRef = useRef(0); // 문제 노출 시각(response_time_ms 계산용)
+  const pointerTypeRef = useRef('mouse');
+  const startCenterRef = useRef(null);
+  const waypointCentersRef = useRef([]); // 드래그 시작 시점 각 경유 지점의 화면 중심 좌표
   selectedRef.current = selected;
   solvedRef.current = solved;
   visitedRef.current = visited;
 
   const fetchChallenge = useCallback(() => {
     setChallenge(null);
-    api.post('/captcha-demo/challenge', { captcha_type: captchaType }).then(({ data }) => {
+    setLoadError(false);
+    // 유형1 문제는 흰색(다크 배경용)/검은색(라이트 배경용) 아이콘 두 벌이 있어, 사이트
+    // 전역 다크모드 토글(Nav.jsx가 <html data-theme>에 반영)에 맞는 쪽을 서버에 요청한다.
+    const themeMode = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+    publicCaptchaApi.post('/api/v1/captcha/challenge', { captcha_type: captchaType, theme_mode: themeMode }).then(({ data }) => {
+      challengeStartRef.current = performance.now();
       setChallenge({
-        challengeId: data.challenge_id,
+        challengeToken: data.challenge_token,
         questionImageUrl: data.question_image_url,
-        tiles: data.options.map((o) => ({ key: o.option_key, name: o.label, imageUrl: o.image_url })),
+        // 서버가 보기 라벨(정답 카테고리)을 응답에 내려주지 않으므로(정답 유추 방지),
+        // 접근성용 이름은 실제 내용과 무관한 위치 기반 이름으로 대체한다.
+        tiles: data.options.map((o, i) => ({ key: String(o.option_id), name: `보기 ${i + 1}`, imageUrl: o.image_url })),
       });
+    }).catch(() => {
+      setLoadError(true);
     });
   }, [captchaType]);
 
@@ -130,14 +148,29 @@ function useWaypointDrag(captchaType, trackHeight) {
     setVisited(nextWaypoints.map(() => false));
     visitOrderRef.current = [];
     setMissedHint(false);
+    setLastResult(null);
     fetchChallenge();
   }, [trackHeight, fetchChallenge]);
 
-  const submit = useCallback((tileKey) => {
+  const submit = useCallback((tileKey, dropCenter) => {
     if (pendingRef.current || !challenge) return;
     pendingRef.current = true;
-    api.post('/captcha-demo/verify', { challenge_id: challenge.challengeId, option_key: tileKey })
+    const responseTimeMs = challengeStartRef.current
+      ? Math.round(performance.now() - challengeStartRef.current)
+      : null;
+    publicCaptchaApi.post('/api/v1/captcha/verify', {
+      challenge_token: challenge.challengeToken,
+      selected_option_id: Number(tileKey),
+      drop_position: dropCenter,
+      drag_trace: traceRef.current,
+      response_time_ms: responseTimeMs,
+      pointer_type: pointerTypeRef.current,
+      waypoints: waypointCentersRef.current.map((c, i) => ({ x: c.x, y: c.y, order: i })),
+      start_center: startCenterRef.current,
+      drop_center: dropCenter,
+    })
       .then(({ data }) => {
+        setLastResult(data);
         if (data.verified) {
           setSolved(true);
           solvedRef.current = true;
@@ -162,7 +195,20 @@ function useWaypointDrag(captchaType, trackHeight) {
     setVisited(freshVisited);
     visitOrderRef.current = [];
 
+    pointerTypeRef.current = e.pointerType || 'mouse';
+    dragStartRef.current = performance.now();
+    traceRef.current = [{ x: e.clientX, y: e.clientY, t: 0 }];
+    const tileRect = e.currentTarget.getBoundingClientRect();
+    startCenterRef.current = { x: tileRect.left + tileRect.width / 2, y: tileRect.top + tileRect.height / 2 };
+    // 경유 지점은 드래그 중 위치가 바뀌지 않으므로 시작 시점에 한 번만 중심 좌표를 잰다.
+    waypointCentersRef.current = waypointRefs.current.map((el) => {
+      if (!el) return { x: 0, y: 0 };
+      const r = el.getBoundingClientRect();
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    });
+
     const onMove = (ev) => {
+      traceRef.current.push({ x: ev.clientX, y: ev.clientY, t: performance.now() - dragStartRef.current });
       setGhost({ key, imageUrl, x: ev.clientX, y: ev.clientY });
 
       let changed = false;
@@ -195,13 +241,15 @@ function useWaypointDrag(captchaType, trackHeight) {
     const onUp = (ev) => {
       window.removeEventListener('pointermove', onMove);
       setGhost(null);
+      traceRef.current.push({ x: ev.clientX, y: ev.clientY, t: performance.now() - dragStartRef.current });
       const drop = document.getElementById(DROP_ZONE_ID);
       if (drop) {
         const r = drop.getBoundingClientRect();
         const isOver = ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom;
         const inOrder = isVisitOrderCorrect(visitOrderRef.current, waypoints.length);
         if (isOver && inOrder && selectedRef.current) {
-          submit(selectedRef.current);
+          const dropCenter = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+          submit(selectedRef.current, dropCenter);
         } else if (isOver && !inOrder) {
           setMissedHint(true);
         }
@@ -213,7 +261,7 @@ function useWaypointDrag(captchaType, trackHeight) {
     e.preventDefault();
   }, [submit, challenge, waypoints]);
 
-  return { challenge, selected, ghost, dropState, visited, missedHint, screen, waypoints, waypointRefs, reset, onPointerDown };
+  return { challenge, loadError, selected, ghost, dropState, visited, missedHint, screen, waypoints, waypointRefs, reset, onPointerDown, lastResult };
 }
 
 function WaypointTrack({ waypointRefs, visited, waypoints, height }) {
@@ -262,7 +310,6 @@ function randomWaypoints(trackHeight, count = 2) {
 const WAYPOINT_RADIUS_PX = 41;
 const DROP_ZONE_ID = 'captcha-drop-drag';
 const COMPACT_TRACK_HEIGHT = 136; // 유형2(MatchDragCaptcha)용 트랙 높이
-const CUSTOM_KIWI_QUESTION_URL = '/demo-assets/1_light_Q.png';
 
 function DropZone({ dropState, missedHint }) {
   const dropClass = `drop${dropState === 'hot' ? ' hot' : ''}${dropState === 'blocked' ? ' blocked' : ''}${dropState === 'done' ? ' done' : ''}`;
@@ -285,7 +332,7 @@ function DropZone({ dropState, missedHint }) {
           ? <><b style={{ color: 'var(--bad, #d8492f)' }}>경유 지점을 먼저 지나주세요</b><span>1·2번 지점을 통과한 뒤 놓아주세요</span></>
           : missedHint
           ? <><b style={{ color: 'var(--bad, #d8492f)' }}>경유점을 순서대로 이동해주세요</b><span>다시 시도해 주세요</span></>
-          : <><b>여기로 드롭</b><span>경유 지점 1·2를 지나 끌어주세요</span></>}
+          : <><b>여기에 담아주세요.</b><span>경유점을 순서대로 지나 이동하세요</span></>}
       </div>
     </div>
   );
@@ -305,21 +352,39 @@ function DemoLoading() {
   return <div className="demo-body demo-loading">문제를 불러오는 중...</div>;
 }
 
+function DemoError({ onRetry }) {
+  return (
+    <div className="demo-body demo-success-body">
+      <div className="demo-fail-circle">
+        <svg viewBox="0 0 34 34" fill="none" width={36} height={36}>
+          <path d="M10 10 24 24M24 10 10 24" stroke="#fff" strokeWidth="3.5" strokeLinecap="round"/>
+        </svg>
+      </div>
+      <div className="demo-success-msg">
+        <strong>문제를 불러오지 못했습니다</strong>
+        <span>잠시 후 다시 시도해 주세요</span>
+      </div>
+      <button className="demo-retry-btn" onClick={onRetry}>다시 시도</button>
+    </div>
+  );
+}
+
 /* ══════════════════════════════════════
    4지선다 보기 중 정답을 경유 지점을 지나 드롭존까지 드래그
 ══════════════════════════════════════ */
 function MatchDragCaptcha() {
-  const { challenge, selected, ghost, dropState, visited, missedHint, screen, waypoints, waypointRefs, reset, onPointerDown } =
+  const { challenge, loadError, selected, ghost, dropState, visited, missedHint, screen, waypoints, waypointRefs, reset, onPointerDown, lastResult } =
     useWaypointDrag('type2_identify', COMPACT_TRACK_HEIGHT);
 
-  if (screen === 'success') return <SuccessScreen onReset={reset} />;
-  if (screen === 'fail')    return <FailScreen onReset={reset} />;
+  if (screen === 'success') return <SuccessScreen onReset={reset} result={lastResult} />;
+  if (screen === 'fail')    return <FailScreen onReset={reset} result={lastResult} />;
+  if (loadError) return <DemoError onRetry={reset} />;
   if (!challenge) return <DemoLoading />;
 
   return (
     <div className="demo-body demo-body-type2">
       <div className="demo-q">
-        <span>아래 <b style={{ color: 'var(--orange)' }}>이미지</b>에 해당하는 보기를 경유 지점을 지나 끌어다 놓아주세요</span>
+        <span>아래 <b style={{ color: 'var(--orange)' }}>이미지</b>와 동일한 대상을 찾아 드래그하세요</span>
       </div>
 
       <div className="captcha-reference">
@@ -356,38 +421,22 @@ function MatchDragCaptcha() {
    드래그-투-타깃 CAPTCHA
 ══════════════════════════════════════ */
 function DragCaptcha() {
-  const { challenge, selected, ghost, dropState, visited, missedHint, screen, waypoints, waypointRefs, reset, onPointerDown } =
+  const { challenge, loadError, selected, ghost, dropState, visited, missedHint, screen, waypoints, waypointRefs, reset, onPointerDown, lastResult } =
     useWaypointDrag('type1_drag', DRAG_GAP_PX);
 
-  if (screen === 'success') return <SuccessScreen onReset={reset} />;
-  if (screen === 'fail')    return <FailScreen onReset={reset} />;
+  if (screen === 'success') return <SuccessScreen onReset={reset} result={lastResult} />;
+  if (screen === 'fail')    return <FailScreen onReset={reset} result={lastResult} />;
+  if (loadError) return <DemoError onRetry={reset} />;
   if (!challenge) return <DemoLoading />;
-
-  const usesCustomKiwiQuestion = challenge.questionImageUrl === CUSTOM_KIWI_QUESTION_URL;
 
   return (
     <div className="demo-body">
-      <div className={`demo-q${usesCustomKiwiQuestion ? ' custom-question-art' : ''}`}>
-        {usesCustomKiwiQuestion ? (
-          <>
-            <img
-              className="question-image question-image-light"
-              src={lightType1QuestionImage}
-              alt="키위 선택 문제"
-            />
-            <img
-              className="question-image question-image-dark"
-              src={darkType1QuestionImage}
-              alt="키위 선택 문제"
-            />
-          </>
-        ) : (
-          <img
-            className="question-image"
-            src={challenge.questionImageUrl}
-            alt="문제 이미지"
-          />
-        )}
+      <div className="demo-q">
+        <img
+          className="question-image"
+          src={challenge.questionImageUrl}
+          alt="문제 이미지"
+        />
       </div>
 
       <div className="tiles">

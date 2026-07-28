@@ -7,8 +7,8 @@ import EmailInput from '../components/EmailInput';
 import ClearableInput from '../components/ClearableInput';
 import api from '../api/axios';
 import { CAPTCHA_THEME_PRESETS, normalizeHexColor, resolveCaptchaTheme } from '../utils/captchaTheme';
-import kakaopayLogo from '../assets/kakao-pay-logo.png';
-import tossLogo from '../assets/toss.png';
+import kakaopayLogo from '../assets/examples/logo/kakao-pay-logo.png';
+import tossLogo from '../assets/examples/logo/toss.png';
 
 const EMAIL_DOMAIN_OPTIONS = [
   { value: 'gmail.com', label: 'gmail.com' },

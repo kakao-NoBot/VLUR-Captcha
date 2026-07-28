@@ -1,37 +1,33 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-import bananaAsciiDocs from '../assets/banana_ascii_docs.png';
-import bananaAscii from '../assets/banana_ascii.jpg';
-import bearAsciiDocs from '../assets/bear_ascii_docs.png';
-import bearAscii from '../assets/bear_ascii.png';
-import aircraftAsciiDocs from '../assets/Aircraft_ascii_docs.png';
-import aircraftAscii from '../assets/Aircraft_ascii.png';
-import vlurLogo from '../assets/vlur-logo-transparent-hq-2x.png';
+// 유형1 아이콘 세트로 통일 — 흰색(다크 배경용)/검은색(라이트 배경용) 둘 다 준비해두고
+// 모달이 열린 시점의 사이트 다크모드에 맞춰 고른다(캡차 위젯과 동일한 방식).
+import bananaWhite from '../assets/examples/type1/fruits/white/바나나.png';
+import bananaBlack from '../assets/examples/type1/fruits/black/바나나.png';
+import bearWhite from '../assets/examples/type1/animal/white/곰.png';
+import bearBlack from '../assets/examples/type1/animal/black/곰.png';
+import aircraftWhite from '../assets/examples/type1/vehicle/white/비행기.png';
+import aircraftBlack from '../assets/examples/type1/vehicle/black/비행기.png';
+import vlurLogo from '../assets/examples/logo/vlur-logo-transparent-hq-2x.png';
 
-import bananaPhoto from '../assets/examples/banana_26.jpg';
-import carrotPhoto from '../assets/examples/carrots_11.jpg';
-import cherryPhoto from '../assets/examples/cherry_6.jpg';
-import broccoliPhoto from '../assets/examples/broccoli_5.jpg';
-import catPhoto from '../assets/examples/cat_5.jpg';
-import dogPhoto from '../assets/examples/dog_7.jpg';
-import bearPhoto from '../assets/examples/bear_25.jpg';
-import chickenPhoto from '../assets/examples/chicken_10.jpeg';
-import airplanePhoto from '../assets/examples/Aircraft_3.jpg';
-import carPhoto from '../assets/examples/Car_1.jpg';
-import bicyclePhoto from '../assets/examples/bicycle_9.jpg';
-import applePhoto from '../assets/examples/apple_18.jpg';
+import bananaPhoto from '../assets/examples/mainimg/banana_26.jpg';
+import carrotPhoto from '../assets/examples/mainimg/carrots_11.jpg';
+import cherryPhoto from '../assets/examples/mainimg/cherry_6.jpg';
+import broccoliPhoto from '../assets/examples/mainimg/broccoli_5.jpg';
+import catPhoto from '../assets/examples/mainimg/cat_5.jpg';
+import dogPhoto from '../assets/examples/mainimg/dog_7.jpg';
+import bearPhoto from '../assets/examples/mainimg/bear_25.jpg';
+import chickenPhoto from '../assets/examples/mainimg/chicken_10.jpeg';
+import airplanePhoto from '../assets/examples/mainimg/Aircraft_3.jpg';
+import carPhoto from '../assets/examples/mainimg/Car_1.jpg';
+import bicyclePhoto from '../assets/examples/mainimg/bicycle_9.jpg';
+import applePhoto from '../assets/examples/mainimg/apple_18.jpg';
 
-const QUESTION_IMAGES = {
-  type1_drag: {
-    q1: bananaAsciiDocs,
-    q2: bearAsciiDocs,
-    q3: aircraftAsciiDocs,
-  },
-  type2_identify: {
-    q1: bananaAscii,
-    q2: bearAscii,
-    q3: aircraftAscii,
-  },
+// 유형1/유형2 모두 같은 아이콘을 보여준다(과거의 손그림/아스키 스타일 구분은 폐지됨).
+const QUESTION_ICONS = {
+  q1: { light: bananaBlack, dark: bananaWhite },
+  q2: { light: bearBlack, dark: bearWhite },
+  q3: { light: aircraftBlack, dark: aircraftWhite },
 };
 
 const OPTION_IMAGES = {
@@ -61,7 +57,8 @@ export default function LoginCaptchaModal({ challenge, busy, error, onVerify, on
   const dropRef = useRef(null);
   const cleanupRef = useRef(null);
   const isDrag = challenge.captcha_type === 'type1_drag';
-  const questionImage = QUESTION_IMAGES[challenge.captcha_type]?.[challenge.question_asset];
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const questionImage = QUESTION_ICONS[challenge.question_asset]?.[dark ? 'dark' : 'light'];
 
   useEffect(() => {
     setSelected(null);

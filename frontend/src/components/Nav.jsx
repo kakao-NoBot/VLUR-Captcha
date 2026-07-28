@@ -1,5 +1,5 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
-import vlurLogo from '../assets/vlur-logo-transparent-hq-2x.png';
+import vlurLogo from '../assets/examples/logo/vlur-logo-transparent-hq-2x.png';
 
 const DESKTOP_SECTION_LINKS = [
   { label: '차별성', target: 'compare' },
