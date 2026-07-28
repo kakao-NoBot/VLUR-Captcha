@@ -67,6 +67,9 @@ def _bump_usage(cur, user_id: str, issued: int, verified: int) -> None:
 
 class ChallengeRequest(BaseModel):
     captcha_type: str
+    # 유형1 아이콘은 흰색/검은색 두 변형이 있어 위젯이 놓인 배경(라이트/다크)에 맞는 쪽을
+    # 서버가 골라줘야 한다. 값을 안 보내는(구버전) 클라이언트는 라이트로 취급한다.
+    theme_mode: str = "light"
 
 
 @router.post("/challenge")
@@ -79,6 +82,10 @@ def create_challenge(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="captcha_type은 'type1_drag' 또는 'type2_identify'여야 합니다.",
         )
+    theme_mode = body.theme_mode if body.theme_mode in ("light", "dark") else "light"
+    # 유형1만 라이트/다크 아이콘 변형이 갈린다. 유형2는 theme_variant가 항상 NULL이므로
+    # <=>(NULL-safe 비교)로 None과 맞춰야 기존 문제들이 계속 매칭된다.
+    question_theme_variant = theme_mode if body.captcha_type == "type1_drag" else None
 
     def _do():
         conn = get_conn()
@@ -86,9 +93,9 @@ def create_challenge(
             with conn.cursor() as cur:
                 cur.execute(
                     """SELECT image_id, filename, label FROM captcha_images
-                       WHERE role = 'question' AND captcha_type = %s
+                       WHERE role = 'question' AND captcha_type = %s AND theme_variant <=> %s
                        ORDER BY RAND() LIMIT 1""",
-                    (body.captcha_type,),
+                    (body.captcha_type, question_theme_variant),
                 )
                 question = cur.fetchone()
                 if not question:

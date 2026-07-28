@@ -116,68 +116,162 @@ def _generate_site_key() -> str:
 
 # 유형1(type1_drag)/유형2(type2_identify) 질문 이미지.
 CAPTCHA_QUESTION_IMAGES = (
-    # (filename, label, captcha_type)
-    ("/static/captcha/banana_ascii_docs.png", "바나나", "type1_drag"),
-    ("/static/captcha/bear_ascii_docs.png", "곰", "type1_drag"),
-    ("/static/captcha/Aircraft_ascii_docs.png", "비행기", "type1_drag"),
-    ("/static/captcha/captcha.png", "오렌지", "type1_drag"),
-    ("/static/captcha/captcha-1.png", "딸기", "type1_drag"),
-    ("/static/captcha/banana_ascii.jpg", "바나나", "type2_identify"),
-    ("/static/captcha/bear_ascii.png", "곰", "type2_identify"),
-    ("/static/captcha/Aircraft_ascii.png", "비행기", "type2_identify"),
-    ("/static/captcha/captcha_image.png", "딸기", "type2_identify"),
-    ("/static/captcha/image_ascii.png", "키위", "type2_identify"),
-    # mainimg 세트 추가분 — assets/examples/mainimg의 *_ascii* 파일 전부를 유형2
-    # 문제로 등록. 각 문제의 정답 보기는 같은 클래스의 다른 번호 사진이어야 하며
-    # (아래 CAPTCHA_OPTION_IMAGES 참고), 아스키 변환에 쓰인 원본 번호와는 절대
-    # 겹치지 않도록 optimg에서 별도로 골랐다.
-    ("/static/captcha/Aircraft_3_ascii.png", "비행기", "type2_identify"),
-    ("/static/captcha/Car_1_ascii.png", "자동차", "type2_identify"),
-    ("/static/captcha/Motorcycle_1_ascii.png", "오토바이", "type2_identify"),
-    ("/static/captcha/Ship_22_ascii.png", "배", "type2_identify"),
-    ("/static/captcha/apple_18_ascii.jpg", "사과", "type2_identify"),
-    ("/static/captcha/banana_26_ascii.jpg", "바나나", "type2_identify"),
-    ("/static/captcha/bed_14_ascii.jpg", "침대", "type2_identify"),
-    ("/static/captcha/bicycle_9_ascii.png", "자전거", "type2_identify"),
-    ("/static/captcha/broccoli_5_ascii.png", "브로콜리", "type2_identify"),
-    ("/static/captcha/carrots_11_ascii.png", "당근", "type2_identify"),
-    ("/static/captcha/cat_5_ascii.png", "고양이", "type2_identify"),
-    ("/static/captcha/chair_103_ascii.jpg", "의자", "type2_identify"),
-    ("/static/captcha/cherry_6_ascii.jpg", "체리", "type2_identify"),
-    ("/static/captcha/chicken_10_ascii.jpg", "치킨", "type2_identify"),
-    ("/static/captcha/corn_23_ascii.png", "옥수수", "type2_identify"),
-    ("/static/captcha/cow_4_ascii.png", "소", "type2_identify"),
-    ("/static/captcha/deer_29_ascii.png", "사슴", "type2_identify"),
-    ("/static/captcha/dog_7_ascii.png", "강아지", "type2_identify"),
-    ("/static/captcha/drums_11_ascii.png", "드럼", "type2_identify"),
-    ("/static/captcha/duck_3_ascii.png", "오리", "type2_identify"),
-    ("/static/captcha/eagle_5_ascii.png", "독수리", "type2_identify"),
-    ("/static/captcha/elephant_4_ascii.png", "코끼리", "type2_identify"),
-    ("/static/captcha/grapes_5_ascii.jpg", "포도", "type2_identify"),
-    ("/static/captcha/guitar_24_ascii.png", "기타", "type2_identify"),
-    ("/static/captcha/hamber_2_ascii.jpg", "햄버거", "type2_identify"),
-    ("/static/captcha/horse_31_ascii.png", "말", "type2_identify"),
-    ("/static/captcha/hotdog_12_ascii.jpg", "핫도그", "type2_identify"),
-    ("/static/captcha/kiwi_29_ascii.jpg", "키위", "type2_identify"),
-    ("/static/captcha/lion_17_ascii.png", "사자", "type2_identify"),
-    ("/static/captcha/mango_12_ascii.jpg", "망고", "type2_identify"),
-    ("/static/captcha/orange_5_ascii.jpg", "오렌지", "type2_identify"),
-    ("/static/captcha/owl_17_ascii.png", "부엉이", "type2_identify"),
-    ("/static/captcha/panda_21_ascii.png", "판다", "type2_identify"),
-    ("/static/captcha/piano_4_ascii.png", "피아노", "type2_identify"),
-    ("/static/captcha/pig_7_ascii.png", "돼지", "type2_identify"),
-    ("/static/captcha/pizza_6_ascii.jpg", "피자", "type2_identify"),
-    ("/static/captcha/potato_14_ascii.png", "감자", "type2_identify"),
-    ("/static/captcha/sheep_6_ascii.png", "양", "type2_identify"),
-    ("/static/captcha/sofa_19_ascii.jpg", "소파", "type2_identify"),
-    ("/static/captcha/sparrow_10_ascii.png", "참새", "type2_identify"),
-    ("/static/captcha/strawberry_28_ascii.jpg", "딸기", "type2_identify"),
-    ("/static/captcha/swan_3_ascii.png", "백조", "type2_identify"),
-    ("/static/captcha/table_24_ascii.jpg", "테이블", "type2_identify"),
-    ("/static/captcha/tiger_25_ascii.png", "호랑이", "type2_identify"),
-    ("/static/captcha/tomato_2_ascii.png", "토마토", "type2_identify"),
-    ("/static/captcha/trumpet_26_ascii.png", "트럼펫", "type2_identify"),
-    ("/static/captcha/violin_18_ascii.png", "바이올린", "type2_identify"),
+    # (filename, label, captcha_type, theme_variant)
+    # theme_variant: 유형1(type1_drag) 질문 이미지의 명암 배경 대응 변형.
+    # 흰색 아이콘은 어두운 배경(다크 모드)에, 검은 아이콘은 밝은 배경(라이트 모드)에 대비되므로
+    # white->'dark', black->'light'로 매핑한다. 유형2(type2_identify)는 배경 구분이 없어 None.
+    # 유형1 문제는 assets/examples/type1 세트로 전면 교체 — 예전 손그림 스타일 5개는 제거.
+    ("/static/captcha/type1/animal/white/강아지.png", "강아지", "type1_drag", "dark"),
+    ("/static/captcha/type1/animal/black/강아지.png", "강아지", "type1_drag", "light"),
+    ("/static/captcha/type1/animal/white/고양이.png", "고양이", "type1_drag", "dark"),
+    ("/static/captcha/type1/animal/black/고양이.png", "고양이", "type1_drag", "light"),
+    ("/static/captcha/type1/animal/white/곰.png", "곰", "type1_drag", "dark"),
+    ("/static/captcha/type1/animal/black/곰.png", "곰", "type1_drag", "light"),
+    ("/static/captcha/type1/animal/white/독수리.png", "독수리", "type1_drag", "dark"),
+    ("/static/captcha/type1/animal/black/독수리.png", "독수리", "type1_drag", "light"),
+    ("/static/captcha/type1/animal/white/돼지.png", "돼지", "type1_drag", "dark"),
+    ("/static/captcha/type1/animal/black/돼지.png", "돼지", "type1_drag", "light"),
+    ("/static/captcha/type1/animal/white/말.png", "말", "type1_drag", "dark"),
+    ("/static/captcha/type1/animal/black/말.png", "말", "type1_drag", "light"),
+    ("/static/captcha/type1/animal/white/백조.png", "백조", "type1_drag", "dark"),
+    ("/static/captcha/type1/animal/black/백조.png", "백조", "type1_drag", "light"),
+    ("/static/captcha/type1/animal/white/벌.png", "벌", "type1_drag", "dark"),
+    ("/static/captcha/type1/animal/black/벌.png", "벌", "type1_drag", "light"),
+    ("/static/captcha/type1/animal/white/부엉이.png", "부엉이", "type1_drag", "dark"),
+    ("/static/captcha/type1/animal/black/부엉이.png", "부엉이", "type1_drag", "light"),
+    ("/static/captcha/type1/animal/white/사슴.png", "사슴", "type1_drag", "dark"),
+    ("/static/captcha/type1/animal/black/사슴.png", "사슴", "type1_drag", "light"),
+    ("/static/captcha/type1/animal/white/사자.png", "사자", "type1_drag", "dark"),
+    ("/static/captcha/type1/animal/black/사자.png", "사자", "type1_drag", "light"),
+    ("/static/captcha/type1/animal/white/소.png", "소", "type1_drag", "dark"),
+    ("/static/captcha/type1/animal/black/소.png", "소", "type1_drag", "light"),
+    ("/static/captcha/type1/animal/white/양.png", "양", "type1_drag", "dark"),
+    ("/static/captcha/type1/animal/black/양.png", "양", "type1_drag", "light"),
+    ("/static/captcha/type1/animal/white/오리.png", "오리", "type1_drag", "dark"),
+    ("/static/captcha/type1/animal/black/오리.png", "오리", "type1_drag", "light"),
+    ("/static/captcha/type1/animal/white/참새.png", "참새", "type1_drag", "dark"),
+    ("/static/captcha/type1/animal/black/참새.png", "참새", "type1_drag", "light"),
+    ("/static/captcha/type1/animal/white/코끼리.png", "코끼리", "type1_drag", "dark"),
+    ("/static/captcha/type1/animal/black/코끼리.png", "코끼리", "type1_drag", "light"),
+    ("/static/captcha/type1/animal/white/판다.png", "판다", "type1_drag", "dark"),
+    ("/static/captcha/type1/animal/black/판다.png", "판다", "type1_drag", "light"),
+    ("/static/captcha/type1/animal/white/호랑이.png", "호랑이", "type1_drag", "dark"),
+    ("/static/captcha/type1/animal/black/호랑이.png", "호랑이", "type1_drag", "light"),
+    ("/static/captcha/type1/food/white/치킨.png", "치킨", "type1_drag", "dark"),
+    ("/static/captcha/type1/food/black/치킨.png", "치킨", "type1_drag", "light"),
+    ("/static/captcha/type1/food/white/피자.png", "피자", "type1_drag", "dark"),
+    ("/static/captcha/type1/food/black/피자.png", "피자", "type1_drag", "light"),
+    ("/static/captcha/type1/food/white/핫도그.png", "핫도그", "type1_drag", "dark"),
+    ("/static/captcha/type1/food/black/핫도그.png", "핫도그", "type1_drag", "light"),
+    ("/static/captcha/type1/food/white/햄버거.png", "햄버거", "type1_drag", "dark"),
+    ("/static/captcha/type1/food/black/햄버거.png", "햄버거", "type1_drag", "light"),
+    ("/static/captcha/type1/fruits/white/딸기.png", "딸기", "type1_drag", "dark"),
+    ("/static/captcha/type1/fruits/black/딸기.png", "딸기", "type1_drag", "light"),
+    ("/static/captcha/type1/fruits/white/망고.png", "망고", "type1_drag", "dark"),
+    ("/static/captcha/type1/fruits/black/망고.png", "망고", "type1_drag", "light"),
+    ("/static/captcha/type1/fruits/white/바나나.png", "바나나", "type1_drag", "dark"),
+    ("/static/captcha/type1/fruits/black/바나나.png", "바나나", "type1_drag", "light"),
+    ("/static/captcha/type1/fruits/white/사과.png", "사과", "type1_drag", "dark"),
+    ("/static/captcha/type1/fruits/black/사과.png", "사과", "type1_drag", "light"),
+    ("/static/captcha/type1/fruits/white/오렌지.png", "오렌지", "type1_drag", "dark"),
+    ("/static/captcha/type1/fruits/black/오렌지.png", "오렌지", "type1_drag", "light"),
+    ("/static/captcha/type1/fruits/white/체리.png", "체리", "type1_drag", "dark"),
+    ("/static/captcha/type1/fruits/black/체리.png", "체리", "type1_drag", "light"),
+    ("/static/captcha/type1/fruits/white/키위.png", "키위", "type1_drag", "dark"),
+    ("/static/captcha/type1/fruits/black/키위.png", "키위", "type1_drag", "light"),
+    ("/static/captcha/type1/fruits/white/포도.png", "포도", "type1_drag", "dark"),
+    ("/static/captcha/type1/fruits/black/포도.png", "포도", "type1_drag", "light"),
+    ("/static/captcha/type1/furniture/white/소파.png", "소파", "type1_drag", "dark"),
+    ("/static/captcha/type1/furniture/black/소파.png", "소파", "type1_drag", "light"),
+    ("/static/captcha/type1/furniture/white/의자.png", "의자", "type1_drag", "dark"),
+    ("/static/captcha/type1/furniture/black/의자.png", "의자", "type1_drag", "light"),
+    ("/static/captcha/type1/furniture/white/책상.png", "책상", "type1_drag", "dark"),
+    ("/static/captcha/type1/furniture/black/책상.png", "책상", "type1_drag", "light"),
+    ("/static/captcha/type1/furniture/white/침대.png", "침대", "type1_drag", "dark"),
+    ("/static/captcha/type1/furniture/black/침대.png", "침대", "type1_drag", "light"),
+    ("/static/captcha/type1/instrument/white/기타.png", "기타", "type1_drag", "dark"),
+    ("/static/captcha/type1/instrument/black/기타.png", "기타", "type1_drag", "light"),
+    ("/static/captcha/type1/instrument/white/드럼.png", "드럼", "type1_drag", "dark"),
+    ("/static/captcha/type1/instrument/black/드럼.png", "드럼", "type1_drag", "light"),
+    ("/static/captcha/type1/instrument/white/바이올린.png", "바이올린", "type1_drag", "dark"),
+    ("/static/captcha/type1/instrument/black/바이올린.png", "바이올린", "type1_drag", "light"),
+    ("/static/captcha/type1/instrument/white/트럼펫.png", "트럼펫", "type1_drag", "dark"),
+    ("/static/captcha/type1/instrument/black/트럼펫.png", "트럼펫", "type1_drag", "light"),
+    ("/static/captcha/type1/instrument/white/피아노.png", "피아노", "type1_drag", "dark"),
+    ("/static/captcha/type1/instrument/black/피아노.png", "피아노", "type1_drag", "light"),
+    ("/static/captcha/type1/vegetables/white/감자.png", "감자", "type1_drag", "dark"),
+    ("/static/captcha/type1/vegetables/black/감자.png", "감자", "type1_drag", "light"),
+    ("/static/captcha/type1/vegetables/white/당근.png", "당근", "type1_drag", "dark"),
+    ("/static/captcha/type1/vegetables/black/당근.png", "당근", "type1_drag", "light"),
+    ("/static/captcha/type1/vegetables/white/브로콜리.png", "브로콜리", "type1_drag", "dark"),
+    ("/static/captcha/type1/vegetables/black/브로콜리.png", "브로콜리", "type1_drag", "light"),
+    ("/static/captcha/type1/vegetables/white/옥수수.png", "옥수수", "type1_drag", "dark"),
+    ("/static/captcha/type1/vegetables/black/옥수수.png", "옥수수", "type1_drag", "light"),
+    ("/static/captcha/type1/vegetables/white/토마토.png", "토마토", "type1_drag", "dark"),
+    ("/static/captcha/type1/vegetables/black/토마토.png", "토마토", "type1_drag", "light"),
+    ("/static/captcha/type1/vehicle/white/배.png", "배", "type1_drag", "dark"),
+    ("/static/captcha/type1/vehicle/black/배.png", "배", "type1_drag", "light"),
+    ("/static/captcha/type1/vehicle/white/비행기.png", "비행기", "type1_drag", "dark"),
+    ("/static/captcha/type1/vehicle/black/비행기.png", "비행기", "type1_drag", "light"),
+    ("/static/captcha/type1/vehicle/white/오토바이.png", "오토바이", "type1_drag", "dark"),
+    ("/static/captcha/type1/vehicle/black/오토바이.png", "오토바이", "type1_drag", "light"),
+    ("/static/captcha/type1/vehicle/white/자동차.png", "자동차", "type1_drag", "dark"),
+    ("/static/captcha/type1/vehicle/black/자동차.png", "자동차", "type1_drag", "light"),
+    ("/static/captcha/type1/vehicle/white/자전거.png", "자전거", "type1_drag", "dark"),
+    ("/static/captcha/type1/vehicle/black/자전거.png", "자전거", "type1_drag", "light"),
+    # 유형2(type2_identify) — 기존 항목 그대로 유지.
+    ("/static/captcha/banana_ascii.jpg", "바나나", "type2_identify", None),
+    ("/static/captcha/bear_ascii.png", "곰", "type2_identify", None),
+    ("/static/captcha/Aircraft_ascii.png", "비행기", "type2_identify", None),
+    ("/static/captcha/captcha_image.png", "딸기", "type2_identify", None),
+    ("/static/captcha/image_ascii.png", "키위", "type2_identify", None),
+    ("/static/captcha/Aircraft_3_ascii.png", "비행기", "type2_identify", None),
+    ("/static/captcha/Car_1_ascii.png", "자동차", "type2_identify", None),
+    ("/static/captcha/Motorcycle_1_ascii.png", "오토바이", "type2_identify", None),
+    ("/static/captcha/Ship_22_ascii.png", "배", "type2_identify", None),
+    ("/static/captcha/apple_18_ascii.jpg", "사과", "type2_identify", None),
+    ("/static/captcha/banana_26_ascii.jpg", "바나나", "type2_identify", None),
+    ("/static/captcha/bed_14_ascii.jpg", "침대", "type2_identify", None),
+    ("/static/captcha/bicycle_9_ascii.png", "자전거", "type2_identify", None),
+    ("/static/captcha/broccoli_5_ascii.png", "브로콜리", "type2_identify", None),
+    ("/static/captcha/carrots_11_ascii.png", "당근", "type2_identify", None),
+    ("/static/captcha/cat_5_ascii.png", "고양이", "type2_identify", None),
+    ("/static/captcha/chair_103_ascii.jpg", "의자", "type2_identify", None),
+    ("/static/captcha/cherry_6_ascii.jpg", "체리", "type2_identify", None),
+    ("/static/captcha/chicken_10_ascii.jpg", "치킨", "type2_identify", None),
+    ("/static/captcha/corn_23_ascii.png", "옥수수", "type2_identify", None),
+    ("/static/captcha/cow_4_ascii.png", "소", "type2_identify", None),
+    ("/static/captcha/deer_29_ascii.png", "사슴", "type2_identify", None),
+    ("/static/captcha/dog_7_ascii.png", "강아지", "type2_identify", None),
+    ("/static/captcha/drums_11_ascii.png", "드럼", "type2_identify", None),
+    ("/static/captcha/duck_3_ascii.png", "오리", "type2_identify", None),
+    ("/static/captcha/eagle_5_ascii.png", "독수리", "type2_identify", None),
+    ("/static/captcha/elephant_4_ascii.png", "코끼리", "type2_identify", None),
+    ("/static/captcha/grapes_5_ascii.jpg", "포도", "type2_identify", None),
+    ("/static/captcha/guitar_24_ascii.png", "기타", "type2_identify", None),
+    ("/static/captcha/hamber_2_ascii.jpg", "햄버거", "type2_identify", None),
+    ("/static/captcha/horse_31_ascii.png", "말", "type2_identify", None),
+    ("/static/captcha/hotdog_12_ascii.jpg", "핫도그", "type2_identify", None),
+    ("/static/captcha/kiwi_29_ascii.jpg", "키위", "type2_identify", None),
+    ("/static/captcha/lion_17_ascii.png", "사자", "type2_identify", None),
+    ("/static/captcha/mango_12_ascii.jpg", "망고", "type2_identify", None),
+    ("/static/captcha/orange_5_ascii.jpg", "오렌지", "type2_identify", None),
+    ("/static/captcha/owl_17_ascii.png", "부엉이", "type2_identify", None),
+    ("/static/captcha/panda_21_ascii.png", "판다", "type2_identify", None),
+    ("/static/captcha/piano_4_ascii.png", "피아노", "type2_identify", None),
+    ("/static/captcha/pig_7_ascii.png", "돼지", "type2_identify", None),
+    ("/static/captcha/pizza_6_ascii.jpg", "피자", "type2_identify", None),
+    ("/static/captcha/potato_14_ascii.png", "감자", "type2_identify", None),
+    ("/static/captcha/sheep_6_ascii.png", "양", "type2_identify", None),
+    ("/static/captcha/sofa_19_ascii.jpg", "소파", "type2_identify", None),
+    ("/static/captcha/sparrow_10_ascii.png", "참새", "type2_identify", None),
+    ("/static/captcha/strawberry_28_ascii.jpg", "딸기", "type2_identify", None),
+    ("/static/captcha/swan_3_ascii.png", "백조", "type2_identify", None),
+    ("/static/captcha/table_24_ascii.jpg", "테이블", "type2_identify", None),
+    ("/static/captcha/tiger_25_ascii.png", "호랑이", "type2_identify", None),
+    ("/static/captcha/tomato_2_ascii.png", "토마토", "type2_identify", None),
+    ("/static/captcha/trumpet_26_ascii.png", "트럼펫", "type2_identify", None),
+    ("/static/captcha/violin_18_ascii.png", "바이올린", "type2_identify", None),
 )
 
 # 보기 타일 사진. mainimg 라벨은 optimg의 각 클래스 폴더에서 무작위로 골랐으며,
@@ -233,6 +327,9 @@ CAPTCHA_OPTION_IMAGES = (
     ("/static/captcha/examples/tomato_16.jpg", "토마토"),
     ("/static/captcha/examples/trumpet_16.jpg", "트럼펫"),
     ("/static/captcha/examples/violin_25.jpg", "바이올린"),
+    # 유형1 type1 세트 추가 라벨(벌·책상)용 — 기존 47개 라벨은 유형2 옵션을 그대로 공유.
+    ("/static/captcha/examples/bee_13.jpg", "벌"),
+    ("/static/captcha/examples/table_50.jpg", "책상"),
 )
 
 
@@ -435,18 +532,30 @@ def run_migrations() -> None:
                 )
                 print("[migrate] captcha_images.captcha_type 컬럼 추가")
 
+            # 10-1) captcha_images.theme_variant — 유형1 질문 이미지 중 흰색/검은색 아이콘 변형을
+            # 구분. 흰색 아이콘은 어두운 배경(다크 모드)에, 검은색 아이콘은 밝은 배경(라이트 모드)에
+            # 대비되므로 white->'dark', black->'light'. 유형2와 보기 이미지는 NULL(구분 없음).
+            if not _column_exists(cur, "captcha_images", "theme_variant"):
+                cur.execute(
+                    """ALTER TABLE captcha_images
+                       ADD COLUMN theme_variant ENUM('light','dark') NULL
+                       COMMENT '유형1 질문 이미지가 대비되는 위젯 배경(라이트/다크). 그 외는 NULL'
+                       AFTER captcha_type"""
+                )
+                print("[migrate] captcha_images.theme_variant 컬럼 추가")
+
             # 11) captcha_images — 공개 challenge/verify API가 서빙할 질문·보기 이미지 시드.
             # filename UNIQUE는 아니지만 NOT EXISTS 가드로 재실행해도 중복 삽입되지 않는다.
             # label은 DB 덤프·소스만 보고 문제-정답 매핑을 읽을 수 없도록 평문이 아닌
             # HMAC 해시로 저장한다(정답 판정 시 label = label 등호 비교는 그대로 동작).
             # instruction도 CONCAT으로 평문 라벨을 새어나가게 하던 것을 해시로 바꿨다.
             cur.executemany(
-                """INSERT INTO captcha_images (site_id, role, captcha_type, render_type, filename, label, instruction)
-                   SELECT NULL, 'question', %s, 'ascii_art', %s, %s, CONCAT('이미지 속 대상 해시: ', %s)
+                """INSERT INTO captcha_images (site_id, role, captcha_type, theme_variant, render_type, filename, label, instruction)
+                   SELECT NULL, 'question', %s, %s, 'ascii_art', %s, %s, CONCAT('이미지 속 대상 해시: ', %s)
                    WHERE NOT EXISTS (SELECT 1 FROM captcha_images WHERE filename = %s)""",
                 [
-                    (captcha_type, filename, hash_label(label), hash_label(label), filename)
-                    for filename, label, captcha_type in CAPTCHA_QUESTION_IMAGES
+                    (captcha_type, theme_variant, filename, hash_label(label), hash_label(label), filename)
+                    for filename, label, captcha_type, theme_variant in CAPTCHA_QUESTION_IMAGES
                 ],
             )
             if cur.rowcount:

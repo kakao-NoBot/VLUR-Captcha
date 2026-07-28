@@ -126,7 +126,10 @@ function useWaypointDrag(captchaType, trackHeight) {
   const fetchChallenge = useCallback(() => {
     setChallenge(null);
     setLoadError(false);
-    publicCaptchaApi.post('/api/v1/captcha/challenge', { captcha_type: captchaType }).then(({ data }) => {
+    // 유형1 문제는 흰색(다크 배경용)/검은색(라이트 배경용) 아이콘 두 벌이 있어, 사이트
+    // 전역 다크모드 토글(Nav.jsx가 <html data-theme>에 반영)에 맞는 쪽을 서버에 요청한다.
+    const themeMode = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+    publicCaptchaApi.post('/api/v1/captcha/challenge', { captcha_type: captchaType, theme_mode: themeMode }).then(({ data }) => {
       challengeStartRef.current = performance.now();
       setChallenge({
         challengeToken: data.challenge_token,

@@ -18,14 +18,6 @@ from migrations import CAPTCHA_OPTION_IMAGES, CAPTCHA_QUESTION_IMAGES
 
 CHALLENGE_TTL_SECONDS = 120
 MAX_ATTEMPTS = 5
-CUSTOM_KIWI_QUESTION_URL = "/demo-assets/1_light_Q.png"
-
-# 마케팅 데모에만 노출하는 유형 1 키위 문제.
-# 실제 위젯용 공용 CAPTCHA_QUESTION_IMAGES에는 넣지 않아 운영 문제 구성에는 영향을 주지 않는다.
-DEMO_QUESTION_IMAGES = (
-    *CAPTCHA_QUESTION_IMAGES,
-    (CUSTOM_KIWI_QUESTION_URL, "키위", "type1_drag"),
-)
 
 _OPTIONS_BY_LABEL: dict[str, list[tuple[str, str]]] = defaultdict(list)
 for _filename, _label in CAPTCHA_OPTION_IMAGES:
@@ -50,9 +42,10 @@ def _purge_expired(now: float) -> None:
 
 
 def issue_challenge(captcha_type: str) -> dict:
+    # theme_variant(라이트/다크 아이콘 구분)는 이 사내 데모에서는 쓰지 않고 전부 섞어서 낸다.
     questions = [
         (filename, label)
-        for filename, label, ctype in DEMO_QUESTION_IMAGES
+        for filename, label, ctype, _theme_variant in CAPTCHA_QUESTION_IMAGES
         if ctype == captcha_type
     ]
     question_filename, question_label = secrets.choice(questions)
