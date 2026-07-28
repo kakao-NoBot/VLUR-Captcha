@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from auth.deps import get_current_admin
 from db import get_conn
+from services.datetime_format import format_seoul_datetime
 
 router = APIRouter(tags=["admin-dashboard"])
 
@@ -186,7 +187,8 @@ def get_recent_logs(limit: int = 20, admin: dict = Depends(get_current_admin)):
         with conn.cursor() as cur:
             cur.execute(
                 """SELECT cv.created_at, ak.site_domain, cv.captcha_type,
-                          cv.response_time_ms, cv.bot_score, cv.is_correct
+                          cv.response_time_ms, cv.bot_score, cv.is_correct,
+                          cv.is_bot, cv.verification_status, cv.failure_reason
                    FROM captcha_verifications cv
                    LEFT JOIN api_keys ak ON ak.api_key_id = cv.api_key_id
                    ORDER BY cv.created_at DESC
@@ -197,19 +199,26 @@ def get_recent_logs(limit: int = 20, admin: dict = Depends(get_current_admin)):
 
     logs = []
     for r in rows:
-        if r["bot_score"] is not None:
-            bot_score_100 = round(float(r["bot_score"]) * 100)
-        else:
-            # 오답이라 봇 채점 자체를 안 한 경우 — 로그 화면은 무조건 "실패"로 분류돼야 하므로
-            # 임계값(FAIL=70)을 넘는 100점으로 표시한다.
-            bot_score_100 = 100 if not r["is_correct"] else 0
+        bot_score_100 = (
+            round(float(r["bot_score"]) * 100)
+            if r["bot_score"] is not None
+            else None
+        )
+        result = {
+            "passed": "성공",
+            "pending": "의심",
+        }.get(r["verification_status"], "실패")
         duration = f'{(r["response_time_ms"] or 0) / 1000:.1f}초' if r["response_time_ms"] is not None else "-"
         logs.append({
-            "time": r["created_at"].strftime("%Y-%m-%d %H:%M") if r["created_at"] else "-",
+            "time": format_seoul_datetime(r["created_at"]),
             "site": r["site_domain"] or "-",
             "captchaType": r["captcha_type"],
             "duration": duration,
             "botScore": bot_score_100,
+            "answerCorrect": bool(r["is_correct"]),
+            "isBot": r["is_bot"],
+            "result": result,
+            "failureReason": r["failure_reason"],
         })
     return {"logs": logs}
 
