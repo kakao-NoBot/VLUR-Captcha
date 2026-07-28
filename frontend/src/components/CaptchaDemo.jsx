@@ -527,8 +527,10 @@ const MAX_ACCENT_VALUE = 92;
   const updateSaturation = (event) => {
     const rect = event.currentTarget.getBoundingClientRect();
     const saturation = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
-    const value = 1 - Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height));
-    setTheme(hsvToHex({ h: pickerHsv.h, s: saturation * 100, v: clampAccentValue(value * 100) }));
+    const verticalRatio = Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height));
+    // 박스 세로 전체를 안전 밝기 범위(MIN~MAX)에 그대로 매핑 — 맨 위 = MAX, 맨 아래 = MIN
+    const value = MAX_ACCENT_VALUE - verticalRatio * (MAX_ACCENT_VALUE - MIN_ACCENT_VALUE);
+    setTheme(hsvToHex({ h: pickerHsv.h, s: saturation * 100, v: value }));
   };
 
   return (
@@ -593,7 +595,11 @@ const MAX_ACCENT_VALUE = 92;
               >
                 <span
                   className="demo-color-field-cursor"
-                  style={{ left: `${pickerHsv.s}%`, top: `${100 - pickerHsv.v}%`, background: pickerHex }}
+                  style={{
+                    left: `${pickerHsv.s}%`,
+                    top: `${((MAX_ACCENT_VALUE - pickerHsv.v) / (MAX_ACCENT_VALUE - MIN_ACCENT_VALUE)) * 100}%`,
+                    background: pickerHex,
+                  }}
                 />
               </div>
 
@@ -621,23 +627,18 @@ const MAX_ACCENT_VALUE = 92;
         )}
       </div>
       <div className="demo-top">
-        <div className="dots">
-          <i style={{ background: type === 1 ? 'var(--orange)' : 'var(--line)' }}/>
-          <i style={{ background: type === 2 ? 'var(--orange)' : 'var(--line)' }}/>
+        <div className="dots" aria-hidden="true">
+          <i className={`demo-type-indicator ${type === 1 ? 'is-active' : 'is-inactive'}`} />
+          <i className={`demo-type-indicator ${type === 2 ? 'is-active' : 'is-inactive'}`} />
         </div>
-        <div style={{ display: 'flex', gap: 4, marginLeft: 12 }}>
+        <div className="demo-type-tabs">
           {[1, 2].map(t => (
             <button
               key={t}
+              type="button"
+              className={`demo-type-tab ${type === t ? 'is-active' : 'is-inactive'}`}
               onClick={() => setType(t)}
-              style={{
-                fontFamily: 'var(--disp)', fontSize: 11, fontWeight: 700,
-                letterSpacing: '.1em', padding: '3px 10px', borderRadius: 8,
-                border: type === t ? 'none' : '1.5px solid color-mix(in srgb, var(--orange) 40%, var(--line))',
-                background: type === t ? 'linear-gradient(90deg, var(--gold), var(--orange))' : 'color-mix(in srgb, var(--orange) 10%, var(--card))',
-                color: type === t ? 'var(--captcha-on-accent, var(--paper))' : 'var(--orange-2)',
-                cursor: 'pointer', transition: '.15s',
-              }}
+              aria-pressed={type === t}
             >
               유형 {t}
             </button>
