@@ -10,6 +10,11 @@ import torch
 
 from ml.cnn.cnn_canonical_features import human_or_function_record_to_cnn
 from ml.cnn.model_cnn_torch import build_model
+from services.risk_score import (
+    DEFAULT_RISK_TEMPERATURE,
+    calibrated_risk_score,
+    stable_sigmoid,
+)
 
 MODEL_DIR = Path(__file__).resolve().parent.parent / "model"
 # 모델 자체 임계값과의 거리가 이 이내면 "애매함"으로 보고 유형2 재검증.
@@ -34,6 +39,11 @@ if _calibration.get("score_direction") != "higher_score_means_human":
         f"{_calib_path}의 score_direction이 예상과 다릅니다: {_calibration.get('score_direction')!r}"
     )
 _HUMAN_THRESHOLD = float(_calibration["threshold"])
+# 관리자용 위험 지수의 초기 표시 스케일. 보안 판정 임계값에는 영향을 주지 않는다.
+# 향후 라벨이 있는 검증 로짓이 확보되면 calibration.json에 이 값만 재학습해 넣으면 된다.
+_RISK_SCORE_TEMPERATURE = float(
+    _calibration.get("risk_score_temperature", DEFAULT_RISK_TEMPERATURE)
+)
 
 _state_dict = torch.load(str(_ckpt_path), map_location="cpu")
 # domain_adversarial로 학습된 체크포인트는 domain_head.*.bias 가중치를 갖고 있고,
@@ -75,32 +85,41 @@ def build_record(drag_trace, pointer_type, waypoints, start_center, drop_center)
 
 
 @torch.no_grad()
-def _predict_human_probability(record: dict) -> float:
+def _predict_human_logit(record: dict) -> float:
     seq, scalar, _ = human_or_function_record_to_cnn(record)
     seq_t = torch.from_numpy(seq).float().unsqueeze(0)
     scalar_t = torch.from_numpy(scalar).float().unsqueeze(0)
     logit = _model(seq_t, scalar_t)  # grl_lambda 안 줌 -> domain_head 있어도 무시됨(정상)
-    return torch.sigmoid(logit).item()
+    return logit.item()
 
 
 def classify(record: dict) -> dict:
     """모델 판정 결과를 challenge/verify 라우터가 쓰는 3단계(tier)로 매핑.
 
     체크포인트의 calibration.json은 "높을수록 사람"(human_prob) 기준으로 threshold가
-    잡혀 있다. DB bot_score 컬럼·관리자 UI는 반대로 "높을수록 봇"을 가정하므로,
-    여기서 bot_probability = 1 - human_prob 로 뒤집어 기존 스키마와 맞춘다.
+    잡혀 있다. 보안 판정은 이 원본 확률을 그대로 사용하고, DB bot_score·관리자 UI에는
+    임계 로짓을 50점으로 고정한 완만한 위험 지수를 별도로 저장한다.
     """
     try:
-        human_prob = _predict_human_probability(record)
+        human_logit = _predict_human_logit(record)
+        human_prob = stable_sigmoid(human_logit)
+        raw_bot_probability = stable_sigmoid(-human_logit)
+        risk_score = calibrated_risk_score(
+            human_logit,
+            _HUMAN_THRESHOLD,
+            _RISK_SCORE_TEMPERATURE,
+        )
         error = None
     except (KeyError, ValueError, IndexError) as exc:
         # fail-closed: 입력이 기형이면 무조건 봇으로 처리
+        human_logit = float("-inf")
         human_prob = 0.0
+        raw_bot_probability = 1.0
+        risk_score = 1.0
         error = str(exc)
 
     is_bot = human_prob < _HUMAN_THRESHOLD
     ambiguous = abs(human_prob - _HUMAN_THRESHOLD) < AMBIGUOUS_MARGIN
-    bot_probability = 1.0 - human_prob
 
     if error is not None:
         tier = "blocked"
@@ -113,9 +132,14 @@ def classify(record: dict) -> dict:
 
     return {
         "tier": tier,
-        "bot_probability": bot_probability,
+        "risk_score": risk_score,
+        "raw_bot_probability": raw_bot_probability,
+        "human_probability": human_prob,
+        "human_logit": human_logit,
         "is_bot": is_bot,
         "threshold": 1.0 - _HUMAN_THRESHOLD,
+        "risk_score_threshold": 0.5,
+        "risk_score_temperature": _RISK_SCORE_TEMPERATURE,
         "model_version": MODEL_VERSION,
         "error": error,
     }

@@ -17,6 +17,7 @@ from auth.site_key import get_site_key_context
 from db import get_conn
 from services.captcha_theme import serialize_captcha_theme
 from services.drag_classifier import build_record, classify
+from services.verification_decision import resolve_verification
 
 router = APIRouter(prefix="/api/v1/captcha", tags=["captcha-public"])
 
@@ -232,72 +233,47 @@ def verify_challenge(
                 if not option:
                     raise HTTPException(status_code=422, detail="유효하지 않은 보기입니다.")
 
-                if not option["is_correct_server_side"]:
-                    cur.execute(
-                        "UPDATE captchas SET captcha_status = 'failed' WHERE captcha_id = %s",
-                        (captcha["captcha_id"],),
-                    )
-                    cur.execute(
-                        """INSERT INTO captcha_verifications
-                               (captcha_id, site_id, api_key_id, captcha_type, selected_option_id,
-                                selected_image_id, drop_position, drag_trace, is_correct,
-                                verification_status, response_time_ms, verified_at)
-                           VALUES (%s, NULL, %s, %s, %s, %s, %s, %s, FALSE, 'failed', %s, NOW())""",
-                        (
-                            captcha["captcha_id"], site_ctx["api_key_id"], captcha["captcha_type"],
-                            option["option_id"], option["image_id"], drop_position_json,
-                            drag_trace_json, body.response_time_ms,
-                        ),
-                    )
-                    _bump_usage(cur, site_ctx["user_id"], issued=0, verified=1)
-                    conn.commit()
-                    return {"verified": False, "ambiguous": False, "blocked": False}, None, None
-
+                is_correct = bool(option["is_correct_server_side"])
                 start_center = body.start_center or (drag_trace[0] if drag_trace else {"x": 0, "y": 0})
                 drop_center = body.drop_center or (drag_trace[-1] if drag_trace else {"x": 0, "y": 0})
                 record = build_record(drag_trace, body.pointer_type, body.waypoints, start_center, drop_center)
                 analysis = classify(record)
-
-                if analysis["tier"] == "blocked":
-                    new_status, is_bot, verification_status = "failed", True, "failed"
-                    result = {"verified": False, "ambiguous": False, "blocked": True}
-                elif analysis["tier"] == "ambiguous":
-                    new_status, is_bot, verification_status = "expired", None, "pending"
-                    result = {"verified": False, "ambiguous": True, "blocked": False}
-                else:
-                    new_status, is_bot, verification_status = "verified", False, "passed"
-                    result = {"verified": True, "ambiguous": False, "blocked": False}
-
-                one_time_token = secrets.token_urlsafe(32) if new_status == "verified" else None
-                score_fraction = round(analysis["bot_probability"], 5)
+                outcome = resolve_verification(is_correct, analysis["tier"])
+                one_time_token = secrets.token_urlsafe(32) if outcome["issue_token"] else None
+                score_fraction = round(analysis["risk_score"], 5)
 
                 cur.execute(
                     "UPDATE captchas SET captcha_status = %s WHERE captcha_id = %s",
-                    (new_status, captcha["captcha_id"]),
+                    (outcome["captcha_status"], captcha["captcha_id"]),
                 )
                 cur.execute(
                     """INSERT INTO captcha_verifications
                            (captcha_id, site_id, api_key_id, captcha_type, selected_option_id,
                             selected_image_id, drop_position, drag_trace, is_correct, is_bot,
-                            bot_score, model_version, verification_status, one_time_token,
-                            response_time_ms, verified_at)
-                       VALUES (%s, NULL, %s, %s, %s, %s, %s, %s, TRUE, %s, %s, %s, %s, %s, %s, NOW())""",
+                            bot_score, model_version, verification_status, failure_reason,
+                            one_time_token, response_time_ms, verified_at)
+                       VALUES (%s, NULL, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())""",
                     (
                         captcha["captcha_id"], site_ctx["api_key_id"], captcha["captcha_type"],
                         option["option_id"], option["image_id"], drop_position_json, drag_trace_json,
-                        is_bot, score_fraction, analysis["model_version"], verification_status,
-                        one_time_token, body.response_time_ms,
+                        is_correct, outcome["is_bot"], score_fraction, analysis["model_version"],
+                        outcome["verification_status"], outcome["failure_reason"], one_time_token,
+                        body.response_time_ms,
                     ),
                 )
                 _bump_usage(cur, site_ctx["user_id"], issued=0, verified=1)
             conn.commit()
-        return result, analysis, one_time_token
+        return outcome["result"], analysis, one_time_token
 
     result, analysis, one_time_token = _retry_on_deadlock(_do)
 
     if analysis is not None:
-        result["botScore"] = round(analysis["bot_probability"] * 100)
-        result["reasons"] = [f"모델 판정 (봇 확률 {analysis['bot_probability']:.1%}, 모델 {analysis['model_version']})"]
+        display_score = round(analysis["risk_score"] * 100)
+        result["botScore"] = display_score
+        result["reasons"] = [
+            f"CNN 위험 지수 {display_score}점 "
+            f"(모델 {analysis['model_version']})"
+        ]
     if one_time_token:
         result["token"] = one_time_token
     return result
