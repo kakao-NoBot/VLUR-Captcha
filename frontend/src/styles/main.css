@@ -306,8 +306,8 @@ h1 .hl::after {
   gap: 6px;
   width: max-content;
   min-height: 44px;
-  padding: 4px 11px 4px 5px;
-  border: 1px solid var(--line);
+  padding: 4px 11px;
+  border: 1.5px solid var(--line);
   border-radius: 999px;
   background: var(--card);
   box-shadow: 0 8px 22px -18px rgba(36,27,21,.45);
@@ -321,7 +321,7 @@ h1 .hl::after {
 .demo-theme-swatch {
   width: 28px; height: 28px; flex: 0 0 28px; padding: 0; overflow: hidden;
   border: 2px solid var(--card); border-radius: 50%; background: var(--swatch-color); cursor: pointer;
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--orange) 30%, var(--line)), 0 4px 10px -7px rgba(36,27,21,.7);
+  box-shadow: 0 2px 6px -3px rgba(36,27,21,.5);
 }
 .demo-theme-swatch:hover,
 .demo-theme-swatch:focus-visible { outline: 2px solid color-mix(in srgb, var(--orange) 35%, transparent); outline-offset: 2px; }
@@ -477,14 +477,21 @@ h1 .hl::after {
   transition: border-color .15s ease, background .15s ease, color .15s ease, opacity .15s ease;
 }
 .demo-type-tab.is-active {
-  border: 1.5px solid transparent;
+  /* 바탕이 그라디언트로 꽉 채워져 있어 테두리가 필요 없다 — 테두리를 두면(설령 배경과
+     같은 색이라도) 둥근 모서리의 안티앨리어싱 경계 때문에 얇은 선이 겹쳐 보이는
+     렌더링 아티팩트가 생긴다. */
+  border: 0;
   background: linear-gradient(90deg, var(--gold), var(--orange));
-  color: var(--captcha-on-accent, var(--paper));
+  color: var(--captcha-on-accent, #fff);
+  /* CTA 버튼과 같은 그림자 값(blur 20/spread -10)을 그대로 쓰면 이 작은 뱃지에서는
+     블러가 위쪽 테두리 바깥으로 살짝 번져 나가 이중 테두리처럼 보인다 — 뱃지 크기에
+     맞게 blur/spread를 줄여 테두리 위로 번지지 않게 함. */
+  box-shadow: 0 3px 6px -4px color-mix(in srgb, var(--orange) 45%, transparent);
 }
 .demo-type-tab.is-inactive {
-  border: 1.5px solid color-mix(in srgb, var(--orange) 40%, var(--line));
-  background: color-mix(in srgb, var(--orange) 10%, var(--card));
-  color: var(--orange-2);
+  border: 1.5px solid var(--orange);
+  background: var(--card);
+  color: var(--orange);
 }
 .demo-type-tab:focus-visible {
   outline: 3px solid color-mix(in srgb, var(--orange) 24%, transparent);
@@ -510,25 +517,32 @@ h1 .hl::after {
 }
 .demo-q .question-image {
   display: block; flex: 0 1 auto; width: min(680px, 100%); min-width: 0; height: auto;
-  /* The source artwork has a white canvas; blend it into the peach question panel. */
-  mix-blend-mode: multiply;
 }
-.demo-q .question-image-dark { display: none; }
-.theme-experience-demo.captcha-type-1 .demo-q.custom-question-art {
-  padding: 0;
-  border: 0;
-  border-radius: 0;
+/* 유형1은 이제 투명 배경 아이콘(흰/검 변형)을 그대로 보여주므로 배경 상자를 하나로 통일 —
+   기존엔 바깥 .demo-q(주황 배경)과 아이콘 자체(#FBEBDD 배경, multiply 블렌드)가 겹쳐서
+   주황 상자가 2겹으로 보였다. */
+.theme-experience-demo.captcha-type-1 .demo-q {
+  background: var(--peach);
+  border: 1px solid var(--peach);
+}
+.theme-experience-demo.captcha-type-1 .demo-q .question-image {
   background: transparent;
 }
-.theme-experience-demo.captcha-type-1 .demo-q.custom-question-art .question-image {
-  background: transparent;
-  mix-blend-mode: normal;
+/* 다크모드에서는 유형1·유형2 공통으로 뱃지 느낌(카드 배경 + 선명한 오렌지 실선 테두리)을 쓴다.
+   글자색은 흰색으로 — 유형2 안내문 속 "이미지" 강조 단어는 인라인 style로 주황을 고정해둬서
+   여기서 흰색을 줘도 그대로 주황으로 남는다. */
+[data-theme="dark"] .theme-experience-demo .demo-q {
+  background: var(--card);
+  border-width: 1.5px;
+  border-style: solid;
+  border-color: var(--orange);
+  color: #fff;
 }
-[data-theme="dark"] .theme-experience-demo.captcha-type-1 .demo-q.custom-question-art .question-image-light {
-  display: none;
-}
-[data-theme="dark"] .theme-experience-demo.captcha-type-1 .demo-q.custom-question-art .question-image-dark {
-  display: block;
+/* 드롭존(장바구니 칸)은 다크모드에서 유형1·유형2 공통으로 대기 상태 한정 선명한 오렌지
+   점선 + 빗금(사선 패턴) 없는 단색 배경으로. hot/blocked/done 상태는 기존 표시 유지. */
+[data-theme="dark"] .theme-experience-demo .drop:not(.hot):not(.blocked):not(.done) {
+  border-color: var(--orange);
+  background: var(--card);
 }
 .demo-q .drag-ic {
   position: absolute; right: 16px;
@@ -540,7 +554,6 @@ h1 .hl::after {
   display: flex; justify-content: center; margin-top: 16px;
 }
 .captcha-reference img,
-.demo-q .question-image,
 .login-captcha-question img {
   background: #FBEBDD; /* multiply 블렌드용 고정 밝은 배경 — 다크모드 --card 색과 무관하게 항상 보이도록 */
 }
@@ -557,11 +570,14 @@ h1 .hl::after {
   padding: 0; overflow: hidden;
 }
 .tile:hover { border-color: var(--gold); transform: translateY(-2px); box-shadow: var(--shadow-sm); }
-.tile:focus-visible { outline: 3px solid rgba(240,105,30,.45); outline-offset: 2px; }
-.tile.sel { border-color: var(--orange); box-shadow: 0 0 0 3px rgba(240,105,30,.16); }
+.tile:focus-visible { outline: 3px solid color-mix(in srgb, var(--orange) 45%, transparent); outline-offset: 2px; }
+.tile.sel { border-color: var(--orange); box-shadow: 0 0 0 3px color-mix(in srgb, var(--orange) 16%, transparent); }
 .tile.dragging { opacity: .35; }
 .tile svg { width: 46px; height: 46px; }
-.tile-photo { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; display: block; }
+/* border-radius: inherit를 그대로 쓰면 사진(안쪽)이 테두리(바깥쪽)와 같은 반지름을 써서
+   모서리가 살짝 동심원으로 안 맞아 보인다 — 테두리 두께(1.5px)만큼 빼서 안쪽 반지름을
+   맞춰야 테두리와 사진 모서리가 정확히 겹친다. */
+.tile-photo { width: 100%; height: 100%; object-fit: cover; border-radius: calc(14px - 1.5px); display: block; }
 .tile .cap { font-size: 12px; color: var(--muted); font-weight: 500; }
 .tile::before {
   content: ""; position: absolute; inset: 0; border-radius: 13px; pointer-events: none;
@@ -744,7 +760,7 @@ h1 .hl::after {
 .demo-foot .status.bad { color: var(--bad); font-weight: 600; }
 .demo-foot .reset {
   margin-left: auto; font-size: 13px; color: var(--ink-soft); background: none;
-  border: 1px solid var(--line); border-radius: 10px; padding: 7px 12px; cursor: pointer; font-weight: 500;
+  border: 1.5px solid var(--line); border-radius: 10px; padding: 7px 12px; cursor: pointer; font-weight: 500;
 }
 .demo-foot .reset:hover { border-color: var(--orange); color: var(--orange-2); }
 .token {
@@ -4374,18 +4390,16 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
   border-color: transparent;
 }
 [data-theme="dark"] .theme-experience-demo > .demo-theme-toolbar {
-  border-bottom-color: #FF8A3D;
+  border-bottom-width: 1.5px;
+  border-bottom-color: var(--orange);
 }
 [data-theme="dark"] .theme-experience-demo .demo-theme-title strong {
-  color: #FF8A3D;
+  color: var(--orange);
 }
 [data-theme="dark"] .theme-experience-demo .demo-theme-hex.selected {
-  border-color: #FF8A3D;
+  border-color: var(--orange);
   background: var(--card);
   box-shadow: none;
-}
-[data-theme="dark"] .theme-experience-demo .demo-theme-swatch {
-  box-shadow: 0 0 0 1px #FF8A3D;
 }
 [data-theme="dark"] .theme-experience-demo .demo-theme-close {
   border-color: #28303F;
@@ -4394,9 +4408,9 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
 }
 [data-theme="dark"] .theme-experience-demo .demo-theme-close:hover,
 [data-theme="dark"] .theme-experience-demo .demo-theme-close:focus-visible {
-  border-color: #FF8A3D;
+  border-color: var(--orange);
   background: var(--card);
-  color: #FF8A3D;
+  color: var(--orange);
 }
 [data-theme="dark"] .theme-experience-demo .demo-color-popover-head > button:hover,
 [data-theme="dark"] .theme-experience-demo .demo-color-popover-head > button:focus-visible {
@@ -4405,7 +4419,8 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
 }
 [data-theme="dark"] .theme-experience-demo .demo-top {
   background: var(--card);
-  border-bottom-color: #FF8A3D;
+  border-bottom-width: 1.5px;
+  border-bottom-color: var(--orange);
 }
 [data-theme="dark"] .theme-experience-demo .demo-type-indicator.is-active {
   box-shadow: none;
@@ -4416,35 +4431,57 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
   opacity: 1;
 }
 [data-theme="dark"] .theme-experience-demo .demo-type-tab.is-active {
-  border-color: #FF8A3D;
-  background: #FF8A3D;
+  border: 0;
+  background: var(--orange);
   color: #10141C;
   box-shadow: none;
   outline: none;
 }
 [data-theme="dark"] .theme-experience-demo .demo-type-tab.is-inactive {
-  border-color: #FF8A3D;
+  border-color: var(--orange);
   background: transparent;
-  color: #FF8A3D;
+  color: var(--orange);
   box-shadow: none;
 }
-[data-theme="dark"] .theme-experience-demo .demo-q,
 [data-theme="dark"] .theme-experience-demo .tile,
-[data-theme="dark"] .theme-experience-demo .drop,
-[data-theme="dark"] .theme-experience-demo .drop .cart,
-[data-theme="dark"] .theme-experience-demo .demo-foot .reset,
-[data-theme="dark"] .theme-experience-demo .demo-color-popover {
+[data-theme="dark"] .theme-experience-demo .demo-foot .reset {
   border-color: #76503C;
 }
+/* 장바구니 아이콘 칸과 팝오버 테두리도 컬러 피커 값(var(--orange))을 그대로 따라가도록 */
+[data-theme="dark"] .theme-experience-demo .drop .cart,
+[data-theme="dark"] .theme-experience-demo .demo-color-popover {
+  border-color: var(--orange);
+}
 [data-theme="dark"] .theme-experience-demo .demo-color-popover::before {
-  border-color: #76503C;
+  border-color: var(--orange);
+}
+/* 팝오버 안의 밝은(흰색) 테두리들을 전부 같은 브랜드 오렌지로 통일 */
+[data-theme="dark"] .theme-experience-demo .demo-color-popover-head > div > span {
+  box-shadow: inset 0 0 0 1px var(--orange);
+}
+[data-theme="dark"] .theme-experience-demo .demo-color-field {
+  border-width: 1.5px;
+  border-color: var(--orange);
+}
+[data-theme="dark"] .theme-experience-demo .demo-color-field-cursor {
+  border-color: var(--orange);
+}
+[data-theme="dark"] .theme-experience-demo .demo-color-preview {
+  border-color: var(--orange);
+  box-shadow: 0 0 0 1px var(--orange);
+}
+[data-theme="dark"] .theme-experience-demo .demo-color-hue-row input[type="range"]::-webkit-slider-thumb {
+  border-color: var(--orange);
+}
+[data-theme="dark"] .theme-experience-demo .demo-color-hue-row input[type="range"]::-moz-range-thumb {
+  border-color: var(--orange);
 }
 [data-theme="dark"] .theme-experience-demo .tile:not(.sel) {
   border-color: #28303F;
 }
 [data-theme="dark"] .theme-experience-demo .tile:not(.sel):hover,
 [data-theme="dark"] .theme-experience-demo .tile:not(.sel):focus-visible {
-  border-color: #FF8A3D;
+  border-color: var(--orange);
 }
 [data-theme="dark"] .theme-experience-demo .demo-foot .reset {
   border-color: #28303F;
@@ -4453,15 +4490,15 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
 }
 [data-theme="dark"] .theme-experience-demo .demo-foot .reset:hover,
 [data-theme="dark"] .theme-experience-demo .demo-foot .reset:focus-visible {
-  border-color: #FF8A3D;
+  border-color: var(--orange);
   background: var(--card);
-  color: #FF8A3D;
+  color: var(--orange);
   outline: none;
 }
 [data-theme="dark"] .theme-experience-demo .drag-waypoint:not(.visited) {
-  border-color: #FF8A3D;
+  border-color: var(--orange);
   background: var(--card);
-  color: #FF8A3D;
+  color: var(--orange);
   box-shadow: none;
 }
 /* ── cta band: 흰 카피가 읽히도록 깊은 엠버 그라데이션 유지 ── */

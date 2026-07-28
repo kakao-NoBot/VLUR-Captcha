@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import vlurGif from '../assets/output-onlinegiftools.gif';
+import vlurGif from '../assets/examples/logo/output-onlinegiftools.gif';
 import ContactModal from './ContactModal';
 import PrivacyModal from './PrivacyModal';
 import TermsModal from './TermsModal';
