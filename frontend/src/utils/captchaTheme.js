@@ -1,5 +1,5 @@
 export const CAPTCHA_THEME_PRESETS = {
-  orange: { label: '연주황', accent: '#F0691E', soft: '#FBEBDD' },
+  orange: { label: '연주황', accent: '#FF8A3D', soft: '#FBEBDD' },
   purple: { label: '보라', accent: '#7C5CE7', soft: '#EEE9FF' },
   blue: { label: '파랑', accent: '#2F75DC', soft: '#E7F0FF' },
 };
@@ -13,7 +13,7 @@ export function normalizeHexColor(value) {
 }
 
 export function mixHexColors(color, target = '#FFFFFF', targetRatio = 0.5) {
-  const sourceHex = normalizeHexColor(color) || '#F0691E';
+  const sourceHex = normalizeHexColor(color) || '#FF8A3D';
   const targetHex = normalizeHexColor(target) || '#FFFFFF';
   const ratio = Math.min(1, Math.max(0, targetRatio));
   const mixChannel = (start) => Math.round(

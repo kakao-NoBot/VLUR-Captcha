@@ -3,6 +3,8 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import api from '../api/axios';
+import darkType1QuestionImage from '../assets/1_dark_Q.png';
+import lightType1QuestionImage from '../assets/1_light_Q.png';
 import {
   CAPTCHA_THEME_PRESETS,
   hexToHsv,
@@ -260,6 +262,7 @@ function randomWaypoints(trackHeight, count = 2) {
 const WAYPOINT_RADIUS_PX = 41;
 const DROP_ZONE_ID = 'captcha-drop-drag';
 const COMPACT_TRACK_HEIGHT = 136; // 유형2(MatchDragCaptcha)용 트랙 높이
+const CUSTOM_KIWI_QUESTION_URL = '/demo-assets/1_light_Q.png';
 
 function DropZone({ dropState, missedHint }) {
   const dropClass = `drop${dropState === 'hot' ? ' hot' : ''}${dropState === 'blocked' ? ' blocked' : ''}${dropState === 'done' ? ' done' : ''}`;
@@ -360,14 +363,31 @@ function DragCaptcha() {
   if (screen === 'fail')    return <FailScreen onReset={reset} />;
   if (!challenge) return <DemoLoading />;
 
+  const usesCustomKiwiQuestion = challenge.questionImageUrl === CUSTOM_KIWI_QUESTION_URL;
+
   return (
     <div className="demo-body">
-      <div className="demo-q">
-        <img
-          className="question-image"
-          src={challenge.questionImageUrl}
-          alt="문제 이미지"
-        />
+      <div className={`demo-q${usesCustomKiwiQuestion ? ' custom-question-art' : ''}`}>
+        {usesCustomKiwiQuestion ? (
+          <>
+            <img
+              className="question-image question-image-light"
+              src={lightType1QuestionImage}
+              alt="키위 선택 문제"
+            />
+            <img
+              className="question-image question-image-dark"
+              src={darkType1QuestionImage}
+              alt="키위 선택 문제"
+            />
+          </>
+        ) : (
+          <img
+            className="question-image"
+            src={challenge.questionImageUrl}
+            alt="문제 이미지"
+          />
+        )}
       </div>
 
       <div className="tiles">
@@ -549,23 +569,18 @@ const MAX_ACCENT_VALUE = 92;
         )}
       </div>
       <div className="demo-top">
-        <div className="dots">
-          <i style={{ background: type === 1 ? 'var(--orange)' : 'var(--line)' }}/>
-          <i style={{ background: type === 2 ? 'var(--orange)' : 'var(--line)' }}/>
+        <div className="dots" aria-hidden="true">
+          <i className={`demo-type-indicator ${type === 1 ? 'is-active' : 'is-inactive'}`} />
+          <i className={`demo-type-indicator ${type === 2 ? 'is-active' : 'is-inactive'}`} />
         </div>
-        <div style={{ display: 'flex', gap: 4, marginLeft: 12 }}>
+        <div className="demo-type-tabs">
           {[1, 2].map(t => (
             <button
               key={t}
+              type="button"
+              className={`demo-type-tab ${type === t ? 'is-active' : 'is-inactive'}`}
               onClick={() => setType(t)}
-              style={{
-                fontFamily: 'var(--disp)', fontSize: 11, fontWeight: 700,
-                letterSpacing: '.1em', padding: '3px 10px', borderRadius: 8,
-                border: type === t ? 'none' : '1.5px solid color-mix(in srgb, var(--orange) 40%, var(--line))',
-                background: type === t ? 'linear-gradient(90deg, var(--gold), var(--orange))' : 'color-mix(in srgb, var(--orange) 10%, var(--card))',
-                color: type === t ? 'var(--captcha-on-accent, var(--paper))' : 'var(--orange-2)',
-                cursor: 'pointer', transition: '.15s',
-              }}
+              aria-pressed={type === t}
             >
               유형 {t}
             </button>
