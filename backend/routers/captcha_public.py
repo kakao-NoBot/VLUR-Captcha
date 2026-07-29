@@ -19,7 +19,10 @@ from services.captcha_theme import serialize_captcha_theme
 from services.drag_classifier import build_record, classify
 from services.verification_decision import resolve_verification
 
-router = APIRouter(prefix="/api/v1/captcha", tags=["captcha-public"])
+# prefix("/api/v1/captcha")는 여기서 주지 않는다 — main.py가 이 라우터를 CORS 전체 허용(*)
+# 서브 앱에 담아 그 경로로 마운트하면서 붙여준다(임의의 제3자 사이트 오리진을 미리 알 수
+# 없어 라우터별로 다른 CORS를 적용해야 하기 때문 — main.py 주석 참고).
+router = APIRouter(tags=["captcha-public"])
 
 CHALLENGE_TTL_SECONDS = 120
 CAPTCHA_TYPES = ("type1_drag", "type2_identify")
