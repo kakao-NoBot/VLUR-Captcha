@@ -247,8 +247,8 @@ export default function PlanPayPage({ planName = 'Pro', initialSuccess = false, 
             <div className="pg-card" style={{ marginBottom: 16 }}>
               <div className="pg-label">결제 수단 선택</div>
               {[
-                { id: 'kakao', label: '카카오페이', sub: '카카오페이 머니 / 카드 단건 결제 · Server-to-Server API', logoClass: 'kakao', logoText: 'kakao pay' },
-                { id: 'toss',  label: '토스페이먼츠', sub: '카드 · 간편결제 · 계좌이체 통합 위젯 v2 · SDK', logoClass: 'toss', logoText: 'toss pay' },
+                { id: 'kakao', label: '카카오페이', sub: '카카오페이 머니 · 신용/체크카드', logoClass: 'kakao', logoText: 'kakao pay' },
+                { id: 'toss',  label: '토스페이먼츠', sub: '신용카드 · 계좌이체 · 간편결제', logoClass: 'toss', logoText: 'toss pay' },
               ].map(m => (
                 <div key={m.id} className={`pp-method${method === m.id ? ' sel' : ''}`} onClick={() => { setMethod(m.id); setPaymentError(''); }}>
                   <div className={`pp-logo ${m.logoClass}`}>{m.logoText}</div>

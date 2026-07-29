@@ -1,0 +1,192 @@
+/* captcha-widget.css
+   VLUR CAPTCHA 위젯의 유일한 정본(canonical) 스타일. frontend(vlur.site)의 마케팅 데모와
+   임베드 스크립트(widget/main.jsx)가 이 파일 하나를 공유한다 — 더 이상 사이트마다 손으로
+   복사해서 따로 관리하지 않는다.
+
+   임베드 스크립트는 이 파일을 Shadow DOM 안에 <style>로 주입하므로 :host로 스코프를 잡는다.
+   frontend 자체 데모(컬러피커 있는 CaptchaDemo.jsx)에서 쓸 때는 Shadow DOM이 아니라 일반
+   DOM에 렌더링되므로, main.css가 이 파일을 @import해서 :host를 :where(.demo)로도 매칭되게
+   폴백해준다(아래 참고).
+*/
+
+:host, .demo {
+  --paper: #FDF8F2;
+  --peach: #FBEBDD;
+  --peach-deep: #F7DEC8;
+  --ink: #241B15;
+  --ink-soft: #5C4F44;
+  --muted: #928071;
+  --orange: #F0691E;
+  --orange-2: #DD5413;
+  --gold: #F4A62A;
+  --captcha-on-accent: #FFFFFF;
+  --line: #ECD9C3;
+  --line-soft: #F3E7D6;
+  --card: #FFFFFF;
+  --ok: #2E9E6B;
+  --bad: #D8492F;
+  --disp: 'Space Grotesk', 'Pretendard', sans-serif;
+  --body: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Malgun Gothic', sans-serif;
+  --shadow-sm: 0 1px 0 rgba(36,27,21,.04), 0 8px 24px -16px rgba(36,27,21,.28);
+  --shadow-md: 0 2px 0 rgba(36,27,21,.03), 0 30px 60px -34px rgba(204,84,17,.40);
+  font-family: var(--body);
+}
+:host * , .demo * { box-sizing: border-box; }
+
+.demo {
+  width: 100%;
+  max-width: 570px;
+  margin: 0 auto;
+  position: relative;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+.demo.captcha-type-2 { max-width: 540px; }
+
+.widget-close {
+  position: absolute; z-index: 5; right: 14px; top: 14px;
+  display: grid; place-items: center; width: 30px; height: 30px; padding: 0;
+  border: 1px solid var(--line); border-radius: 50%;
+  background: var(--paper); color: var(--muted);
+  font-size: 20px; line-height: 1; cursor: pointer;
+}
+.widget-close:hover, .widget-close:focus-visible { border-color: var(--orange); color: var(--orange-2); outline: none; }
+
+.demo-body {
+  padding: 20px;
+  min-height: 560px;
+  display: flex;
+  flex-direction: column;
+}
+.demo-body .drop { margin-bottom: 20px; }
+.demo-body .demo-foot { margin-top: auto; }
+
+.demo-q {
+  position: relative; display: flex; align-items: center; justify-content: center; gap: 10px;
+  background: var(--peach); border: 1px dashed var(--peach-deep); border-radius: 14px;
+  padding: 14px 16px; font-weight: 700; font-size: 18px; letter-spacing: -.02em;
+  color: var(--ink);
+}
+.demo-q .question-image {
+  display: block; flex: 0 1 auto; width: min(680px, 100%); min-width: 0; height: auto;
+}
+
+.captcha-reference { display: flex; justify-content: center; margin-top: 16px; }
+.captcha-reference img { background: #FBEBDD; }
+
+.tiles { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-top: 16px; }
+.tiles.choice-tiles { max-width: 650px; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 14px auto 0; }
+.demo-body-type2 { min-height: 0; padding: 18px; }
+.demo-body-type2 .captcha-reference { margin-top: 14px; }
+.demo-body-type2 .captcha-reference img { width: 380px; max-width: 100%; }
+.demo-body-type2 .tiles.choice-tiles { width: 100%; max-width: 460px; margin-top: 12px; }
+
+.tile {
+  position: relative; aspect-ratio: 1; border: 1.5px solid var(--line); border-radius: 14px;
+  background: var(--card); cursor: grab; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 4px; touch-action: none; user-select: none; transition: .16s;
+  padding: 0; overflow: hidden;
+}
+.tile:hover { border-color: var(--gold); transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+.tile:focus-visible { outline: 3px solid color-mix(in srgb, var(--orange) 45%, transparent); outline-offset: 2px; }
+.tile.sel { border-color: var(--orange); box-shadow: 0 0 0 3px color-mix(in srgb, var(--orange) 16%, transparent); }
+.tile.dragging { opacity: .35; }
+.tile svg { width: 46px; height: 46px; }
+.tile-photo { width: 100%; height: 100%; object-fit: cover; border-radius: calc(14px - 1.5px); display: block; }
+.tile .cap { font-size: 12px; color: var(--muted); font-weight: 500; }
+.tile::before {
+  content: ""; position: absolute; inset: 0; border-radius: 13px; pointer-events: none;
+  background-image: radial-gradient(rgba(36,27,21,.05) 1px, transparent 1.4px);
+  background-size: 6px 6px; opacity: .6;
+}
+
+.ghost {
+  position: fixed; z-index: 10000; width: 74px; height: 74px; pointer-events: none;
+  border-radius: 14px; border: 1.5px solid var(--orange); background: var(--card);
+  display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-md);
+  transform: translate(-50%,-50%) rotate(-4deg);
+}
+.ghost svg { width: 42px; height: 42px; }
+.ghost .tile-photo { width: 58px; height: 58px; }
+
+.drop {
+  margin-top: 14px; display: flex; align-items: center; gap: 14px;
+  border: 1.5px dashed var(--line); border-radius: 16px; padding: 16px 18px;
+  background: repeating-linear-gradient(
+    45deg,
+    var(--card),
+    var(--card) 12px,
+    color-mix(in srgb, var(--orange) 8%, var(--card)) 12px,
+    color-mix(in srgb, var(--orange) 8%, var(--card)) 24px
+  );
+  transition: .16s;
+}
+.drop.hot { border-color: var(--orange); background: color-mix(in srgb, var(--orange) 20%, var(--card)); transform: scale(1.01); }
+.drop.blocked { border-color: var(--bad); background: rgba(216,73,47,.08); }
+.drop.done { border-style: solid; border-color: var(--ok); background: #F1FBF6; }
+.drop .cart {
+  width: 46px; height: 46px; flex: 0 0 46px; display: flex; align-items: center; justify-content: center;
+  background: var(--card); border: 1.5px solid var(--line); border-radius: 12px; color: var(--orange);
+}
+.drop .cart svg { width: 26px; height: 26px; }
+.drop .dtxt b { display: block; font-size: 15px; color: var(--ink); }
+.drop .dtxt span { font-size: 13px; color: var(--muted); }
+
+.drag-waypoint {
+  position: absolute; transform: translate(-50%, -50%);
+  width: 46px; height: 46px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; font-weight: 750; font-family: var(--disp);
+  border: 2px dashed color-mix(in srgb, var(--orange) 58%, var(--line));
+  color: var(--orange-2);
+  background: color-mix(in srgb, var(--orange) 11%, var(--card));
+  box-shadow: 0 5px 16px -12px var(--orange);
+  transition: .18s; pointer-events: none;
+}
+.drag-waypoint.visited {
+  border-style: solid; border-color: var(--orange-2); color: var(--captcha-on-accent); background: var(--orange);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--orange) 17%, transparent), 0 8px 18px -12px var(--orange-2);
+}
+
+.demo-foot { display: flex; align-items: center; gap: 10px; margin-top: 16px; }
+.demo-foot .reset {
+  margin-left: auto; font-size: 13px;
+  color: color-mix(in srgb, var(--ink) 70%, var(--ink-soft));
+  background: var(--card);
+  border: 1.5px solid var(--line); border-radius: 10px; padding: 7px 12px; cursor: pointer; font-weight: 600;
+}
+.demo-foot .reset:hover { border-color: var(--orange); color: var(--orange-2); }
+
+.demo-success-body {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 16px; padding: 36px 24px; text-align: center;
+}
+.demo-check-circle {
+  width: 68px; height: 68px; border-radius: 50%; background: linear-gradient(135deg, #78dea4, #22a855);
+  display: flex; align-items: center; justify-content: center;
+  animation: vlur-widget-pop .38s cubic-bezier(.175,.885,.32,1.275) both;
+}
+.demo-fail-circle {
+  width: 68px; height: 68px; border-radius: 50%; background: linear-gradient(135deg, #f57a65, #c02a12);
+  display: flex; align-items: center; justify-content: center;
+  animation: vlur-widget-pop .38s cubic-bezier(.175,.885,.32,1.275) both;
+}
+.demo-success-msg strong { display: block; font-family: var(--disp); font-size: 18px; font-weight: 800; color: var(--ink); }
+.demo-success-msg span { font-size: 13px; color: var(--muted); margin-top: 3px; display: block; }
+.demo-retry-btn {
+  margin-top: 4px; padding: 10px 24px; border-radius: 999px;
+  border: 1.5px solid var(--orange); background: var(--card);
+  color: var(--orange-2); font-size: 14px; font-weight: 700;
+  font-family: var(--disp); letter-spacing: .04em; cursor: pointer;
+  transition: background .15s, color .15s, transform .15s;
+}
+.demo-retry-btn:hover { background: var(--orange); color: var(--captcha-on-accent); transform: scale(1.04); }
+
+@keyframes vlur-widget-pop {
+  0%   { transform: scale(0.5); opacity: 0; }
+  70%  { transform: scale(1.12); opacity: 1; }
+  100% { transform: scale(1); }
+}
