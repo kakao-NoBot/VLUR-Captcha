@@ -10,4 +10,3 @@ backend/static/widget/*
 __pycache__/
 *.pyc
 claude/
-ticketing-demo-site/
