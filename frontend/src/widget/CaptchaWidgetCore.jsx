@@ -417,8 +417,8 @@ export function MatchDragCaptcha({ siteKey, onVerified, onEscalate, onTheme, the
   if (screen === 'bot-blocked') return <FailScreen onReset={reset} title="인증이 제한되었습니다" desc="자동화된 시도로 판단되어 인증을 완료할 수 없습니다. 잠시 후 다시 시도해 주세요." />;
   if (screen === 'ambiguous') return <FailScreen onReset={reset} title="추가 확인이 필요합니다" desc="본인 확인을 위해 다시 한번 시도해 주세요." />;
   if (screen === 'network-error') return <FailScreen onReset={reset} title="네트워크 오류" desc="서버와 통신하지 못했습니다. 다시 시도해 주세요." />;
-  if (loadState === 'loading' || !challenge) return <StatusScreen text="문제를 불러오는 중입니다…" />;
   if (loadState === 'error') return <FailScreen onReset={reset} title="문제를 불러오지 못했습니다" desc="네트워크 상태를 확인하고 다시 시도해 주세요." />;
+  if (loadState === 'loading' || !challenge) return <StatusScreen text="문제를 불러오는 중입니다…" />;
 
   return (
     <div className="demo-body demo-body-type2">
@@ -467,8 +467,8 @@ export function DragCaptcha({ siteKey, onVerified, onEscalate, onTheme, themeMod
   if (screen === 'fail')    return <FailScreen onReset={reset} />;
   if (screen === 'bot-blocked') return <FailScreen onReset={reset} title="인증이 제한되었습니다" desc="자동화된 시도로 판단되어 인증을 완료할 수 없습니다. 잠시 후 다시 시도해 주세요." />;
   if (screen === 'network-error') return <FailScreen onReset={reset} title="네트워크 오류" desc="서버와 통신하지 못했습니다. 다시 시도해 주세요." />;
-  if (loadState === 'loading' || !challenge) return <StatusScreen text="문제를 불러오는 중입니다…" />;
   if (loadState === 'error') return <FailScreen onReset={reset} title="문제를 불러오지 못했습니다" desc="네트워크 상태를 확인하고 다시 시도해 주세요." />;
+  if (loadState === 'loading' || !challenge) return <StatusScreen text="문제를 불러오는 중입니다…" />;
 
   return (
     <div className="demo-body">
