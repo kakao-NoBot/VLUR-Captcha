@@ -1,3 +1,20 @@
+# ── 위젯 빌드 스테이지 ──────────────────────────────────────────────
+# frontend/src/widget/main.jsx를 vlur-captcha.js로 빌드해서 백엔드 이미지에 그대로 굽는다
+# — 더 이상 "npm run build:widget 후 backend/static/widget/에 수동 복사" 안 해도 됨.
+# frontend는 이 서비스의 기본 build context가 아니라 docker-compose.yml의
+# build.additional_contexts(frontend: ../frontend)로 별도 주입되는 컨텍스트다.
+FROM node:24-alpine AS widget-builder
+WORKDIR /widget
+# 위젯이 호출할 vlur.site 백엔드 오리진 — docker-compose.yml의 build.args로 주입되며,
+# 안 주면 로컬 docker compose up 기준 기본값(localhost:8000)으로 빌드된다.
+ARG VITE_VLUR_API_BASE=http://localhost:8000
+ENV VITE_VLUR_API_BASE=$VITE_VLUR_API_BASE
+COPY --from=frontend package*.json ./
+RUN npm install
+COPY --from=frontend . .
+RUN npm run build:widget
+
+# ── 백엔드 런타임 ──────────────────────────────────────────────────
 # Python 이미지
 FROM python:3.12.13-slim
 
@@ -15,6 +32,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # 프로젝트 복사
 COPY . .
+
+# 위젯 빌드 스테이지 산출물을 static/widget에 얹는다 — 위의 COPY . .보다 반드시 뒤에 와야
+# backend/static/widget/에 남아있을 수 있는 로컬 임시 파일을 새로 빌드한 걸로 덮어쓴다.
+COPY --from=widget-builder /widget/dist-widget/vlur-captcha.js ./static/widget/vlur-captcha.js
 
 # FastAPI 실행
 CMD ["uvicorn","main:app","--host","0.0.0.0","--port","8000"]
