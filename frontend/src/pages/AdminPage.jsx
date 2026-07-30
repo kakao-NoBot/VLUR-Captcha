@@ -1687,6 +1687,19 @@ const usagePlanSummary = useMemo(() => {
           border-color: var(--line) !important;
           color: var(--ink) !important;
         }
+
+        .admin-compact-log-row {
+          transition: background .15s ease;
+        }
+        .admin-compact-log-row:hover {
+          background: var(--paper);
+        }
+        [data-theme="dark"] .admin-compact-log-row:hover {
+          background: var(--peach) !important;
+        }
+        [data-theme="dark"] .admin-plan-usage-button:hover {
+          background: var(--peach) !important;
+        }
         [data-theme="dark"] .admin-stat-card span,
         [data-theme="dark"] .admin-stat-card small,
         [data-theme="dark"] .admin-card-head span,
