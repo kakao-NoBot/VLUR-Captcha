@@ -1857,11 +1857,11 @@ const usagePlanSummary = useMemo(() => {
                     <span>최근 5건</span>
                   </div>
                   <div className="admin-compact-log-list">
-                    {logs.slice(0, 5).map((log) => {
+                    {logs.slice(0, 5).map((log, index) => {
                       return (
                         <div
                           className="admin-compact-log-row"
-                          key={`${log.time}-${log.site}`}
+                          key={log.id ?? `${log.time}-${log.site}-${index}`}
                           role="button"
                           tabIndex={0}
                           onClick={() => setSelectedScoreLog(log)}
@@ -2415,8 +2415,8 @@ const usagePlanSummary = useMemo(() => {
                       tableStyle={{ tableLayout: 'fixed', width: 830 }}
                       columns={columns}
                       emptyMessage="검색 결과가 없습니다."
-                      rows={pageRows.map((log) => {
-                        const rowKey = `${log.time}-${log.site}-${log.result}`;
+                      rows={pageRows.map((log, index) => {
+                        const rowKey = log.id ?? `${log.time}-${log.site}-${log.result}-${index}`;
                         return (
                           <tr
                             key={rowKey}
