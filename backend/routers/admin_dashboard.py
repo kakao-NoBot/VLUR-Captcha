@@ -180,20 +180,47 @@ def get_plan_usage_detail(plan_name: str, admin: dict = Depends(get_current_admi
 
 
 @router.get("/admin/dashboard/logs")
-def get_recent_logs(limit: int = 20, admin: dict = Depends(get_current_admin)):
+def get_recent_logs(
+    limit: int = 20,
+    offset: int = 0,
+    search: str = "",
+    admin: dict = Depends(get_current_admin),
+):
     limit = max(1, min(limit, 100))
+    offset = max(0, offset)
+    search = search.strip()
+
+    where_clause = ""
+    params = []
+    if search:
+        where_clause = """WHERE ak.site_domain LIKE %s
+                           OR cv.captcha_type LIKE %s
+                           OR cv.verification_status LIKE %s"""
+        like = f"%{search}%"
+        params = [like, like, like]
+
     conn = get_conn()
     with conn:
         with conn.cursor() as cur:
             cur.execute(
-                """SELECT cv.created_at, ak.site_domain, cv.captcha_type,
-                          cv.response_time_ms, cv.bot_score, cv.is_correct,
-                          cv.is_bot, cv.verification_status, cv.failure_reason
-                   FROM captcha_verifications cv
-                   LEFT JOIN api_keys ak ON ak.api_key_id = cv.api_key_id
-                   ORDER BY cv.created_at DESC
-                   LIMIT %s""",
-                (limit,),
+                f"""SELECT COUNT(*) AS total
+                    FROM captcha_verifications cv
+                    LEFT JOIN api_keys ak ON ak.api_key_id = cv.api_key_id
+                    {where_clause}""",
+                params,
+            )
+            total = int(cur.fetchone()["total"])
+
+            cur.execute(
+                f"""SELECT cv.created_at, ak.site_domain, cv.captcha_type,
+                           cv.response_time_ms, cv.bot_score, cv.is_correct,
+                           cv.is_bot, cv.verification_status, cv.failure_reason
+                    FROM captcha_verifications cv
+                    LEFT JOIN api_keys ak ON ak.api_key_id = cv.api_key_id
+                    {where_clause}
+                    ORDER BY cv.created_at DESC
+                    LIMIT %s OFFSET %s""",
+                params + [limit, offset],
             )
             rows = cur.fetchall()
 
@@ -220,7 +247,7 @@ def get_recent_logs(limit: int = 20, admin: dict = Depends(get_current_admin)):
             "result": result,
             "failureReason": r["failure_reason"],
         })
-    return {"logs": logs}
+    return {"logs": logs, "total": total}
 
 
 @router.get("/admin/sites")

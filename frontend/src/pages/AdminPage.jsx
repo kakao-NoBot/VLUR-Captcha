@@ -940,10 +940,16 @@ const COMPLETED_INQUIRY_PAGE_SIZE = 10;
 function Pagination({ page, totalPages, onChange }) {
   if (totalPages <= 1) return null;
 
+  const PAGE_GROUP_SIZE = 5;
+  const currentGroup = Math.floor((page - 1) / PAGE_GROUP_SIZE);
+  const start = currentGroup * PAGE_GROUP_SIZE + 1;
+  const end = Math.min(totalPages, start + PAGE_GROUP_SIZE - 1);
+
   const pages = [];
-  const start = Math.max(1, page - 2);
-  const end = Math.min(totalPages, start + 4);
   for (let i = start; i <= end; i += 1) pages.push(i);
+
+  const hasPrevGroup = start > 1;
+  const hasNextGroup = end < totalPages;
 
   return (
     <div style={{
@@ -952,16 +958,14 @@ function Pagination({ page, totalPages, onChange }) {
     }}>
       <button
         type="button"
-        onClick={() => onChange(Math.max(1, page - 1))}
-        disabled={page === 1}
+        onClick={() => onChange(Math.max(1, start - 1))}
+        disabled={!hasPrevGroup}
         style={{
           width: 32, height: 32, borderRadius: 8, border: '1px solid var(--line)',
-          background: 'var(--card)', cursor: page === 1 ? 'default' : 'pointer',
-          opacity: page === 1 ? 0.4 : 1, fontSize: 13,
+          background: 'var(--card)', cursor: hasPrevGroup ? 'pointer' : 'default',
+          opacity: hasPrevGroup ? 1 : 0.4, fontSize: 13,
         }}
       >‹</button>
-
-      {start > 1 && <span style={{ padding: '0 4px', color: 'var(--muted)' }}>…</span>}
 
       {pages.map((p) => (
         <button
@@ -979,16 +983,14 @@ function Pagination({ page, totalPages, onChange }) {
         >{p}</button>
       ))}
 
-      {end < totalPages && <span style={{ padding: '0 4px', color: 'var(--muted)' }}>…</span>}
-
       <button
         type="button"
-        onClick={() => onChange(Math.min(totalPages, page + 1))}
-        disabled={page === totalPages}
+        onClick={() => onChange(Math.min(totalPages, end + 1))}
+        disabled={!hasNextGroup}
         style={{
           width: 32, height: 32, borderRadius: 8, border: '1px solid var(--line)',
-          background: 'var(--card)', cursor: page === totalPages ? 'default' : 'pointer',
-          opacity: page === totalPages ? 0.4 : 1, fontSize: 13,
+          background: 'var(--card)', cursor: hasNextGroup ? 'pointer' : 'default',
+          opacity: hasNextGroup ? 1 : 0.4, fontSize: 13,
         }}
       >›</button>
     </div>
@@ -1016,6 +1018,7 @@ export default function AdminPage() {
   const [sites, setSites] = useState([]);
   const [sitesError, setSitesError] = useState('');
   const [logs, setLogs] = useState([]);
+  const [logsTotal, setLogsTotal] = useState(0);
   const [dashboardStats, setDashboardStats] = useState(null);
   const [botTrend, setBotTrend] = useState([]);
   const [planUsage, setPlanUsage] = useState([]);
@@ -1172,18 +1175,27 @@ export default function AdminPage() {
     let ignore = false;
     (async () => {
       try {
-        const { data } = await api.get('/admin/dashboard/logs');
+        const offset = (logPage - 1) * INQUIRY_PAGE_SIZE;
+        const { data } = await api.get('/admin/dashboard/logs', {
+          params: { limit: INQUIRY_PAGE_SIZE, offset, search: logSearch.trim() },
+        });
         const rows = (data.logs || []).map((log) => ({
           ...log,
           result: log.result || getResultFromScore(log.botScore),
         }));
-        if (!ignore) setLogs(rows);
+        if (!ignore) {
+          setLogs(rows);
+          setLogsTotal(data.total || 0);
+        }
       } catch {
-        if (!ignore) setLogs([]);
+        if (!ignore) {
+          setLogs([]);
+          setLogsTotal(0);
+        }
       }
     })();
     return () => { ignore = true; };
-  }, []);
+  }, [logPage, logSearch]);
 
   useEffect(() => {
     let ignore = false;
@@ -1263,14 +1275,6 @@ export default function AdminPage() {
       Object.values(site).some((value) => String(value).toLowerCase().includes(query))
     ));
   }, [sites, siteSearch]);
-
-  const filteredLogs = useMemo(() => {
-    const query = logSearch.trim().toLowerCase();
-    if (!query) return logs;
-    return logs.filter((log) => (
-      Object.values(log).some((value) => String(value).toLowerCase().includes(query))
-    ));
-  }, [logs, logSearch]);
 
   const usagePlanRows = useMemo(() => {
     const query = usagePlanSearch.trim().toLowerCase();
@@ -2419,8 +2423,8 @@ const usagePlanSummary = useMemo(() => {
                   { key: 'duration', label: '소요시간', width: 120 },
                   { key: 'botScore', label: '봇 점수', width: 110 },
                 ];
-                const totalPages = Math.max(1, Math.ceil(filteredLogs.length / INQUIRY_PAGE_SIZE));
-                const pageRows = filteredLogs.slice((logPage - 1) * INQUIRY_PAGE_SIZE, logPage * INQUIRY_PAGE_SIZE);
+                const totalPages = Math.max(1, Math.ceil(logsTotal / INQUIRY_PAGE_SIZE));
+                const pageRows = logs;
                 return (
                   <>
                     <AdminTable
