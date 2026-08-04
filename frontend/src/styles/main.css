@@ -608,6 +608,14 @@ h1 .hl::after {
   mix-blend-mode: normal;
   background: transparent;
 }
+[data-theme="dark"] .login-captcha-drop {
+  border-color: var(--line);
+  background: var(--card);
+}
+[data-theme="dark"] .login-captcha-drop.ready {
+  border-color: var(--orange);
+  background: color-mix(in srgb, var(--orange) 18%, var(--card));
+}
 .login-captcha-question.is-drag img { max-height: min(108px, 15dvh); }
 .login-captcha-question.is-identify img { max-height: min(240px, 30dvh); }
 .login-captcha-options { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; width: min(100%, 460px); margin: 26px auto 0; }
