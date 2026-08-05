@@ -70,15 +70,14 @@ export function SuccessScreen({ onReset }) {
         </svg>
       </div>
       <div className="demo-success-msg">
-        <strong>검증 성공!</strong>
-        <span>사람으로 확인되었습니다</span>
+        <strong>인증 성공!</strong>
       </div>
       <button className="demo-retry-btn" onClick={onReset}>다시 체험하기</button>
     </div>
   );
 }
 
-export function FailScreen({ onReset, title = '검증 실패', desc = '정답이 아닙니다. 다시 시도해 보세요.' }) {
+export function FailScreen({ onReset, title = '인증 실패', desc = '' }) {
   return (
     <div className="demo-body demo-success-body">
       <div className="demo-fail-circle">
@@ -88,7 +87,7 @@ export function FailScreen({ onReset, title = '검증 실패', desc = '정답이
       </div>
       <div className="demo-success-msg">
         <strong>{title}</strong>
-        <span>{desc}</span>
+        {desc && <span>{desc}</span>}
       </div>
       <button className="demo-retry-btn" onClick={onReset}>다시 시도하기</button>
     </div>

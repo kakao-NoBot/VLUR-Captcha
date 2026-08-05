@@ -220,11 +220,7 @@ CAPTCHA_QUESTION_IMAGES = (
     ("/static/captcha/type1/vehicle/white/자전거.png", "자전거", "type1_drag", "dark"),
     ("/static/captcha/type1/vehicle/black/자전거.png", "자전거", "type1_drag", "light"),
     # 유형2(type2_identify) — 기존 항목 그대로 유지.
-    ("/static/captcha/banana_ascii.jpg", "바나나", "type2_identify", None),
     ("/static/captcha/bear_ascii.png", "곰", "type2_identify", None),
-    ("/static/captcha/Aircraft_ascii.png", "비행기", "type2_identify", None),
-    ("/static/captcha/captcha_image.png", "딸기", "type2_identify", None),
-    ("/static/captcha/image_ascii.png", "키위", "type2_identify", None),
     ("/static/captcha/Aircraft_3_ascii.png", "비행기", "type2_identify", None),
     ("/static/captcha/Car_1_ascii.png", "자동차", "type2_identify", None),
     ("/static/captcha/Motorcycle_1_ascii.png", "오토바이", "type2_identify", None),
