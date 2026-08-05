@@ -253,7 +253,7 @@ h1 .hl::after {
 }
 .hero-cta .btn { width: 126px; padding-left: 16px; padding-right: 16px; }
 .btn-outline { background: var(--card); color: var(--ink); border: 1.5px solid var(--line); padding: 10px 18px; font-size: 14.5px; }
-.btn-outline:hover { border-color: var(--orange); color: var(--orange-2); }
+.btn-outline:hover { border-color: var(--orange); color: var(--orange-2); transform: translateY(-1px); }
 .btn-lg { padding: 15px 26px; font-size: 16px; border-radius: 14px; }
 .hero-meta{
     display:flex;
