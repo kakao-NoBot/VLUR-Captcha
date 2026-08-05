@@ -48,6 +48,21 @@ VALUES (
     NOW()
 );
 
+-- 배포 환경 확인용 사용자
+--   아이디: testuser_dis  /  비밀번호: test1234
+INSERT INTO users (user_id, user_name, password_hash, email, phone, role, plan_id, created_at, subscription_date)
+VALUES (
+    'testuser_dis',
+    'tester',
+    '$2b$12$NiwcQQ6lLkw/MNGuVlUp0ejUNeTmFIV5sfdZJXtpgqIbN8h84Af/a',
+    'testuser_dis@example.com',
+    '010-1234-5678',
+    'user',
+    (SELECT plan_id FROM plans WHERE plan_name = 'Pro'),
+    NOW(),
+    NOW()
+);
+
 -- ============================================================
 -- [4] 테스트용 API 키 (testuser)
 --   원문 키: dev-sample-key-001  (개발 환경 전용)
@@ -64,6 +79,26 @@ VALUES (
     'dev-sample••••-001',
     'pk-aicap_dev_testuser_001',
     'localhost',
+    NOW(),
+    DATE_ADD(NOW(), INTERVAL 1 YEAR),
+    1
+);
+
+-- 배포 환경 확인용 API 키 (testuser_dis)
+--   원문 키: prod-sample-key-dis-001  (테스트 계정 전용)
+--   Site Key: pk-aicap_dev_testuser_002
+INSERT INTO api_keys (
+    api_key_hash, user_id, plan_id, key_name, site_key, site_domain,
+    captcha_theme, created_at, expired_at, is_active
+)
+VALUES (
+    SHA2('prod-sample-key-dis-001', 256),
+    'testuser_dis',
+    (SELECT plan_id FROM plans WHERE plan_name = 'Basic'),
+    'prod-sample••••-001',
+    'pk-aicap_dev_testuser_002',
+    'vlur.site',
+    '#000000',
     NOW(),
     DATE_ADD(NOW(), INTERVAL 1 YEAR),
     1
