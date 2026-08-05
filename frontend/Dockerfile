@@ -2,7 +2,7 @@ FROM node:24-alpine AS builder
 
 WORKDIR /app
 
-ARG PUBLIC_API_BASE=https://vlur.site
+ARG PUBLIC_API_BASE=
 ARG PUBLIC_SITE_KEY=pk-aicap_dev_testuser_002
 
 COPY package*.json ./
