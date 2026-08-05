@@ -5,10 +5,10 @@ WORKDIR /app
 ARG PUBLIC_API_BASE=
 ARG PUBLIC_SITE_KEY=pk-aicap_dev_testuser_002
 
-COPY package*.json ./
+COPY frontend/package*.json ./
 RUN npm ci
 
-COPY . ./
+COPY frontend/ ./
 
 RUN VITE_VLUR_API_BASE="${PUBLIC_API_BASE}" \
     VITE_VLUR_SITE_KEY="${PUBLIC_SITE_KEY}" \
