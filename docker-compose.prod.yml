@@ -1,0 +1,24 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+      additional_contexts:
+        frontend: ./frontend
+      args:
+        VITE_VLUR_API_BASE: ${VITE_VLUR_API_BASE:-http://localhost:8000}
+    container_name: captcha-backend
+    env_file: .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    ports:
+      - "8000:8000"
+    restart: always
+
+  ai:
+    build:
+      context: ./AI
+    container_name: captcha-ai
+    ports:
+      - "5000:5000"
+    restart: always
