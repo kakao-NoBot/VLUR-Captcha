@@ -1,32 +1,46 @@
+name: vlur-backend-ai
+
 services:
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile.dev
-      additional_contexts:
-        frontend: ./frontend
-      args:
-        VITE_VLUR_API_BASE: ${VITE_VLUR_API_BASE:-http://localhost:8000}
+    image: ${BACKEND_IMAGE}
     container_name: captcha-backend
-    env_file: .env
+    env_file:
+      - .env
     environment:
-      - PYTHONUNBUFFERED=1
-      - AI_SERVICE_URL=${AI_SERVICE_URL:-http://ai:5000}
-      - AI_SERVICE_TIMEOUT_SECONDS=${AI_SERVICE_TIMEOUT_SECONDS:-3.0}
+      AI_SERVICE_URL: http://ai:5000
+      AI_SERVICE_TIMEOUT_SECONDS: ${AI_SERVICE_TIMEOUT_SECONDS:-3.0}
     ports:
-      - "8000:8000"
+      - "${BACKEND_BIND_ADDRESS}:${BACKEND_PORT:-8000}:8000"
     depends_on:
       ai:
         condition: service_healthy
-    restart: always
+    networks:
+      - backend-ai-internal
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)"
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
 
   ai:
-    build:
-      context: ./AI
+    image: ${AI_IMAGE}
     container_name: captcha-ai
     environment:
-      - MODEL_PATH=${AI_MODEL_PATH:-/app/AI/model/ensemble_checkpoint.pt}
-      - MODEL_VERSION=${AI_MODEL_VERSION:-cnn-bilstm-ensemble-v1}
+      MODEL_PATH: ${AI_MODEL_PATH:-/app/AI/model/ensemble_checkpoint.pt}
+      MODEL_VERSION: ${AI_MODEL_VERSION:-cnn-bilstm-ensemble-v1}
     expose:
       - "5000"
-    restart: always
+    networks:
+      - backend-ai-internal
+    restart: unless-stopped
+
+networks:
+  backend-ai-internal:
+    name: vlur-backend-ai-internal
+    driver: bridge
