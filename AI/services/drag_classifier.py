@@ -83,18 +83,28 @@ def _component_thresholds(pointer_type: str) -> dict[str, float]:
 
 
 def classify(record: dict) -> dict:
-    """3-way OR-rule 결과를 backend의 verified/ambiguous/blocked 계약으로 변환한다."""
+    """2-way OR-rule(CNN+BiLSTM) 결과를 backend의 verified/ambiguous/blocked 계약으로 변환한다.
+
+    jitter_guard는 기본적으로 안 쓴다(2026-08-05 결정 — ensemble_CNN_biLSTM/README.md
+    §jitter_guard 후기 참고): 팀 red-team(n=200)에서 direct-POST 방어 기여는 0.5%/0%뿐인데
+    human FPR을 or_rule 기준 ~0.3%대에서 6.20%로 끌어올리는 "순수 비용"으로 확인됐다.
+    체크포인트엔 여전히 로드돼 있어 필요하면 다시 켤 수 있지만(predict_record 호출에
+    use_jitter_guard=True), 그때는 아래 component_scores 구성도 jitter_guard_bot_score가
+    None일 수 있다는 가정을 계속 유지해야 한다(안 그러면 float(None)에서 TypeError → 이
+    함수 바깥의 fail-closed 처리로 모든 요청이 봇 판정된다 — 실제로 있었던 문제).
+    """
     component_scores = None
     component_thresholds = None
     triggered_models = []
     try:
-        prediction = _predictor.predict_record(record, method="or_rule", use_jitter_guard=True)
+        prediction = _predictor.predict_record(record, method="or_rule", use_jitter_guard=False)
         pointer_type = str(prediction["cnn_pointer_type"])
         component_scores = {
             "cnn": float(prediction["cnn_bot_score"]),
             "bilstm": float(prediction["bilstm_bot_score"]),
-            "jitter_guard": float(prediction["jitter_guard_bot_score"]),
         }
+        if prediction["jitter_guard_bot_score"] is not None:
+            component_scores["jitter_guard"] = float(prediction["jitter_guard_bot_score"])
         if any(not math.isfinite(score) or not 0.0 <= score <= 1.0 for score in component_scores.values()):
             raise ValueError(f"유효하지 않은 앙상블 점수입니다: {component_scores!r}")
 

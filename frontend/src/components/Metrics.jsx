@@ -1,9 +1,9 @@
 import React from 'react';
 
 const metricsData = [
-  { value: '-', unit: '', cap: '분류 정확도', desc: '자체 데이터셋 기반 전이학습 검증 정확도', bar: 0 },
-  { value: '-', unit: '', cap: '평균 검증 응답', desc: '정답 키 + 궤적 채점까지의 서버 응답', bar: 0 },
-  { value: '-', unit: '', cap: '봇 차단율', desc: '합성·스크립트 궤적 탐지 기준', bar: 0 },
+  { value: '97.54', unit: '%', cap: '분류 정확도', desc: '자체 데이터셋 기반 전이학습 검증 정확도', bar: 97.54 },
+  { value: '0.33', unit: '%', cap: '오탐률', desc: '실제 사람을 봇으로 오판정하는 비율', bar: 99.67 },
+  { value: '25~40', unit: '건/초', cap: '검증 처리량', desc: '레코드 단위 초당 처리 건수(궤적 분석 포함)', bar: 70 },
   { value: '-', unit: '', cap: '동시 처리 세션', desc: '단일 인스턴스 기준 목표 동시 검증 수', bar: 0 },
 ];
 
@@ -18,7 +18,7 @@ export default function Metrics() {
         <div className="sec-head" data-reveal>
           <span className="eyebrow">Performance</span>
           <h2>측정으로 증명하는 성능</h2>
-          <p>학습·발표 단계의 목표 지표입니다. 실제 수치는 모델 학습 후 갱신됩니다.</p>
+          <p>앙상블 모델 실측 기준입니다. 동시 처리 세션은 부하테스트 이후 갱신 예정입니다.</p>
         </div>
 
         <div className="metrics metrics--grid4">

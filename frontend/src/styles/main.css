@@ -732,7 +732,7 @@ section.band {
 .metrics { display: grid; grid-template-columns: repeat(3,1fr); gap: 20px; }
 .metric { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 32px 28px; }
 .metric .big {
-  font-family: var(--disp); font-weight: 700; font-size: clamp(40px,5vw,56px);
+  font-family: var(--disp); font-weight: 700; font-size: clamp(28px,3.2vw,38px);
   line-height: 1; letter-spacing: -.03em; color: var(--ink);
 }
 .metric .big .u { color: var(--orange); font-size: .5em; vertical-align: .18em; margin-left: 2px; }
