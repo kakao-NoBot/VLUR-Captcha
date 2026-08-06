@@ -11,14 +11,22 @@ services:
     env_file: .env
     environment:
       - PYTHONUNBUFFERED=1
+      - AI_SERVICE_URL=${AI_SERVICE_URL:-http://ai:5000}
+      - AI_SERVICE_TIMEOUT_SECONDS=${AI_SERVICE_TIMEOUT_SECONDS:-3.0}
     ports:
       - "8000:8000"
+    depends_on:
+      ai:
+        condition: service_healthy
     restart: always
 
   ai:
     build:
       context: ./AI
     container_name: captcha-ai
-    ports:
-      - "5000:5000"
+    environment:
+      - MODEL_PATH=${AI_MODEL_PATH:-/app/AI/model/ensemble_checkpoint.pt}
+      - MODEL_VERSION=${AI_MODEL_VERSION:-cnn-bilstm-ensemble-v1}
+    expose:
+      - "5000"
     restart: always
