@@ -39,7 +39,7 @@ The backend calls the AI service over the private Docker Compose network. The AI
 ## Tech Stack
 
 - Backend: Python 3.12, FastAPI, Uvicorn, PyMySQL, HTTPX
-- AI: Python 3.12, FastAPI, PyTorch, NumPy
+- AI: Python 3.12, FastAPI, PyTorch, NumPy, SciPy
 - Database: MySQL 8.0
 - Frontend: Node.js 24-based development environment
 - Infrastructure: Docker, Docker Compose
@@ -102,7 +102,7 @@ DB_HOST=db
 DB_PORT=3306
 AI_SERVICE_URL=http://ai:5000
 AI_SERVICE_TIMEOUT_SECONDS=3.0
-AI_MODEL_VERSION=drag-cnn-v2-final
+AI_MODEL_VERSION=cnn-bilstm-ensemble-v1
 ```
 
 The `.env` file is excluded from Git. Do not commit real passwords or production secrets to the repository.
@@ -194,7 +194,7 @@ docker compose up --build frontend
 
 ### AI Service
 
-The AI container loads the final checkpoint and its matching `.calibration.json` once at startup. The backend sends canonical drag records to `POST /v1/classify` over the private Compose network. To use a different checkpoint, set `AI_MODEL_PATH` to its path inside the AI container; the matching calibration file must sit beside it. `AI_MODEL_VERSION` is the short, stable identifier stored in verification records and is intentionally independent from the checkpoint filename.
+The AI container loads the CNN + BiLSTM ensemble checkpoint once at startup. It runs Ultra CNN v2, a 2-layer bidirectional LSTM, and the kinematic jitter guard, then applies the checkpoint's recommended three-way OR rule with each component's pointer-specific threshold. The backend sends raw drag records to `POST /v1/classify` over the private Compose network. To use a different checkpoint, set `AI_MODEL_PATH` to its path inside the AI container. `AI_MODEL_VERSION` is the short, stable identifier stored in verification records and is intentionally independent from the checkpoint filename. Previously deployed CNN checkpoints are retained under `AI/model/archive_cnn/` for rollback only.
 
 Run the backend and AI test suites separately from the repository root:
 

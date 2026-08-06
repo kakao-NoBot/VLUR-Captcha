@@ -1,48 +1,30 @@
-# drag_classifier.py
-# 실제 학습된 CNN 드래그 봇 판별 모델(ml/cnn) 서빙 래퍼.
-# 체크포인트는 모듈 로드 시 1회만 읽는다 — 요청마다 재로딩하면 느리다.
+"""CNN + BiLSTM 앙상블 드래그 봇 판별 모델의 서빙 래퍼."""
 
-import hashlib
-import json
+import math
 import os
 import sys
 from pathlib import Path
 
-import torch
 
-# AI 패키지를 저장소 루트에서 import해도 기존 ml.* 절대 import가 동작하도록 한다.
+# 저장소 루트에서 AI 패키지를 import해도 ml 패키지의 절대 import가 동작하게 한다.
 AI_ROOT = Path(__file__).resolve().parent.parent
 if str(AI_ROOT) not in sys.path:
     sys.path.insert(0, str(AI_ROOT))
 
-from ml.cnn.cnn_canonical_features import human_or_function_record_to_cnn
-from ml.cnn.model_cnn_torch import build_model
-from AI.services.risk_score import (
-    DEFAULT_RISK_TEMPERATURE,
-    calibrated_risk_score,
-    stable_sigmoid,
-)
+from ml.ensemble.ensemble_predictor import EnsemblePredictor  # noqa: E402
+
 
 MODEL_DIR = AI_ROOT / "model"
-# 모델 자체 임계값과의 거리가 이 이내면 "애매함"으로 보고 유형2 재검증.
-# 주의: 이 체크포인트는 fpr_target=0.005로 캘리브레이션돼 threshold(사람 기준)가 0.95 근처의
-# 극단값이라, 사람이 낼 수 있는 최댓값(1.0)까지 여유가 0.05 정도밖에 없다. 예전 BiLSTM용
-# 마진(0.10)을 그대로 쓰면 그 여유 전체가 "애매함"에 먹혀 사람이 절대 확실한 통과(verified)에
-# 도달하지 못하는 문제가 생긴다(2026-07-24 실사용 테스트에서 확인) — threshold 위치에 맞게 축소.
-AMBIGUOUS_MARGIN = 0.03
-
-DEFAULT_MODEL_NAME = (
-    "v2_torch_random_da0.05_ls0.01_trsmoothwp_touchheavy_ptrbal_"
-    "bakedptrnorm_pptthr_hardneg_best.pt"
-)
-DEFAULT_MODEL_VERSION = "drag-cnn-v2-final"
+DEFAULT_MODEL_NAME = "ensemble_checkpoint.pt"
+DEFAULT_MODEL_VERSION = "cnn-bilstm-ensemble-v1"
 MODEL_VERSION_MAX_LENGTH = 128
+AMBIGUOUS_MARGIN = 0.03
+_POINTER_INDEX = {"mouse": 0, "touch": 1, "pen": 2}
+
 _ckpt_path = Path(os.getenv("MODEL_PATH", str(MODEL_DIR / DEFAULT_MODEL_NAME)))
 if not _ckpt_path.is_file():
     raise RuntimeError(f"지정된 모델 체크포인트가 없습니다: {_ckpt_path}")
 
-# 체크포인트 파일명은 학습 설정을 모두 포함해 길 수 있으므로 DB/화면에 노출하는 안정적인
-# 버전 식별자와 분리한다. MODEL_PATH를 바꿔도 버전은 배포 설정에서 명시적으로 관리한다.
 MODEL_VERSION = os.getenv("MODEL_VERSION", DEFAULT_MODEL_VERSION).strip()
 if not MODEL_VERSION:
     raise RuntimeError("MODEL_VERSION은 빈 문자열일 수 없습니다.")
@@ -51,81 +33,94 @@ if len(MODEL_VERSION) > MODEL_VERSION_MAX_LENGTH:
         f"MODEL_VERSION은 {MODEL_VERSION_MAX_LENGTH}자 이하여야 합니다: {MODEL_VERSION!r}"
     )
 
-_calib_path = Path(str(_ckpt_path).rsplit(".pt", 1)[0] + ".calibration.json")
-if not _calib_path.exists():
-    raise RuntimeError(f"{_calib_path} calibration 파일이 없습니다.")
-_calibration = json.loads(_calib_path.read_text(encoding="utf-8"))
-_expected_sha256 = _calibration.get("checkpoint_sha256")
-if _expected_sha256:
-    _actual_sha256 = hashlib.sha256(_ckpt_path.read_bytes()).hexdigest()
-    if _actual_sha256 != _expected_sha256:
-        raise RuntimeError(
-            f"모델과 calibration 파일의 SHA-256이 일치하지 않습니다: {_ckpt_path}"
+# .pt 안의 CNN, BiLSTM, 결합기와 jitter guard를 공식 numpy 추론 구현에 연결한다.
+_predictor = EnsemblePredictor.from_torch_checkpoint(str(_ckpt_path))
+if _predictor.cnn.weights["scalar_branch.0.weight"].shape[1] != 19:
+    raise RuntimeError("앙상블 CNN은 scalar 19차원 입력을 기대해야 합니다.")
+if _predictor.bilstm.seq_mu.shape != (10,) or _predictor.bilstm.seq_sd.shape != (10,):
+    raise RuntimeError("앙상블 BiLSTM은 10채널 시퀀스 정규화 통계를 기대해야 합니다.")
+if _predictor.jitter_guard is None:
+    raise RuntimeError("앙상블 체크포인트에 jitter guard가 없습니다.")
+
+MODEL_INFO = {
+    "method": "or_rule",
+    "components": ["ultra_cnn_v2", "bilstm", "jitter_guard"],
+    "cnn_scalar_dim": 19,
+    "bilstm_sequence_dim": 10,
+    "bilstm_condition_dim": 22,
+    "cnn_human_thresholds": [float(value) for value in _predictor.cnn.pointer_thresholds],
+    "bilstm_bot_thresholds": {
+        str(key): float(value)
+        for key, value in _predictor.bilstm.threshold_by_pointer.items()
+    },
+    "jitter_guard_threshold": float(_predictor.jitter_guard.threshold),
+}
+
+
+def _probability_to_logit(probability: float) -> float:
+    probability = min(max(probability, 1e-12), 1.0 - 1e-12)
+    return math.log(probability / (1.0 - probability))
+
+
+def _component_thresholds(pointer_type: str) -> dict[str, float]:
+    pointer_index = _POINTER_INDEX.get(pointer_type)
+    if pointer_index is None:
+        cnn_threshold = 1.0 - float(_predictor.cnn.global_threshold)
+        bilstm_threshold = float(_predictor.bilstm.threshold_global)
+    else:
+        cnn_threshold = 1.0 - float(_predictor.cnn.pointer_thresholds[pointer_index])
+        bilstm_threshold = float(
+            _predictor.bilstm.threshold_by_pointer.get(
+                pointer_index,
+                _predictor.bilstm.threshold_global,
+            )
         )
-if _calibration.get("score_direction") != "higher_score_means_human":
-    raise RuntimeError(
-        f"{_calib_path}의 score_direction이 예상과 다릅니다: {_calibration.get('score_direction')!r}"
-    )
-_HUMAN_THRESHOLD = float(_calibration["threshold"])
-# 관리자용 위험 지수의 초기 표시 스케일. 보안 판정 임계값에는 영향을 주지 않는다.
-# 향후 라벨이 있는 검증 로짓이 확보되면 calibration.json에 이 값만 재학습해 넣으면 된다.
-_RISK_SCORE_TEMPERATURE = float(
-    _calibration.get("risk_score_temperature", DEFAULT_RISK_TEMPERATURE)
-)
-
-_state_dict = torch.load(str(_ckpt_path), map_location="cpu", weights_only=True)
-# domain_adversarial로 학습된 체크포인트는 domain_head.*.bias 가중치를 갖고 있고,
-# n_domains를 안 맞춰서 build_model()하면 그 가중치를 못 싣고 load_state_dict가 에러남 →
-# 체크포인트 자체에서 domain_head 최종 레이어의 출력 차원을 읽어 자동으로 맞춘다.
-_domain_bias_keys = sorted(k for k in _state_dict if k.startswith("domain_head.") and k.endswith(".bias"))
-_n_domains = _state_dict[_domain_bias_keys[-1]].shape[0] if _domain_bias_keys else None
-
-_model = build_model(seq_channels=8, n_scalar=4, dropout=0.3, n_domains=_n_domains)
-# 최종 체크포인트에는 가중치와 함께 전처리/임계값 메타데이터가 저장되어 있다. 모델
-# 레이어에 해당하는 키만 엄격하게 로드해 메타데이터를 unexpected key로 오인하지 않는다.
-_model_keys = set(_model.state_dict())
-_model_state_dict = {key: value for key, value in _state_dict.items() if key in _model_keys}
-_model.load_state_dict(_model_state_dict, strict=True)
-_model.eval()
-
-
-@torch.no_grad()
-def _predict_human_logit(record: dict) -> float:
-    seq, scalar, _ = human_or_function_record_to_cnn(record)
-    seq_t = torch.from_numpy(seq).float().unsqueeze(0)
-    scalar_t = torch.from_numpy(scalar).float().unsqueeze(0)
-    logit = _model(seq_t, scalar_t)  # grl_lambda 안 줌 -> domain_head 있어도 무시됨(정상)
-    return logit.item()
+    return {
+        "cnn": cnn_threshold,
+        "bilstm": bilstm_threshold,
+        "jitter_guard": float(_predictor.jitter_guard.threshold),
+    }
 
 
 def classify(record: dict) -> dict:
-    """모델 판정 결과를 challenge/verify 라우터가 쓰는 3단계(tier)로 매핑.
-
-    체크포인트의 calibration.json은 "높을수록 사람"(human_prob) 기준으로 threshold가
-    잡혀 있다. 보안 판정은 이 원본 확률을 그대로 사용하고, DB bot_score·관리자 UI에는
-    임계 로짓을 50점으로 고정한 완만한 위험 지수를 별도로 저장한다.
-    """
+    """3-way OR-rule 결과를 backend의 verified/ambiguous/blocked 계약으로 변환한다."""
+    component_scores = None
+    component_thresholds = None
+    triggered_models = []
     try:
-        human_logit = _predict_human_logit(record)
-        human_prob = stable_sigmoid(human_logit)
-        raw_bot_probability = stable_sigmoid(-human_logit)
-        risk_score = calibrated_risk_score(
-            human_logit,
-            _HUMAN_THRESHOLD,
-            _RISK_SCORE_TEMPERATURE,
+        prediction = _predictor.predict_record(record, method="or_rule", use_jitter_guard=True)
+        pointer_type = str(prediction["cnn_pointer_type"])
+        component_scores = {
+            "cnn": float(prediction["cnn_bot_score"]),
+            "bilstm": float(prediction["bilstm_bot_score"]),
+            "jitter_guard": float(prediction["jitter_guard_bot_score"]),
+        }
+        if any(not math.isfinite(score) or not 0.0 <= score <= 1.0 for score in component_scores.values()):
+            raise ValueError(f"유효하지 않은 앙상블 점수입니다: {component_scores!r}")
+
+        component_thresholds = _component_thresholds(pointer_type)
+        triggered_models = [
+            name
+            for name, score in component_scores.items()
+            if score > component_thresholds[name]
+        ]
+        raw_bot_probability = max(component_scores.values())
+        human_probability = 1.0 - raw_bot_probability
+        human_logit = _probability_to_logit(human_probability)
+        is_bot = bool(prediction["is_bot"])
+        ambiguous = any(
+            abs(component_scores[name] - component_thresholds[name]) < AMBIGUOUS_MARGIN
+            for name in component_scores
         )
         error = None
-    except (KeyError, ValueError, IndexError) as exc:
-        # fail-closed: 입력이 기형이면 무조건 봇으로 처리
-        # JSON 응답에 NaN/Infinity를 넣을 수 없으므로 충분히 작은 유한값을 사용한다.
-        human_logit = -100.0
-        human_prob = 0.0
+    except (KeyError, ValueError, IndexError, TypeError, RuntimeError, FloatingPointError) as exc:
+        pointer_type = "unknown"
+        human_probability = 0.0
         raw_bot_probability = 1.0
-        risk_score = 1.0
+        human_logit = -100.0
+        is_bot = True
+        ambiguous = False
         error = str(exc)
-
-    is_bot = human_prob < _HUMAN_THRESHOLD
-    ambiguous = abs(human_prob - _HUMAN_THRESHOLD) < AMBIGUOUS_MARGIN
 
     if error is not None:
         tier = "blocked"
@@ -138,14 +133,21 @@ def classify(record: dict) -> dict:
 
     return {
         "tier": tier,
-        "risk_score": risk_score,
+        "risk_score": raw_bot_probability,
         "raw_bot_probability": raw_bot_probability,
-        "human_probability": human_prob,
+        "human_probability": human_probability,
         "human_logit": human_logit,
         "is_bot": is_bot,
-        "threshold": 1.0 - _HUMAN_THRESHOLD,
-        "risk_score_threshold": 0.5,
-        "risk_score_temperature": _RISK_SCORE_TEMPERATURE,
+        # OR-rule은 구성 모델마다 임계값이 달라 단일 threshold가 없다.
+        "threshold": None,
+        "human_threshold": None,
+        "risk_score_threshold": None,
+        "risk_score_temperature": None,
+        "pointer_type": pointer_type,
+        "component_scores": component_scores,
+        "component_thresholds": component_thresholds,
+        "triggered_models": triggered_models,
+        "ensemble_method": "or_rule",
         "model_version": MODEL_VERSION,
         "error": error,
     }

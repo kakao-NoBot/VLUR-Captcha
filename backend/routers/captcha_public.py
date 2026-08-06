@@ -280,7 +280,7 @@ def verify_challenge(
         display_score = round(analysis["risk_score"] * 100)
         result["botScore"] = display_score
         result["reasons"] = [
-            f"CNN 위험 지수 {display_score}점 "
+            f"AI 위험 지수 {display_score}점 "
             f"(모델 {analysis['model_version']})"
         ]
     if one_time_token:

@@ -52,8 +52,8 @@ services:
       context: ./AI
     container_name: captcha-ai
     environment:
-      - MODEL_PATH=${AI_MODEL_PATH:-/app/AI/model/v2_torch_random_da0.05_ls0.01_trsmoothwp_touchheavy_ptrbal_bakedptrnorm_pptthr_hardneg_best.pt}
-      - MODEL_VERSION=${AI_MODEL_VERSION:-drag-cnn-v2-final}
+      - MODEL_PATH=${AI_MODEL_PATH:-/app/AI/model/ensemble_checkpoint.pt}
+      - MODEL_VERSION=${AI_MODEL_VERSION:-cnn-bilstm-ensemble-v1}
     expose:
       - "5000"
     restart: always
