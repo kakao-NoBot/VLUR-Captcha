@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+tests/
+model/archive_bilstm/
+model/archive_cnn/

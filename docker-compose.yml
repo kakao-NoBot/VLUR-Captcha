@@ -36,10 +36,14 @@ services:
     env_file: .env
     environment:
       - PYTHONUNBUFFERED=1
+      - AI_SERVICE_URL=${AI_SERVICE_URL:-http://ai:5000}
+      - AI_SERVICE_TIMEOUT_SECONDS=${AI_SERVICE_TIMEOUT_SECONDS:-3.0}
     ports:
       - "8000:8000"
     depends_on:
       db:
+        condition: service_healthy
+      ai:
         condition: service_healthy
     restart: always
 
@@ -47,8 +51,11 @@ services:
     build:
       context: ./AI
     container_name: captcha-ai
-    ports:
-      - "5000:5000"
+    environment:
+      - MODEL_PATH=${AI_MODEL_PATH:-/app/AI/model/v2_torch_random_da0.05_ls0.01_trsmoothwp_touchheavy_ptrbal_bakedptrnorm_pptthr_hardneg_best.pt}
+      - MODEL_VERSION=${AI_MODEL_VERSION:-drag-cnn-v2-final}
+    expose:
+      - "5000"
     restart: always
 
   frontend:
