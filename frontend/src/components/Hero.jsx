@@ -40,9 +40,9 @@ export default function Hero({ openPage }) {
               <button className="btn btn-primary btn-lg" onClick={() => setDemoOpen(true)}>지금 체험하기</button>
             </div>
             <div className="hero-meta">
-              <div><span className="n">6.9s</span><span className="l">평균 통과 시간</span></div>
-              <div><span className="n">-%</span><span className="l">봇 차단율</span></div>
-              <div><span className="n">-ms</span><span className="l">검증 응답</span></div>
+              <div><span className="n">0.59s</span><span className="l">평균 통과 시간</span></div>
+              <div><span className="n">88.28%</span><span className="l">봇 차단율</span></div>
+              <div><span className="n">~30ms</span><span className="l">검증 응답</span></div>
             </div>
           </div>
         </div>

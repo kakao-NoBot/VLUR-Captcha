@@ -189,7 +189,12 @@ class EnsemblePredictor:
         }
 
     def predict_record(self, record, bilstm_bot_prob=None, method="or_rule", bilstm_bot_threshold=None,
-                        use_jitter_guard=True):
+                        use_jitter_guard=False):
+        """use_jitter_guard 기본값 OFF (2026-08-05, ensemble_CNN_biLSTM/README.md §jitter_guard
+        후기와 동일한 결정): 팀 red-team(n=200, 동일 궤적 전 모델 공통 입력)에서 jitter_guard가
+        direct-POST 공격을 0.5%/0%밖에 추가로 못 잡으면서 human FPR을 or_rule 기준 ~0.3%대에서
+        6.20%로 끌어올리는 "순수 비용"으로 확인됨. 체크포인트엔 여전히 로드돼 있으니(코드/가중치
+        보존) 필요하면 use_jitter_guard=True로 다시 켤 수 있다."""
         cnn_out = self.cnn.predict_record(record)
         # CNNPredictor가 이미 pointer별 threshold로 계산해둔 human_prob 기준 threshold를
         # bot_score(=1-human_prob) 공간으로 환산해서 OR-rule에 그대로 쓴다.
