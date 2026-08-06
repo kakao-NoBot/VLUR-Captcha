@@ -2,7 +2,7 @@
 
 VLUR-Captcha is an AI CAPTCHA SaaS project designed to provide users with a simple, seamless verification experience while giving services a reliable way to distinguish automated bots from real users.
 
-> This repository is currently in the early stages of development. The FastAPI backend includes health and database connectivity checks, and the MySQL schema and development seed data are implemented. The frontend and AI services are currently skeletons with only their directory and container structures in place.
+> The FastAPI backend, MySQL schema, frontend, and drag-trajectory AI inference service are implemented. The AI model is deployed as an internal service and is not exposed directly to browsers.
 
 ## Key Features
 
@@ -18,10 +18,10 @@ VLUR-Captcha is an AI CAPTCHA SaaS project designed to provide users with a simp
 
 | Area | Status | Details |
 | --- | --- | --- |
-| Backend | Basic features implemented | FastAPI server, health check, and database connectivity check |
+| Backend | Implemented | FastAPI APIs, CAPTCHA orchestration, authentication, and database access |
 | Database | Implemented | MySQL 8.0 schema and development seed data |
-| Frontend | In progress | Development Dockerfile only |
-| AI | In progress | Service directory only |
+| Frontend | Implemented | Web application and embeddable CAPTCHA widget |
+| AI | Implemented | PyTorch drag bot classifier and internal FastAPI inference API |
 | Kubernetes / Nginx | In progress | Directories prepared for deployment configuration |
 
 ## System Architecture
@@ -34,24 +34,33 @@ flowchart LR
     B --> A["AI Service :5000"]
 ```
 
-Only the `db` and `backend` services can currently be run locally. To run the entire stack, you must first add the frontend application files and a Dockerfile for the AI service.
+The backend calls the AI service over the private Docker Compose network. The AI port is intentionally not published to the host.
 
 ## Tech Stack
 
-- Backend: Python 3.12, FastAPI, Uvicorn, PyMySQL
+- Backend: Python 3.12, FastAPI, Uvicorn, PyMySQL, HTTPX
+- AI: Python 3.12, FastAPI, PyTorch, NumPy
 - Database: MySQL 8.0
 - Frontend: Node.js 24-based development environment
 - Infrastructure: Docker, Docker Compose
-- Planned: AI inference service, Nginx, Kubernetes
+- Deployment roadmap: Nginx and Kubernetes manifests
 
 ## Directory Structure
 
 ```text
 AI-Captcha/
-├── AI/                       # Planned AI inference service
+├── AI/
+│   ├── main.py              # Internal FastAPI inference API
+│   ├── services/            # Model loading, inference, and score calibration
+│   ├── ml/                  # Model architecture, preprocessing, and ML utilities
+│   ├── model/               # Final checkpoint, calibration, and archived models
+│   ├── tests/
+│   ├── Dockerfile
+│   └── requirements.txt
 ├── backend/
 │   ├── Dockerfile.dev
 │   ├── main.py               # FastAPI application
+│   ├── services/             # Includes the internal AI service client
 │   └── requirements.txt
 ├── database/
 │   └── init/
@@ -91,14 +100,17 @@ DB_USER=captcha_user
 DB_PASSWORD=change-this-db-password
 DB_HOST=db
 DB_PORT=3306
+AI_SERVICE_URL=http://ai:5000
+AI_SERVICE_TIMEOUT_SECONDS=3.0
+AI_MODEL_VERSION=drag-cnn-v2-final
 ```
 
 The `.env` file is excluded from Git. Do not commit real passwords or production secrets to the repository.
 
-### 3. Start the Database and Backend
+### 3. Start the Application
 
 ```bash
-docker compose up --build db backend
+docker compose up --build
 ```
 
 Once the services are ready, check their status at the following endpoints:
@@ -106,6 +118,12 @@ Once the services are ready, check their status at the following endpoints:
 ```bash
 curl http://localhost:8000/health
 curl http://localhost:8000/db-check
+```
+
+The AI health check is available only inside the Compose network:
+
+```bash
+docker compose exec ai python3 -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:5000/health').read().decode())"
 ```
 
 Expected health response:
@@ -174,12 +192,15 @@ The current `frontend/Dockerfile.dev` expects a `package.json` file and an `npm 
 docker compose up --build frontend
 ```
 
-### Adding the AI Service
+### AI Service
 
-`docker-compose.yml` is configured to build an image from the `AI/` directory and expose port 5000. After adding the AI API server and its Dockerfile, start the full stack with:
+The AI container loads the final checkpoint and its matching `.calibration.json` once at startup. The backend sends canonical drag records to `POST /v1/classify` over the private Compose network. To use a different checkpoint, set `AI_MODEL_PATH` to its path inside the AI container; the matching calibration file must sit beside it. `AI_MODEL_VERSION` is the short, stable identifier stored in verification records and is intentionally independent from the checkpoint filename.
+
+Run the backend and AI test suites separately from the repository root:
 
 ```bash
-docker compose up --build
+(cd backend && python3 -m unittest discover -s tests)
+python3 -m unittest discover -s AI/tests
 ```
 
 ## Security Checklist
@@ -190,13 +211,14 @@ docker compose up --build
 - Remove `/db-check` in production or protect it with administrator authentication
 - Inject environment-specific secrets through a dedicated secrets management system
 - Enforce expiration and single-use policies for CAPTCHA verification tokens
+- Keep the AI inference API on the private service network
 
 ## Roadmap
 
 - [ ] User registration, sign-in, and administrator authentication
 - [ ] API key issuance and revocation API
 - [ ] CAPTCHA generation and verification API
-- [ ] Integration with a drag-trajectory-based bot classification model
+- [x] Integration with a drag-trajectory-based bot classification model
 - [ ] Integration with an image-identification CAPTCHA model
 - [ ] Subscription plan and payment API integration
 - [ ] User and administrator frontend implementation

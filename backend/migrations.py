@@ -580,4 +580,21 @@ def run_migrations() -> None:
                     [(hash_label(row["label"]), row["image_id"]) for row in plaintext_rows],
                 )
                 print(f"[migrate] captcha_images 평문 label {len(plaintext_rows)}건 해시로 교체")
+
+            # 13) 체크포인트 파일명과 모델 버전을 분리했지만, 향후 버전 식별자가 길어져도
+            # 검증 결과 저장이 500으로 실패하지 않도록 기존 VARCHAR(80) 컬럼을 확장한다.
+            model_version_type = _column_type(
+                cur,
+                "captcha_verifications",
+                "model_version",
+            ).lower()
+            current_model_version_length = 0
+            if model_version_type.startswith("varchar(") and model_version_type.endswith(")"):
+                current_model_version_length = int(model_version_type[8:-1])
+            if current_model_version_length < 128:
+                cur.execute(
+                    """ALTER TABLE captcha_verifications
+                       MODIFY COLUMN model_version VARCHAR(128) NULL"""
+                )
+                print("[migrate] captcha_verifications.model_version VARCHAR(128) 확장")
         conn.commit()

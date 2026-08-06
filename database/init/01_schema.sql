@@ -353,7 +353,7 @@ CREATE TABLE IF NOT EXISTS captcha_verifications (
     is_correct             BOOLEAN         NULL,
     is_bot                 BOOLEAN         NULL,
     bot_score              DECIMAL(6,5)    NULL,
-    model_version          VARCHAR(80)     NULL,
+    model_version          VARCHAR(128)    NULL,
     verification_status    ENUM('pending','passed','failed','expired','error') NOT NULL DEFAULT 'pending',
     failure_reason         VARCHAR(255)    NULL,
     server_answer_snapshot JSON            NULL COMMENT 'Server-side audit only; never expose to clients.',

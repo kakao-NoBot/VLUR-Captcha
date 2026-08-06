@@ -1,6 +1,6 @@
 import unittest
 
-from services.risk_score import (
+from AI.services.risk_score import (
     calibrated_risk_score,
     probability_to_logit,
     stable_sigmoid,
