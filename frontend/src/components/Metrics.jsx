@@ -1,8 +1,8 @@
 import React from 'react';
 
 const metricsData = [
-  { value: '97.54', unit: '%', cap: '분류 정확도', desc: '자체 데이터셋 기반 전이학습 검증 정확도', bar: 97.54 },
-  { value: '0.33', unit: '%', cap: '오탐률', desc: '실제 사람을 봇으로 오판정하는 비율', bar: 99.67 },
+  { value: '97.5', unit: '%', cap: '분류 정확도', desc: '자체 데이터셋 기반 전이학습 검증 정확도', bar: 97.5 },
+  { value: '0.3', unit: '%', cap: '오탐률', desc: '실제 사람을 봇으로 오판정하는 비율', bar: 99.7 },
   { value: '25~40', unit: '건/초', cap: '검증 처리량', desc: '레코드 단위 초당 처리 건수(궤적 분석 포함)', bar: 70 },
   { value: '-', unit: '', cap: '동시 처리 세션', desc: '단일 인스턴스 기준 목표 동시 검증 수', bar: 0 },
 ];

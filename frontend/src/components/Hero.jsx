@@ -41,7 +41,7 @@ export default function Hero({ openPage }) {
             </div>
             <div className="hero-meta">
               <div><span className="n">0.59s</span><span className="l">평균 통과 시간</span></div>
-              <div><span className="n">88.28%</span><span className="l">봇 차단율</span></div>
+              <div><span className="n">88.3%</span><span className="l">봇 차단율</span></div>
               <div><span className="n">~30ms</span><span className="l">검증 응답</span></div>
             </div>
           </div>
