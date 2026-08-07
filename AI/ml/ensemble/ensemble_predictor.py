@@ -143,8 +143,11 @@ class EnsemblePredictor:
                 게 실측으로 확인됨(README §한계). 앙상블을 하는 이유 자체가 "한쪽이
                 놓쳐도 한쪽이 잡는다"이므로, 보안 목적엔 OR 규칙이 더 맞다.
             "stacking" — fit된 로지스틱 결합기(CNN+BiLSTM 2개만). human/function/gan에서
-                AUC 1.0000로 가장 정확하지만, 위 이유로 kin_lognormal류 불일치 상황엔
-                과신하지 말 것. jitter_guard는 이 방식엔 반영 안 됨(or_rule 전용).
+                AUC 1.0000로 가장 정확하지만, kin_lognormal류 불일치 상황엔 과신하지 말 것
+                — 2026-08-06 kin_lognormal 전량 재계산으로 확정: jitter=0에서 or_rule
+                우회율 0.00% vs stacking 33.93%(+33.93%p), jitter=0.01에서도 +2.22%p로
+                stacking이 항상 더 나쁨(ensemble_CNN_biLSTM/README.md 참고). jitter_guard는
+                이 방식엔 반영 안 됨(or_rule 전용).
             "simple_average" — CNN+BiLSTM 단순평균, 참고용. jitter_guard 반영 안 됨.
 
         aux_bot_score/aux_bot_threshold: jitter_guard(있으면)의 bot_prob과 threshold.
