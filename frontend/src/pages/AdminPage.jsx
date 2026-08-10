@@ -2025,6 +2025,7 @@ const usagePlanSummary = useMemo(() => {
                           { key: 'botBlockedCount', label: '봇 차단', width: 100 },
                           { key: 'lastCalledAt', label: '최근 호출', width: 120 },
                         ]}
+                        tableClassName="admin-static-table"
                         tableStyle={{ tableLayout: 'fixed', width: 1350 }}
                         emptyMessage="검색 결과가 없습니다."
                         rows={pageRows.map((row) => {
