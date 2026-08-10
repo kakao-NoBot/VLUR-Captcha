@@ -1844,7 +1844,7 @@ const usagePlanSummary = useMemo(() => {
                   { label: '오늘 CAPTCHA 발급 수', value: dashboardStats ? formatNumber(dashboardStats.today_issued) : '-', note: 'type1/type2 합산' },
                   { label: '오늘 CAPTCHA 검증 수', value: dashboardStats ? formatNumber(dashboardStats.today_verified) : '-', note: '성공/실패 포함' },
                   { label: '오늘 완료율', value: dashboardStats ? `${dashboardStats.success_rate}%` : '-', note: '발급 대비 검증 완료 비율' },
-                  { label: '오늘 봇 차단률', value: dashboardStats ? `${dashboardStats.bot_block_rate}%` : '-', note: 'CNN–BiLSTM 앙상블 판정 기준' },
+                  { label: '오늘 봇 차단률', value: dashboardStats ? `${dashboardStats.bot_block_rate}%` : '-', note: '앙상블 판정 기준' },
                 ].map((stat) => (
                   <article className="admin-stat-card" key={stat.label}>
                     <span>{stat.label}</span>
