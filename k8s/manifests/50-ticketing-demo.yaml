@@ -1,0 +1,55 @@
+# 티켓팅 데모 사이트(ticket.vlur.site) — github.com/kakao-NoBot/ticketing-demo-site
+# 빌드 시 VLUR_API_BASE / VLUR_WIDGET_URL 이 https://vlur.site 로 구워진 정적 사이트라
+# 런타임 환경변수가 없다. Ingress가 host(ticket.vlur.site) 기준으로 직접 이 Service로
+# 라우팅하므로, frontend nginx의 ticket.vlur.site 프록시 블록은 사용되지 않는다.
+apiVersion: v1
+kind: Service
+metadata:
+  name: ticketing-demo
+  namespace: captcha
+spec:
+  selector:
+    app: ticketing-demo
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ticketing-demo
+  namespace: captcha
+spec:
+  replicas: 1              # 데모 용도 — 필요 시 2로
+  selector:
+    matchLabels:
+      app: ticketing-demo
+  template:
+    metadata:
+      labels:
+        app: ticketing-demo
+    spec:
+      imagePullSecrets:
+        - name: regcred
+      containers:
+        - name: ticketing-demo
+          # ticketing-demo-site 저장소에는 아직 CI가 없다 — 가이드 Phase 2-3에서 워크플로우를
+          # 추가하거나 수동 빌드 후, 그 태그로 치환한다.
+          image: kc-sfacspace05.kr-central-2.kcr.dev/team2-repo/vlur-ticketing-demo:sha-76a5b97fdf16b3023453692818a154e23ad99b37
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          readinessProbe:
+            httpGet: { path: /healthz, port: 80 }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /healthz, port: 80 }
+            periodSeconds: 20
+            failureThreshold: 3

@@ -1,0 +1,111 @@
+# 챗봇용 자체 호스팅 LLM — vLLM(OpenAI 호환 API) Deployment + Service.
+#
+# 백엔드는 app-config의 CHATBOT_API_URL로 여기를 호출한다. vLLM이 OpenAI와 같은
+# /v1/chat/completions 스키마를 제공하므로 backend/routers/chatbot.py의 호출 코드는
+# 그대로 두고 주소만 바꿔 끼운다.
+#
+# 전제:
+#   - GPU 노드(team2-gpu)에 Phase 3-0의 taint(workload=gpu:NoSchedule)가 걸려 있을 것
+#     → 아래 tolerations가 그 taint와 짝이다. taint 키/값을 다르게 걸었다면 여기도 맞출 것.
+#   - 클러스터에 NVIDIA device plugin이 있어야 nvidia.com/gpu 자원을 요청할 수 있다.
+#     (가이드 Phase 11-1에서 확인·설치)
+#   - csi-cinder-sc-retain 치환 필요 (모델 캐시 PVC)
+---
+# 모델 가중치 캐시. 이게 없으면 파드가 재시작될 때마다 HuggingFace에서 십수 GB를 다시
+# 받느라 수십 분씩 걸린다. GPU 노드가 1대뿐이라 ReadWriteOnce로 충분하다.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: llm-model-cache
+  namespace: captcha
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: csi-cinder-sc-retain
+  resources:
+    requests:
+      storage: 50Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: llm
+  namespace: captcha
+spec:
+  selector:
+    app: llm
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llm
+  namespace: captcha
+spec:
+  replicas: 1              # GPU 노드가 1대 — 늘려도 스케줄되지 않는다
+  strategy:
+    type: Recreate         # 롤링 업데이트를 하면 새 파드가 GPU를 못 잡고 Pending에 걸린다
+  selector:
+    matchLabels:
+      app: llm
+  template:
+    metadata:
+      labels:
+        app: llm
+    spec:
+      tolerations:
+        - key: workload
+          value: gpu
+          effect: NoSchedule
+      containers:
+        - name: vllm
+          image: vllm/vllm-openai:v0.6.3
+          args:
+            - --model=$(MODEL_ID)
+            - --served-model-name=vlur-chatbot   # 요청에 쓰는 이름을 모델 경로와 분리
+            - --max-model-len=4096               # 시스템 프롬프트 + 최근 10개 메시지면 충분
+            - --gpu-memory-utilization=0.85
+            - --dtype=auto
+          env:
+            - name: MODEL_ID
+              # 한국어 응대 품질과 VRAM 사이의 절충. GPU VRAM이 부족하면 가이드 Phase 11-2의
+              # 대안 모델로 교체한다.
+              value: Qwen/Qwen2.5-7B-Instruct
+            - name: HF_HOME
+              value: /model-cache
+          ports:
+            - containerPort: 8000
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+              memory: 32Gi
+            requests:
+              cpu: "2"
+              memory: 16Gi
+          volumeMounts:
+            - name: model-cache
+              mountPath: /model-cache
+            - name: shm
+              mountPath: /dev/shm
+          # 최초 기동은 모델 다운로드(수 GB) 때문에 아주 오래 걸린다 — 넉넉히 잡는다.
+          startupProbe:
+            httpGet: { path: /health, port: 8000 }
+            periodSeconds: 15
+            failureThreshold: 120     # 최대 30분
+          readinessProbe:
+            httpGet: { path: /health, port: 8000 }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /health, port: 8000 }
+            periodSeconds: 30
+            failureThreshold: 3
+      volumes:
+        - name: model-cache
+          persistentVolumeClaim:
+            claimName: llm-model-cache
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 2Gi

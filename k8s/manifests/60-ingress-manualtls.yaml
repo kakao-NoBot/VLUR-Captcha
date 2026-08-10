@@ -1,0 +1,50 @@
+# TLS를 쓰되 인증서는 수동으로 넣는 Ingress — cert-manager webhook이 막힌 환경용.
+#
+# 60-ingress.yaml과의 차이는 cert-manager.io/cluster-issuer 애노테이션이 없다는 것뿐이다.
+# 그 애노테이션이 없으면 cert-manager가 인증서를 만들어주지 않으므로, vlur-site-tls Secret을
+# 사람이 직접 만들어 둬야 한다(certbot 등으로 발급 후 kubectl create secret tls).
+#
+# 세 파일은 리소스 이름(captcha)이 같아 서로 덮어쓴다. 상황에 맞는 하나만 apply할 것:
+#   60-ingress.yaml            cert-manager 자동 발급 (webhook 정상일 때)
+#   60-ingress-manualtls.yaml  수동 발급 인증서 사용   ← 지금 이것
+#   60-ingress-http.yaml       TLS 없이 HTTP만
+#
+# 인증서 갱신(90일)도 수동이다. 갱신 후에는 Secret을 다시 만들고 파드 재시작 없이 반영된다:
+#   kubectl -n captcha delete secret vlur-site-tls
+#   kubectl -n captcha create secret tls vlur-site-tls --cert=fullchain.pem --key=privkey.pem
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: captcha
+  namespace: captcha
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 10m
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - vlur.site
+        - ticket.vlur.site
+      secretName: vlur-site-tls
+  rules:
+    - host: vlur.site
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80
+    - host: ticket.vlur.site
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: ticketing-demo
+                port:
+                  number: 80

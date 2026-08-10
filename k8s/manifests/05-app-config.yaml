@@ -1,0 +1,27 @@
+# 클러스터 안에서만 유효한(=코드/도메인이 아니라 배포 토폴로지에서 나오는) 비민감 설정.
+# 민감정보(.env 전체)는 app-secret 으로 따로 만들며(가이드 Phase 5 참조), 백엔드 파드는
+# envFrom 으로 app-secret → app-config 순으로 읽는다. envFrom 은 뒤에 오는 소스가 같은
+# 키를 덮어쓰므로, .env 에 로컬 값(DB_HOST=db 등)이 남아 있어도 여기 값이 이긴다.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: captcha
+data:
+  # DB는 같은 네임스페이스의 mysql Service 이름으로 접속 (docker-compose의 "db" 대체)
+  DB_HOST: mysql
+  DB_PORT: "3306"
+  DB_NAME: captcha
+  # AI 추론 서버 — 클러스터 안 ai Service. GPU-01(클러스터 밖)로 전환하려면
+  # 이 값만 http://210.109.15.254:<GPU포트> 로 바꾸고 backend를 rollout restart 한다.
+  AI_SERVICE_URL: http://ai:5000
+  AI_SERVICE_TIMEOUT_SECONDS: "3.0"
+  # 챗봇 LLM — GPU 노드의 자체 호스팅 vLLM(25-llm.yaml). OpenAI로 되돌리려면 이 두 값을
+  # 지우고 backend를 rollout restart 하면 app-secret의 OPENAI_API_KEY로 다시 붙는다.
+  CHATBOT_API_URL: http://llm:8000/v1/chat/completions
+  CHATBOT_MODEL: vlur-chatbot
+  # Ingress/nginx 를 거쳐 들어오므로 X-Forwarded-For 를 신뢰해야 실제 클라이언트 IP 기준
+  # 레이트리밋(chatbot)이 동작한다.
+  TRUST_PROXY_HEADERS: "1"
+  # 프로덕션 DB에는 데모 시드 데이터를 넣지 않는다.
+  SEED_DEMO_DATA: "false"

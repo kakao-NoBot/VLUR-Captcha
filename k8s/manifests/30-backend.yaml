@@ -1,0 +1,70 @@
+# FastAPI 백엔드 — Deployment(replica 2) + ClusterIP Service.
+#
+# 환경변수 주입 순서가 중요하다: envFrom은 "뒤에 오는 소스"가 같은 키를 덮어쓴다.
+#   1) app-secret  : .env 전체(민감정보 포함) — 가이드 Phase 5에서 생성
+#   2) app-config  : 클러스터 토폴로지 값(DB_HOST=mysql, AI_SERVICE_URL 등) — secret의 로컬 값을 덮음
+#
+# 캡차 챌린지 상태는 DB(captchas 테이블)에 저장되므로 replica 2가 안전하다.
+# 시작 시 wait_for_database() + run_migrations() 가 돌기 때문에 DB가 준비될 때까지
+# 스스로 기다린다 — initContainer 불필요, 대신 startupProbe로 여유를 준다.
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: captcha
+spec:
+  selector:
+    app: backend
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: captcha
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      imagePullSecrets:
+        - name: regcred
+      containers:
+        - name: backend
+          image: kc-sfacspace05.kr-central-2.kcr.dev/team2-repo/vlur-backend:sha-209f97dc3e912bd6683c4c83f4fca1e49ce50e86
+          envFrom:
+            - secretRef:
+                name: app-secret
+            - configMapRef:
+                name: app-config
+          env:
+            - name: PYTHONUNBUFFERED
+              value: "1"
+          ports:
+            - containerPort: 8000
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          startupProbe:
+            httpGet: { path: /health, port: 8000 }
+            periodSeconds: 5
+            failureThreshold: 60     # DB 대기 + 마이그레이션 여유 최대 5분
+          readinessProbe:
+            httpGet: { path: /health, port: 8000 }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /health, port: 8000 }
+            periodSeconds: 20
+            failureThreshold: 3
