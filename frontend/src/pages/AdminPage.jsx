@@ -136,48 +136,28 @@ function mapInquiry(row) {
   };
 }
 
-/* ── 봇 점수 판정 기준 ──
-   서버가 최종 인증 결과를 내려주지 않는 레거시 응답의 표시용 fallback 기준.
-   실제 최근 로그의 성공/실패는 서버 verification_status를 사용한다. */
-const BOT_SCORE_THRESHOLD = { FAIL: 70, SUSPECT: 40 };
-
-function getResultFromScore(score) {
-  if (!Number.isFinite(score)) return '미채점';
-  if (score >= BOT_SCORE_THRESHOLD.FAIL) return '실패';
-  if (score >= BOT_SCORE_THRESHOLD.SUSPECT) return '의심';
-  return '성공';
-}
+/* ── 봇 위험도 표시 기준 ──
+   CNN과 BiLSTM의 각 판정 임계점이 정규화 점수 50점이 된다.
+   실제 인증/행동 판정은 항상 서버가 내려준 결과를 사용한다. */
+const BOT_SCORE_THRESHOLD = 50;
 
 function formatBotScore(score) {
   return Number.isFinite(score) ? `${score}점` : '미채점';
 }
 
-// 카테고리별 배점 비중 (총 100점 만점 — ScoreGauge의 100점 만점과 통일)
-const SCORE_CATEGORY_WEIGHTS = [
-  { label: '드래그 궤적 자연스러움', max: 25 },
-  { label: '이동 속도 변화', max: 20 },
-  { label: '반응 시간', max: 20 },
-  { label: '실패 횟수', max: 15 },
-  { label: '정답 위치 정확도', max: 10 },
-  { label: '반복 패턴', max: 10 },
-];
+function getBehaviorResult(log) {
+  if (log.isBot === true) return '봇 의심';
+  if (log.isBot === false) return '정상';
+  if (log.isBot === null) return '판정 보류';
+  return '미채점';
+}
 
-// botScore를 카테고리별로 비례 배분해서, 항상 세부 채점표 합계 === botScore가 되도록 계산
-function getScoreBreakdown(botScore) {
-  const clamped = Math.min(100, Math.max(0, botScore));
-  const raw = SCORE_CATEGORY_WEIGHTS.map((cat) => ({
-    ...cat,
-    score: Math.round((clamped * cat.max) / 100),
-  }));
-
-  // 반올림 오차 보정: 합계와 botScore 차이를 가장 배점이 큰 카테고리에서 흡수
-  const diff = clamped - raw.reduce((sum, c) => sum + c.score, 0);
-  if (diff !== 0) {
-    const idx = raw.reduce((best, c, i) => (c.max > raw[best].max ? i : best), 0);
-    raw[idx].score = Math.min(raw[idx].max, Math.max(0, raw[idx].score + diff));
-  }
-
-  return raw;
+function getFailureReasonLabel(reason) {
+  return {
+    wrong_answer: '정답 오류',
+    bot_blocked: '봇 행동 감지',
+    ambiguous_behavior: '행동 판정 보류',
+  }[reason] || '-';
 }
 
 const PLAN_USAGE_TABS = ['Basic', 'Pro', 'Enterprise'];
@@ -197,8 +177,8 @@ function parseSafeDate(value) {
 
 function getStatusTone(status) {
   if (status === '활성' || status === '성공' || status === '정상' || status === '답변') return 'success';
-  if (status === '의심' || status === '점검' || status === '검토') return 'warning';
-  if (status === '실패' || status === '비활성') return 'danger';
+  if (status === '의심' || status === '판정 보류' || status === '점검' || status === '검토') return 'warning';
+  if (status === '실패' || status === '봇 의심' || status === '비활성') return 'danger';
   return 'neutral';
 }
 
@@ -552,7 +532,7 @@ function ScoreGauge({ score, max = 100 }) {
   const radius = 52;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference * (1 - percent / 100);
-  const color = !hasScore ? 'var(--muted)' : percent >= 60 ? '#c0392b' : percent >= 30 ? '#e0a52c' : '#2ea36b';
+  const color = !hasScore ? 'var(--muted)' : percent >= BOT_SCORE_THRESHOLD ? '#c0392b' : percent >= 45 ? '#e0a52c' : '#2ea36b';
 
   return (
     <div style={{ position: 'relative', width: 120, height: 120, flexShrink: 0 }}>
@@ -655,14 +635,13 @@ function ScoreDetailModal({ log, onClose }) {
 
   if (!log) return null;
 
-  // 로그의 botScore 기준으로 세부 채점표를 매번 계산 → 게이지/판정/채점표가 항상 일치
   const hasScore = Number.isFinite(log.botScore);
-  const breakdown = hasScore ? getScoreBreakdown(log.botScore) : [];
+  const behaviorResult = getBehaviorResult(log);
 
   return (
     <AdminModalShell
       eyebrow="BOT SCORE DETAIL"
-      title="봇 점수 채점표"
+      title="봇 위험도 상세"
       onClose={onClose}
       labelledBy="admin-score-title"
       footer={<button type="button" className="btn btn-primary" onClick={onClose} style={{ fontSize: 14, padding: '9px 22px' }}>확인</button>}
@@ -673,38 +652,39 @@ function ScoreDetailModal({ log, onClose }) {
       }}>
         <ScoreGauge score={log.botScore} />
         <div>
-          <span style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>판정 결과</span>
-          <div style={{ marginTop: 6 }}>
+          <span style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>인증 결과</span>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
             <StatusBadge tone={getStatusTone(log.result)}>{log.result}</StatusBadge>
+            <StatusBadge tone={getStatusTone(behaviorResult)}>행동 {behaviorResult}</StatusBadge>
           </div>
           <p style={{ margin: '10px 0 0', fontSize: 12.5, color: 'var(--ink-soft)', lineHeight: 1.5 }}>
             {hasScore
-              ? 'CNN 로짓을 보정한 위험 지수이며, 점수가 높을수록 봇 의심 가능성이 높습니다.'
-              : 'CNN 채점이 적용되기 전에 생성된 과거 인증 로그입니다.'}
+              ? 'AI가 분석한 봇 위험도입니다. 점수가 높을수록 봇 의심도가 높습니다.'
+              : '모델 채점이 적용되기 전에 생성된 과거 인증 로그입니다.'}
           </p>
         </div>
       </div>
 
-      {hasScore && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
-          {breakdown.map((item) => {
-            const percent = getPercent(item.score, item.max);
-            return (
-              <div key={item.label} style={{ border: '1px solid var(--line)', borderRadius: 12, padding: '12px 14px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 13 }}>
-                  <span style={{ color: 'var(--ink)', fontWeight: 600 }}>{item.label}</span>
-                  <b style={{ color: 'var(--orange-2)' }}>{item.score} / {item.max}</b>
-                </div>
-                <div style={{ height: 6, borderRadius: 999, background: 'var(--line)', overflow: 'hidden' }}>
-                  <div style={{
-                    width: `${percent}%`, height: '100%',
-                    background: 'linear-gradient(90deg, var(--gold), var(--orange))',
-                    borderRadius: 999,
-                  }} />
-                </div>
-              </div>
-            );
-          })}
+      <div style={{
+        display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10,
+        marginBottom: 20, fontSize: 13,
+      }}>
+        {[
+          ['정답 여부', log.answerCorrect ? '정답' : '오답'],
+          ['실패 사유', getFailureReasonLabel(log.failureReason)],
+          ['행동 판정', behaviorResult],
+          ['위험도 기준점', hasScore ? '50점' : '-'],
+        ].map(([label, value]) => (
+          <div key={label} style={{ border: '1px solid var(--line)', borderRadius: 12, padding: '12px 14px' }}>
+            <span style={{ display: 'block', color: 'var(--muted)', fontSize: 11, marginBottom: 5 }}>{label}</span>
+            <b style={{ color: 'var(--ink)' }}>{value}</b>
+          </div>
+        ))}
+      </div>
+
+      {log.modelVersion && (
+        <div style={{ marginBottom: 16, fontSize: 11, color: 'var(--muted)' }}>
+          모델 {log.modelVersion}
         </div>
       )}
 
@@ -1181,7 +1161,7 @@ export default function AdminPage() {
         });
         const rows = (data.logs || []).map((log) => ({
           ...log,
-          result: log.result || getResultFromScore(log.botScore),
+          result: log.result || '미확인',
         }));
         if (!ignore) {
           setLogs(rows);
@@ -1857,7 +1837,7 @@ const usagePlanSummary = useMemo(() => {
                   { label: '오늘 CAPTCHA 발급 수', value: dashboardStats ? formatNumber(dashboardStats.today_issued) : '-', note: 'type1/type2 합산' },
                   { label: '오늘 CAPTCHA 검증 수', value: dashboardStats ? formatNumber(dashboardStats.today_verified) : '-', note: '성공/실패 포함' },
                   { label: '오늘 완료율', value: dashboardStats ? `${dashboardStats.success_rate}%` : '-', note: '발급 대비 검증 완료 비율' },
-                  { label: '오늘 봇 차단률', value: dashboardStats ? `${dashboardStats.bot_block_rate}%` : '-', note: 'CNN 모델 판정 기준' },
+                  { label: '오늘 봇 차단률', value: dashboardStats ? `${dashboardStats.bot_block_rate}%` : '-', note: 'CNN–BiLSTM 앙상블 판정 기준' },
                 ].map((stat) => (
                   <article className="admin-stat-card" key={stat.label}>
                     <span>{stat.label}</span>

@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import './styles/main.css';
+import api, { AUTH_UNAUTHORIZED_EVENT } from './api/axios';
 
 // Layout components
 import Nav from './components/Nav';
@@ -65,7 +66,8 @@ function PageShell({ onBack, openPage, isLoggedIn, onLogout, user, children }) {
   );
 }
 
-function ProtectedRoute({ allowed, children }) {
+function ProtectedRoute({ allowed, ready, children }) {
+  if (!ready) return null;
   return allowed ? children : <Navigate to="/login" replace />;
 }
 
@@ -130,13 +132,64 @@ export default function App() {
   const [mypageTab, setMypageTab] = useState('info');
   const [mypageKey, setMypageKey] = useState(0);
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('access_token'));
+  const [isAuthReady, setIsAuthReady] = useState(!localStorage.getItem('access_token'));
   const [currentUser, setCurrentUser] = useState(() => {
+    if (!localStorage.getItem('access_token')) {
+      localStorage.removeItem('user');
+      return null;
+    }
     try { return JSON.parse(localStorage.getItem('user') || 'null'); } catch { return null; }
   });
   const [signupKey, setSignupKey] = useState(0);
   const [boardKey, setBoardKey] = useState(0);
   const [pendingPlan, setPendingPlan] = useState(null);
   const [planRefreshKey, setPlanRefreshKey] = useState(0);
+
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      setIsLoggedIn(false);
+      setCurrentUser(null);
+      setIsAuthReady(true);
+
+      const isProtectedPage = ['/admin', '/mypage', '/plan-pay', '/apply-done']
+        .some((path) => location.pathname.startsWith(path));
+      if (isProtectedPage) navigate('/login', { replace: true });
+    };
+
+    window.addEventListener(AUTH_UNAUTHORIZED_EVENT, handleUnauthorized);
+    return () => window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, handleUnauthorized);
+  }, [location.pathname, navigate]);
+
+  // localStorage의 사용자 정보만 신뢰하지 않고 앱 시작 시 JWT를 서버에서 검증한다.
+  // 검증 중에는 보호 페이지를 렌더링하지 않아 만료 토큰으로 API가 연쇄 호출되는 것을 막는다.
+  useEffect(() => {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      setIsAuthReady(true);
+      return undefined;
+    }
+
+    let ignore = false;
+    api.get('/auth/me')
+      .then(({ data }) => {
+        if (ignore) return;
+        localStorage.setItem('user', JSON.stringify(data));
+        setCurrentUser(data);
+        setIsLoggedIn(true);
+      })
+      .catch((error) => {
+        if (ignore || error.response?.status !== 401) return;
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('user');
+        setCurrentUser(null);
+        setIsLoggedIn(false);
+      })
+      .finally(() => {
+        if (!ignore) setIsAuthReady(true);
+      });
+
+    return () => { ignore = true; };
+  }, []);
 
   useEffect(() => {
     if (completedPayment) sessionStorage.removeItem('completed_payment');
@@ -180,6 +233,7 @@ export default function App() {
   };
 
   const handleLogin = (user) => {
+    setIsAuthReady(true);
     setIsLoggedIn(true);
     setCurrentUser(user);
     if (pendingPlan) {
@@ -196,6 +250,7 @@ export default function App() {
     localStorage.removeItem('user');
     setIsLoggedIn(false);
     setCurrentUser(null);
+    setIsAuthReady(true);
     closePage();
   };
 
@@ -287,19 +342,19 @@ export default function App() {
         <Route path="/board/:boardType/:postId" element={<Navigate to="/board" replace />} />
         <Route path="/enterprise" element={<PageShell {...pageShellProps}><EnterprisePage closePage={closePage} /></PageShell>} />
         <Route path="/apply" element={<PageShell {...pageShellProps}><ApplyPage openPage={openPage} /></PageShell>} />
-        <Route path="/apply-done" element={<ProtectedRoute allowed={isLoggedIn}><PageShell {...pageShellProps}><ApplyDonePage openPage={openPage} closePage={closePage} /></PageShell></ProtectedRoute>} />
+        <Route path="/apply-done" element={<ProtectedRoute allowed={isLoggedIn} ready={isAuthReady}><PageShell {...pageShellProps}><ApplyDonePage openPage={openPage} closePage={closePage} /></PageShell></ProtectedRoute>} />
         <Route path="/payment" element={<PageShell {...pageShellProps}><PaymentPage closePage={closePage} /></PageShell>} />
         <Route
           path="/mypage"
-          element={<ProtectedRoute allowed={isLoggedIn}><PageShell {...pageShellProps}><div className="po-body mp-po-body"><MypagePage key={mypageKey} openPage={openPage} closePage={closePage} initialTab={mypageTab} user={currentUser} onUserUpdate={handleUserUpdate} onLogout={handleLogout} /></div></PageShell></ProtectedRoute>}
+          element={<ProtectedRoute allowed={isLoggedIn} ready={isAuthReady}><PageShell {...pageShellProps}><div className="po-body mp-po-body"><MypagePage key={mypageKey} openPage={openPage} closePage={closePage} initialTab={mypageTab} user={currentUser} onUserUpdate={handleUserUpdate} onLogout={handleLogout} /></div></PageShell></ProtectedRoute>}
         />
         <Route
           path="/admin"
-          element={<ProtectedRoute allowed={currentUser?.role === 'admin'}><PageShell {...pageShellProps}><AdminPage /></PageShell></ProtectedRoute>}
+          element={<ProtectedRoute allowed={isLoggedIn && currentUser?.role === 'admin'} ready={isAuthReady}><PageShell {...pageShellProps}><AdminPage /></PageShell></ProtectedRoute>}
         />
         <Route
           path="/plan-pay"
-          element={<ProtectedRoute allowed={isLoggedIn}><PageShell {...pageShellProps}><PlanPayPage planName={planPayArgs.plan} initialSuccess={planPayArgs.completed} closePage={closePage} openPage={openPage} openMypageOnApiKey={openMypageOnApiKey} user={currentUser} /></PageShell></ProtectedRoute>}
+          element={<ProtectedRoute allowed={isLoggedIn} ready={isAuthReady}><PageShell {...pageShellProps}><PlanPayPage planName={planPayArgs.plan} initialSuccess={planPayArgs.completed} closePage={closePage} openPage={openPage} openMypageOnApiKey={openMypageOnApiKey} user={currentUser} /></PageShell></ProtectedRoute>}
         />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
