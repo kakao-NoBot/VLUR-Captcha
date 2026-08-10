@@ -659,7 +659,7 @@ function ScoreDetailModal({ log, onClose }) {
           </div>
           <p style={{ margin: '10px 0 0', fontSize: 12.5, color: 'var(--ink-soft)', lineHeight: 1.5 }}>
             {hasScore
-              ? 'AI가 분석한 봇 위험도입니다. 점수가 높을수록 봇 의심도가 높습니다.'
+              ? '앙상블 모델(CNN+BiLSTM)이 산출한 위험 지수입니다. 기준점(50점)보다 높을수록 봇으로 의심됩니다.'
               : '모델 채점이 적용되기 전에 생성된 과거 인증 로그입니다.'}
           </p>
         </div>
