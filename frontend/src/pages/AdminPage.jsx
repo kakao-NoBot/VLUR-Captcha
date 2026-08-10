@@ -655,7 +655,7 @@ function ScoreDetailModal({ log, onClose }) {
           <span style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>인증 결과</span>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
             <StatusBadge tone={getStatusTone(log.result)}>{log.result}</StatusBadge>
-            <StatusBadge tone={getStatusTone(behaviorResult)}>행동 {behaviorResult}</StatusBadge>
+            <StatusBadge tone={getStatusTone(behaviorResult)}>{behaviorResult} 행동</StatusBadge>
           </div>
           <p style={{ margin: '10px 0 0', fontSize: 12.5, color: 'var(--ink-soft)', lineHeight: 1.5 }}>
             {hasScore
