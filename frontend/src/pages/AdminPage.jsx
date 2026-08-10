@@ -1705,6 +1705,13 @@ const usagePlanSummary = useMemo(() => {
         [data-theme="dark"] .admin-table tbody tr:hover td {
           background: var(--paper) !important;
         }
+        .admin-static-table tbody tr {
+          cursor: default;
+       }
+        .admin-static-table tbody tr:hover td,
+        [data-theme="dark"] .admin-static-table tbody tr:hover td {
+          background: inherit !important;
+        }
         [data-theme="dark"] .admin-segmented {
           border-bottom-color: var(--line) !important;
         }
@@ -2110,7 +2117,7 @@ const usagePlanSummary = useMemo(() => {
                 return (
                   <>
                     <AdminTable
-                      tableClassName="admin-fixed-table admin-left-table"
+                      tableClassName="admin-fixed-table admin-left-table admin-static-table"
                       tableStyle={{ tableLayout: 'fixed', width: 1040 }}
                       columns={columns}
                       emptyMessage={usersLoading ? '사용자 정보를 불러오는 중입니다.' : '검색 결과가 없습니다.'}
@@ -2168,7 +2175,7 @@ const usagePlanSummary = useMemo(() => {
                 return (
                   <>
                     <AdminTable
-                      tableClassName="admin-fixed-table admin-left-table"
+                      tableClassName="admin-fixed-table admin-left-table admin-static-table"
                       tableStyle={{ tableLayout: 'fixed', width: 1310 }}
                       columns={columns}
                       emptyMessage={usersLoading ? '사용자 정보를 불러오는 중입니다.' : '검색 결과가 없습니다.'}
@@ -2247,7 +2254,7 @@ const usagePlanSummary = useMemo(() => {
                 return (
                   <>
                     <AdminTable
-                      tableClassName="table-ink-orange admin-fixed-table"
+                      tableClassName="table-ink-orange admin-fixed-table admin-static-table"
                       tableStyle={{ tableLayout: 'fixed', width: 1110 }}
                       columns={columns}
                       emptyMessage="검색 결과가 없습니다."
