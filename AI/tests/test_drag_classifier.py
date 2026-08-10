@@ -6,6 +6,7 @@ from AI.services.drag_classifier import (
     MODEL_VERSION_MAX_LENGTH,
     classify,
 )
+from AI.services.risk_score import threshold_normalized_risk_score
 
 
 class DragClassifierTests(unittest.TestCase):
@@ -47,12 +48,25 @@ class DragClassifierTests(unittest.TestCase):
         self.assertLessEqual(result["risk_score"], 1.0)
         self.assertEqual(result["model_version"], MODEL_VERSION)
         self.assertEqual(result["ensemble_method"], "or_rule")
+        self.assertEqual(set(result["component_scores"]), {"cnn", "bilstm"})
+        expected_component_scores = {
+            name: threshold_normalized_risk_score(
+                score,
+                result["component_thresholds"][name],
+            )
+            for name, score in result["component_scores"].items()
+        }
         self.assertEqual(
-            set(result["component_scores"]),
-            {"cnn", "bilstm", "jitter_guard"},
+            result["normalized_component_scores"],
+            expected_component_scores,
         )
         self.assertAlmostEqual(
             result["risk_score"],
+            max(expected_component_scores.values()),
+            places=6,
+        )
+        self.assertAlmostEqual(
+            result["raw_bot_probability"],
             max(result["component_scores"].values()),
             places=6,
         )

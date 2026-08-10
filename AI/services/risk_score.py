@@ -1,13 +1,43 @@
-"""CNN 사람 로짓을 관리자용 0~100 위험 지수로 변환한다.
+"""모델 출력을 관리자용 0~100 위험 지수로 변환한다.
 
-보안 판정은 체크포인트의 원래 human threshold를 그대로 사용한다. 이 모듈의 점수는
-관리자가 정상 트래픽 안에서도 상대적인 차이를 볼 수 있도록 로짓을 완만하게 압축한
-표시용 위험 지수이며, 보정된 확률이라고 해석하면 안 된다.
+보안 판정은 체크포인트의 원래 threshold를 그대로 사용한다. 이 모듈의 함수는
+서로 다른 모델 출력을 공통 축으로 표시하기 위한 위험 지수를 만든다. 표시용
+지수이며 보정된 봇 확률로 해석하면 안 된다.
 """
 
 import math
 
 DEFAULT_RISK_TEMPERATURE = 10.0
+DEFAULT_ENSEMBLE_RISK_TEMPERATURE = 3.0
+
+
+def threshold_normalized_risk_score(
+    score: float,
+    threshold: float,
+    temperature: float = DEFAULT_ENSEMBLE_RISK_TEMPERATURE,
+) -> float:
+    """모델의 판정 임계점을 50점으로 고정한 단조 위험 지수(0~1)를 반환한다.
+
+    임계값이 서로 다른 CNN과 BiLSTM 출력을 같은 0~100 축에서 비교하기
+    위한 표시용 점수다. 로짓 거리를 temperature로 완만하게 압축해 매우 작은
+    정상 출력도 관리자 화면에서 구분되게 한다. 원본 순서와 0/1 끝점을
+    유지하며 score == threshold이면 항상 0.5가 된다.
+    """
+    if not math.isfinite(score) or not 0.0 <= score <= 1.0:
+        raise ValueError("모델 점수는 0과 1 사이여야 합니다.")
+    if not math.isfinite(threshold) or not 0.0 < threshold < 1.0:
+        raise ValueError("모델 임계값은 0과 1 사이여야 합니다.")
+    if not math.isfinite(temperature) or temperature <= 0.0:
+        raise ValueError("temperature는 0보다 커야 합니다.")
+
+    if score == 0.0:
+        return 0.0
+    if score == 1.0:
+        return 1.0
+
+    score_logit = probability_to_logit(score)
+    threshold_logit = probability_to_logit(threshold)
+    return stable_sigmoid((score_logit - threshold_logit) / temperature)
 
 
 def stable_sigmoid(value: float) -> float:

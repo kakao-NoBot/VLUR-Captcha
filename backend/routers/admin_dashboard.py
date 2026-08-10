@@ -214,7 +214,8 @@ def get_recent_logs(
             cur.execute(
                 f"""SELECT cv.created_at, ak.site_domain, cv.captcha_type,
                            cv.response_time_ms, cv.bot_score, cv.is_correct,
-                           cv.is_bot, cv.verification_status, cv.failure_reason
+                           cv.is_bot, cv.model_version, cv.verification_status,
+                           cv.failure_reason
                     FROM captcha_verifications cv
                     LEFT JOIN api_keys ak ON ak.api_key_id = cv.api_key_id
                     {where_clause}
@@ -243,7 +244,8 @@ def get_recent_logs(
             "duration": duration,
             "botScore": bot_score_100,
             "answerCorrect": bool(r["is_correct"]),
-            "isBot": r["is_bot"],
+            "isBot": bool(r["is_bot"]) if r["is_bot"] is not None else None,
+            "modelVersion": r["model_version"],
             "result": result,
             "failureReason": r["failure_reason"],
         })

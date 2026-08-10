@@ -12,6 +12,7 @@ if str(AI_ROOT) not in sys.path:
     sys.path.insert(0, str(AI_ROOT))
 
 from ml.ensemble.ensemble_predictor import EnsemblePredictor  # noqa: E402
+from services.risk_score import threshold_normalized_risk_score  # noqa: E402
 
 
 MODEL_DIR = AI_ROOT / "model"
@@ -95,6 +96,7 @@ def classify(record: dict) -> dict:
     """
     component_scores = None
     component_thresholds = None
+    normalized_component_scores = None
     triggered_models = []
     try:
         prediction = _predictor.predict_record(record, method="or_rule", use_jitter_guard=False)
@@ -115,6 +117,14 @@ def classify(record: dict) -> dict:
             if score > component_thresholds[name]
         ]
         raw_bot_probability = max(component_scores.values())
+        normalized_component_scores = {
+            name: threshold_normalized_risk_score(
+                score,
+                component_thresholds[name],
+            )
+            for name, score in component_scores.items()
+        }
+        risk_score = max(normalized_component_scores.values())
         human_probability = 1.0 - raw_bot_probability
         human_logit = _probability_to_logit(human_probability)
         is_bot = bool(prediction["is_bot"])
@@ -127,6 +137,7 @@ def classify(record: dict) -> dict:
         pointer_type = "unknown"
         human_probability = 0.0
         raw_bot_probability = 1.0
+        risk_score = 1.0
         human_logit = -100.0
         is_bot = True
         ambiguous = False
@@ -143,7 +154,9 @@ def classify(record: dict) -> dict:
 
     return {
         "tier": tier,
-        "risk_score": raw_bot_probability,
+        # 구성 모델별 임계점을 50점으로 맞춘 관리자용 위험 지수다.
+        # 보안 판정은 위의 pointer별 OR-rule 결과를 그대로 사용한다.
+        "risk_score": risk_score,
         "raw_bot_probability": raw_bot_probability,
         "human_probability": human_probability,
         "human_logit": human_logit,
@@ -151,11 +164,12 @@ def classify(record: dict) -> dict:
         # OR-rule은 구성 모델마다 임계값이 달라 단일 threshold가 없다.
         "threshold": None,
         "human_threshold": None,
-        "risk_score_threshold": None,
+        "risk_score_threshold": 0.5,
         "risk_score_temperature": None,
         "pointer_type": pointer_type,
         "component_scores": component_scores,
         "component_thresholds": component_thresholds,
+        "normalized_component_scores": normalized_component_scores,
         "triggered_models": triggered_models,
         "ensemble_method": "or_rule",
         "model_version": MODEL_VERSION,
