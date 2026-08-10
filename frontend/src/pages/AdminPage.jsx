@@ -682,12 +682,6 @@ function ScoreDetailModal({ log, onClose }) {
         ))}
       </div>
 
-      {log.modelVersion && (
-        <div style={{ marginBottom: 16, fontSize: 11, color: 'var(--muted)' }}>
-          모델 {log.modelVersion}
-        </div>
-      )}
-
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, fontSize: 12, color: 'var(--muted)' }}>
         <span>{log.time}</span>
         <span>·</span>
