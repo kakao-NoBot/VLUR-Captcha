@@ -2246,8 +2246,8 @@ const usagePlanSummary = useMemo(() => {
                   { key: 'plan', label: '요금제', width: 90 },
                   { key: 'monthlyLimit', label: '월 호출 한도', width: 110 },
                   { key: 'monthlyUsage', label: '이번 달 사용량', width: 200 },
-                  { key: 'status', label: '상태', width: 120 },
                   { key: 'createdAt', label: '등록일', width: 120 },
+                  { key: 'status', label: '상태', width: 120 },
                 ];
                 const totalPages = Math.max(1, Math.ceil(filteredSites.length / INQUIRY_PAGE_SIZE));
                 const pageRows = filteredSites.slice((sitePage - 1) * INQUIRY_PAGE_SIZE, sitePage * INQUIRY_PAGE_SIZE);
@@ -2270,6 +2270,7 @@ const usagePlanSummary = useMemo(() => {
                             <td>{site.plan}</td>
                             <td>{formatNumber(monthlyLimit)}</td>
                             <td><UsageMeter used={monthlyUsage} limit={monthlyLimit} /></td>
+                            <td>{site.createdAt}</td>
                             <td>
                               <StatusDropdown
                                 status={site.status}
@@ -2282,7 +2283,6 @@ const usagePlanSummary = useMemo(() => {
                                 }}
                               />
                             </td>
-                            <td>{site.createdAt}</td>
                           </tr>
                         );
                       })}
