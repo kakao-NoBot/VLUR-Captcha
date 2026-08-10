@@ -407,6 +407,7 @@ export default function BoardPage({ user = null, detailType = null }) {
   const [submitError, setSubmitError] = useState('');
   const [pendingSave, setPendingSave] = useState(null); // 저장 확인 대기 중인 글 데이터
   const [saving, setSaving] = useState(false);
+  const [openFaqIds, setOpenFaqIds] = useState(() => new Set());
 
   // DB에서 게시글 전체 로드 (공지/일반/FAQ/연구)
   const loadNotices = async () => {
@@ -747,13 +748,24 @@ export default function BoardPage({ user = null, detailType = null }) {
         <>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {faqPosts.map(p => (
-              <details key={p.id} className="pg-card board-faq-card">
+              <details
+                key={p.id}
+                className="pg-card board-faq-card"
+                onToggle={(e) => {
+                  setOpenFaqIds(current => {
+                    const next = new Set(current);
+                    if (e.target.open) next.add(p.id);
+                    else next.delete(p.id);
+                    return next;
+                  });
+                }}
+              >
                 <summary className="board-faq-summary">
                   <span className="board-faq-title">
                     <span className="badge-notice badge-faq">FAQ</span>
                     <span>{p.title}</span>
                   </span>
-                  <span className="board-faq-toggle">+</span>
+                  <span className="board-faq-toggle">{openFaqIds.has(p.id) ? '−' : '+'}</span>
                 </summary>
                 <p className="board-faq-content">{p.content}</p>
                 {isAdmin && (
