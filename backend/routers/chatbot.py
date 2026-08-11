@@ -1,12 +1,24 @@
 import os
+import re
 from typing import Literal
 
 import httpx
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from services.chatbot_rate_limit import consume_request
+from services import knowledge_base
 
 router = APIRouter(tags=["chatbot"])
+
+# 검색된 지식을 몇 건까지 프롬프트에 넣을지. 늘릴수록 근거는 많아지지만 컨텍스트를
+# 잡아먹고 답변이 산만해진다.
+RAG_TOP_K = int(os.getenv("RAG_TOP_K", "3"))
+RAG_ENABLED = os.getenv("RAG_ENABLED", "1") == "1"
+
+# 한중일 통합 한자 영역. Qwen 계열은 마무리 인사 맥락에서 "联系我们" 같은 중국어를
+# 섞는 습관이 있는데, 프롬프트로 금지해도 눌리지 않아(토큰 수준의 습관) 생성 결과를
+# 직접 검사한다.
+_CJK = re.compile(r"[一-鿿]")
 
 # 챗봇 LLM 엔드포인트. 기본값은 OpenAI지만, vLLM처럼 OpenAI 호환 API를 제공하는 서버를
 # 띄웠다면 CHATBOT_API_URL/CHATBOT_MODEL만 바꿔서 그쪽으로 보낼 수 있다(요청·응답 스키마가
@@ -72,6 +84,42 @@ def _client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
+def _build_system_prompt(question: str) -> str:
+    """질문과 관련된 지식을 찾아 시스템 프롬프트 뒤에 덧붙인다.
+
+    검색이나 embed 서비스가 실패해도 챗봇 자체는 계속 동작해야 하므로, 예외가 나면
+    검색 결과 없이 기본 프롬프트만 쓴다 — 부가 기능이 본 기능을 끌어내리지 않게.
+    """
+    if not RAG_ENABLED:
+        return SYSTEM_PROMPT
+    try:
+        hits = knowledge_base.search(question, top_k=RAG_TOP_K)
+    except Exception:
+        return SYSTEM_PROMPT
+    if not hits:
+        return SYSTEM_PROMPT
+
+    passages = "\n\n".join(f"### {h['title']}\n{h['content']}" for h in hits)
+    return (
+        f"{SYSTEM_PROMPT}\n\n"
+        "[참고 자료]\n"
+        "아래는 질문과 관련해 검색된 VLUR 서비스 문서입니다. 답변에 활용하되, "
+        "여기 없는 내용을 지어내지 마세요.\n\n"
+        f"{passages}"
+    )
+
+
+def _strip_trailing_cjk(text: str) -> str:
+    """중국어가 섞인 문장을 통째로 덜어낸다.
+
+    글자만 지우면 '언제든지 하세요'처럼 어색한 문장이 남으므로 문장 단위로 버린다.
+    남는 문장이 하나도 없으면 호출자가 안내 문구로 대체한다.
+    """
+    sentences = re.split(r"(?<=[.!?。])\s+|\n+", text)
+    kept = [s for s in sentences if s.strip() and not _CJK.search(s)]
+    return " ".join(kept).strip()
+
+
 @router.post("/chatbot")
 async def chat(body: ChatRequest, request: Request):
     api_key = _resolve_api_key()
@@ -99,23 +147,38 @@ async def chat(body: ChatRequest, request: Request):
             headers={"Retry-After": str(retry_after)},
         )
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    # 마지막 사용자 발화를 검색 질의로 쓴다.
+    last_user = next((m["content"] for m in reversed(history) if m["role"] == "user"), "")
+    system_prompt = _build_system_prompt(last_user)
+
+    async def generate(client: httpx.AsyncClient, temperature: float) -> str:
+        res = await client.post(
+            CHATBOT_API_URL,
+            headers={"Authorization": f"Bearer {api_key}"},
+            json={
+                "model": CHATBOT_MODEL,
+                "messages": [{"role": "system", "content": system_prompt}, *history],
+                "max_tokens": 500,
+                "temperature": temperature,
+            },
+        )
+        res.raise_for_status()
+        return res.json()["choices"][0]["message"]["content"]
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
         try:
-            res = await client.post(
-                CHATBOT_API_URL,
-                headers={"Authorization": f"Bearer {api_key}"},
-                json={
-                    "model": CHATBOT_MODEL,
-                    "messages": [{"role": "system", "content": SYSTEM_PROMPT}, *history],
-                    "max_tokens": 500,
-                    "temperature": 0.3,
-                },
-            )
-            res.raise_for_status()
+            answer = await generate(client, 0.3)
+            # 중국어가 섞이면 한 번만 다시 생성한다. temperature를 올려 다른 표현이
+            # 나오게 하고, 그래도 섞이면 해당 문장을 덜어낸다.
+            if _CJK.search(answer):
+                answer = await generate(client, 0.7)
         except httpx.HTTPStatusError:
             raise HTTPException(status_code=502, detail="챗봇 응답 생성에 실패했습니다. 잠시 후 다시 시도해 주세요.")
         except httpx.HTTPError:
             raise HTTPException(status_code=502, detail="챗봇 서버 연결에 실패했습니다. 잠시 후 다시 시도해 주세요.")
 
-    answer = res.json()["choices"][0]["message"]["content"]
+    if _CJK.search(answer):
+        answer = _strip_trailing_cjk(answer) or (
+            "죄송합니다, 답변을 정리하지 못했습니다. 다시 질문해 주시겠어요?"
+        )
     return {"answer": answer}

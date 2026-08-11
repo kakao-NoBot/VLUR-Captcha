@@ -1,0 +1,60 @@
+# 문장 임베딩 서비스 — 챗봇 RAG 전용. Deployment + ClusterIP Service.
+#
+# 캡차 검증용 ai 서비스와 분리했다. ai는 보안 핵심 경로라 부가 기능인 챗봇의
+# 모델 로딩·메모리 사용이 그쪽에 영향을 주면 안 되기 때문이다.
+#
+# 모델(intfloat/multilingual-e5-small, ~118M)은 이미지에 구워져 있어 PVC가 필요 없고
+# 기동 시 네트워크도 쓰지 않는다. GPU는 vLLM이 점유하므로 CPU로만 돈다.
+apiVersion: v1
+kind: Service
+metadata:
+  name: embed
+  namespace: captcha
+spec:
+  selector:
+    app: embed
+  ports:
+    - name: http
+      port: 8100
+      targetPort: 8100
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: embed
+  namespace: captcha
+spec:
+  replicas: 2              # 무상태 — 파드 하나 죽어도 챗봇 검색이 계속된다
+  selector:
+    matchLabels:
+      app: embed
+  template:
+    metadata:
+      labels:
+        app: embed
+    spec:
+      imagePullSecrets:
+        - name: regcred
+      containers:
+        - name: embed
+          image: kc-sfacspace05.kr-central-2.kcr.dev/team2-repo/vlur-embed:sha-__EMBED_GIT_SHA__
+          ports:
+            - containerPort: 8100
+          resources:
+            requests:
+              cpu: 250m
+              memory: 1Gi
+            limits:
+              cpu: "1"
+              memory: 2Gi
+          startupProbe:
+            httpGet: { path: /health, port: 8100 }
+            periodSeconds: 5
+            failureThreshold: 24     # 모델 로딩 여유 최대 2분
+          readinessProbe:
+            httpGet: { path: /health, port: 8100 }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /health, port: 8100 }
+            periodSeconds: 30
+            failureThreshold: 3

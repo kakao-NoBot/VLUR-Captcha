@@ -597,4 +597,38 @@ def run_migrations() -> None:
                        MODIFY COLUMN model_version VARCHAR(128) NULL"""
                 )
                 print("[migrate] captcha_verifications.model_version VARCHAR(128) 확장")
+
+            # 14) 챗봇 RAG용 지식 청크 — 문서를 잘라 담고 임베딩 벡터를 함께 보관한다.
+            # 벡터를 DB에 저장하는 이유: 백엔드가 뜰 때마다 전체 문서를 다시 임베딩하면
+            # 기동 시간이 문서 수에 비례해 늘어나 배포가 느려진다. 쓰기 시점(문서 등록)에
+            # 한 번 계산해 두면 파드 기동은 SELECT 한 번으로 끝난다.
+            if not _table_exists(cur, "knowledge_chunks"):
+                cur.execute(
+                    """CREATE TABLE knowledge_chunks (
+                           chunk_id      BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                           source_type   ENUM('board','doc') NOT NULL,
+                           -- board면 boards.board_id, doc이면 파일 경로 등 외부 식별자
+                           source_ref    VARCHAR(255)    NOT NULL,
+                           -- 같은 원본이 여러 조각으로 나뉠 때의 순번
+                           chunk_index   INT UNSIGNED    NOT NULL DEFAULT 0,
+                           title         VARCHAR(255)    NULL,
+                           content       TEXT            NOT NULL,
+                           -- 임베딩 모델이 바뀌면 기존 벡터와 비교가 무의미해지므로 함께 기록한다.
+                           embed_model   VARCHAR(128)    NULL,
+                           embed_dim     INT UNSIGNED    NULL,
+                           -- float32 배열을 JSON으로 보관. 청크가 수천 건을 넘어가면
+                           -- 전용 벡터 DB로 옮길 시점이다.
+                           embedding     JSON            NULL,
+                           -- 본문 해시. 내용이 안 바뀌었으면 재임베딩을 건너뛰는 데 쓴다.
+                           content_hash  CHAR(64)        NOT NULL,
+                           is_active     BOOLEAN         NOT NULL DEFAULT TRUE,
+                           created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                           updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                                         ON UPDATE CURRENT_TIMESTAMP,
+                           PRIMARY KEY (chunk_id),
+                           UNIQUE KEY uq_knowledge_source (source_type, source_ref, chunk_index),
+                           KEY idx_knowledge_active (is_active)
+                       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"""
+                )
+                print("[migrate] knowledge_chunks 테이블 생성")
         conn.commit()
