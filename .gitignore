@@ -1,4 +1,7 @@
 .env
+# .env.k8s 처럼 배포용으로 파생시킨 사본도 전부 제외 (예시 파일만 예외)
+.env.*
+!.env.example
 Prompt.md
 node_modules/
 dist/
@@ -10,3 +13,7 @@ backend/static/widget/*
 __pycache__/
 *.pyc
 claude/
+.env*
+# 배포 가이드 문서는 개인 작업용으로만 두고 저장소에는 올리지 않는다.
+# 매니페스트(k8s/manifests/)와 배포 스크립트는 팀이 함께 쓰므로 추적 대상으로 남긴다.
+k8s/*.md
