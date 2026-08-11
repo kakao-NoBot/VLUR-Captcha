@@ -2,11 +2,26 @@
 
 VALID_TIERS = {"verified", "ambiguous", "blocked"}
 
+# 사람이 문제를 읽고 드래그를 끝내기엔 물리적으로 불가능한 응답 속도. AI 행동 판정과
+# 무관하게 봇으로 강제 판정한다 — 모델이 우연히 낮은 점수를 준 경우에 대한 방어선.
+FAST_RESPONSE_MS_THRESHOLD = 200
 
-def resolve_verification(is_correct: bool, behavior_tier: str) -> dict:
-    """정답 여부와 행동 판정을 결합하되, 두 신호의 의미는 분리해서 유지한다."""
+
+def resolve_verification(is_correct: bool, behavior_tier: str, response_time_ms: int | None = None) -> dict:
+    """정답 여부와 행동 판정을 결합하되, 두 신호의 의미는 분리해서 유지한다.
+
+    response_time_ms가 FAST_RESPONSE_MS_THRESHOLD(0.2초) 이하이면 behavior_tier가
+    verified/ambiguous였더라도 blocked로 강제 전환한다."""
     if behavior_tier not in VALID_TIERS:
         raise ValueError(f"지원하지 않는 행동 판정입니다: {behavior_tier!r}")
+
+    forced_by_speed = (
+        response_time_ms is not None
+        and response_time_ms <= FAST_RESPONSE_MS_THRESHOLD
+        and behavior_tier != "blocked"
+    )
+    if forced_by_speed:
+        behavior_tier = "blocked"
 
     is_bot = {
         "verified": False,
@@ -39,7 +54,7 @@ def resolve_verification(is_correct: bool, behavior_tier: str) -> dict:
             "captcha_status": "failed",
             "is_bot": True,
             "verification_status": "failed",
-            "failure_reason": "bot_blocked",
+            "failure_reason": "too_fast" if forced_by_speed else "bot_blocked",
             "issue_token": False,
             "result": result,
         }

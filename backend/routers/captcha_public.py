@@ -247,7 +247,9 @@ def verify_challenge(
                 drop_center = body.drop_center or (drag_trace[-1] if drag_trace else {"x": 0, "y": 0})
                 record = build_record(drag_trace, body.pointer_type, body.waypoints, start_center, drop_center)
                 analysis = classify(record)
-                outcome = resolve_verification(is_correct, analysis["tier"])
+                outcome = resolve_verification(
+                    is_correct, analysis["tier"], response_time_ms=body.response_time_ms,
+                )
                 one_time_token = secrets.token_urlsafe(32) if outcome["issue_token"] else None
                 score_fraction = round(analysis["risk_score"], 5)
 
