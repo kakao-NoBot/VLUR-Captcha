@@ -20,13 +20,52 @@ source "$HERE/versions.env"
 
 EMBED_SHA="${EMBED_SHA:-}"          # 아직 안 만든 환경에서도 스크립트가 돌게
 
-for v in APP_SHA DB_SHA DEMO_SHA; do
+for v in BACKEND_SHA FRONTEND_SHA DB_SHA DEMO_SHA; do
   [[ "${!v}" =~ ^[0-9a-f]{40}$ ]] || { echo "오류: $v 가 40자리 커밋 SHA가 아닙니다 → ${!v}"; exit 1; }
 done
 # embed는 선택 — 값이 있으면 형식만 검사한다.
 if [[ -n "$EMBED_SHA" && ! "$EMBED_SHA" =~ ^[0-9a-f]{40}$ ]]; then
   echo "오류: EMBED_SHA 가 40자리 커밋 SHA가 아닙니다 → $EMBED_SHA"; exit 1
 fi
+
+# 레지스트리에 그 태그가 실제로 있는지 CI 이력으로 확인한다. 없는 태그로 배포하면
+# 파드가 ImagePullBackOff에 걸려 롤아웃이 멈추고, 이미 뜬 옛 파드만 서비스를 이어간다.
+preflight() {
+  local runs
+  runs=$(curl -sL --max-time 15 \
+    "https://api.github.com/repos/kakao-NoBot/AI-Captcha/actions/runs?per_page=60" 2>/dev/null) || return 0
+  BACKEND_SHA="$BACKEND_SHA" FRONTEND_SHA="$FRONTEND_SHA" EMBED_SHA="$EMBED_SHA" \
+  python3 -c "
+import json, os, sys
+try:
+    runs = json.loads(sys.stdin.read())['workflow_runs']
+except Exception:
+    sys.exit(0)   # 조회 실패는 배포를 막지 않는다
+built = {}
+for r in runs:
+    if r.get('conclusion') == 'success':
+        built.setdefault(r['name'], set()).add(r['head_sha'])
+checks = [
+    ('Backend + AI Image Build', os.environ['BACKEND_SHA'], 'BACKEND_SHA'),
+    ('Frontend Image Build',     os.environ['FRONTEND_SHA'], 'FRONTEND_SHA'),
+]
+if os.environ.get('EMBED_SHA'):
+    checks.append(('Embed Image Build', os.environ['EMBED_SHA'], 'EMBED_SHA'))
+bad = []
+for workflow, sha, var in checks:
+    shas = built.get(workflow)
+    if shas is not None and sha not in shas:
+        latest = next((r['head_sha'] for r in runs
+                       if r['name'] == workflow and r.get('conclusion') == 'success'), '?')
+        bad.append(f'  {var}={sha[:12]} — {workflow} 가 이 커밋에서 돌지 않았습니다. 최신 성공: {latest[:12]}')
+if bad:
+    print('배포 중단: 레지스트리에 없는 이미지 태그입니다.', file=sys.stderr)
+    print('\n'.join(bad), file=sys.stderr)
+    print('\\n워크플로우마다 트리거 경로가 달라 한 커밋에서 일부만 빌드됩니다.', file=sys.stderr)
+    print('./deploy.sh --check 로 실제 빌드된 SHA를 확인해 versions.env를 고치세요.', file=sys.stderr)
+    sys.exit(1)
+" <<<"$runs"
+}
 
 current() {  # 지금 클러스터에 떠 있는 이미지 태그
   kubectl -n "$NS" get "$1" "$2" -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null \
@@ -36,9 +75,10 @@ current() {  # 지금 클러스터에 떠 있는 이미지 태그
 if [[ "${1:-}" == "--check" ]]; then
   printf '%-16s %-14s %-14s\n' 워크로드 "현재 배포됨" "versions.env"
   printf '%-16s %-14s %-14s\n' ---------------- -------------- --------------
-  for d in backend ai frontend; do
-    printf '%-16s %-14s %-14s\n' "$d" "$(current deploy "$d" | cut -c1-12)" "$(echo "$APP_SHA" | cut -c1-12)"
+  for d in backend ai; do
+    printf '%-16s %-14s %-14s\n' "$d" "$(current deploy "$d" | cut -c1-12)" "$(echo "$BACKEND_SHA" | cut -c1-12)"
   done
+  printf '%-16s %-14s %-14s\n' frontend "$(current deploy frontend | cut -c1-12)" "$(echo "$FRONTEND_SHA" | cut -c1-12)"
   printf '%-16s %-14s %-14s\n' ticketing-demo "$(current deploy ticketing-demo | cut -c1-12)" "$(echo "$DEMO_SHA" | cut -c1-12)"
   printf '%-16s %-14s %-14s\n' mysql "$(current statefulset mysql | cut -c1-12)" "$(echo "$DB_SHA" | cut -c1-12)"
   printf '%-16s %-14s %-14s\n' embed "$(current deploy embed | cut -c1-12)" "$(echo "${EMBED_SHA:0:12}")"
@@ -62,15 +102,20 @@ for r in json.load(sys.stdin).get('workflow_runs',[]):
   exit 0
 fi
 
+echo "배포 전 이미지 존재 확인..."
+preflight || exit 1
+
 echo "네임스페이스: $NS"
-echo "APP_SHA  = ${APP_SHA:0:12}  (backend, ai, frontend)"
-echo "DEMO_SHA = ${DEMO_SHA:0:12}"
-[[ "${1:-}" == "--with-db" ]] && echo "DB_SHA   = ${DB_SHA:0:12}  ← MySQL 재시작됨"
+echo "BACKEND_SHA  = ${BACKEND_SHA:0:12}  (backend, ai)"
+echo "FRONTEND_SHA = ${FRONTEND_SHA:0:12}"
+echo "DEMO_SHA     = ${DEMO_SHA:0:12}"
+[[ -n "$EMBED_SHA" ]] && echo "EMBED_SHA    = ${EMBED_SHA:0:12}"
+[[ "${1:-}" == "--with-db" ]] && echo "DB_SHA       = ${DB_SHA:0:12}  ← MySQL 재시작됨"
 echo
 
-kubectl -n "$NS" set image deploy/backend        "backend=$REG/vlur-backend:sha-$APP_SHA"
-kubectl -n "$NS" set image deploy/ai             "ai=$REG/vlur-ai:sha-$APP_SHA"
-kubectl -n "$NS" set image deploy/frontend       "frontend=$REG/vlur-frontend:sha-$APP_SHA"
+kubectl -n "$NS" set image deploy/backend        "backend=$REG/vlur-backend:sha-$BACKEND_SHA"
+kubectl -n "$NS" set image deploy/ai             "ai=$REG/vlur-ai:sha-$BACKEND_SHA"
+kubectl -n "$NS" set image deploy/frontend       "frontend=$REG/vlur-frontend:sha-$FRONTEND_SHA"
 kubectl -n "$NS" set image deploy/ticketing-demo "ticketing-demo=$REG/vlur-ticketing-demo:sha-$DEMO_SHA"
 if [[ -n "$EMBED_SHA" ]] && kubectl -n "$NS" get deploy embed >/dev/null 2>&1; then
   kubectl -n "$NS" set image deploy/embed "embed=$REG/vlur-embed:sha-$EMBED_SHA"

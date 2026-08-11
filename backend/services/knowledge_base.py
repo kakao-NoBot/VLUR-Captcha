@@ -20,7 +20,16 @@ import httpx
 from db import get_conn
 
 EMBED_SERVICE_URL = os.getenv("EMBED_SERVICE_URL", "http://embed:8100").rstrip("/")
+
+# 질의용 — 사용자가 챗봇 답변을 기다리는 경로라 짧게 잡는다. 문장 하나는 0.4초면 끝난다.
 EMBED_TIMEOUT_SECONDS = float(os.getenv("EMBED_TIMEOUT_SECONDS", "10.0"))
+# 색인용 — 여러 건을 한 번에 보내는 배치라 훨씬 오래 걸린다. CPU 추론이고 파드가 처음
+# 요청을 받을 때 워밍업 비용까지 붙어서, 질의와 같은 값을 쓰면 타임아웃이 난다.
+EMBED_BATCH_TIMEOUT_SECONDS = float(os.getenv("EMBED_BATCH_TIMEOUT_SECONDS", "180.0"))
+
+# 한 번에 보낼 청크 수. 측정해 보니 400자 32건이 약 6.7초라 배치를 키울수록 실패 시
+# 되돌릴 범위도 커진다. 16건이면 3초 남짓이라 재시도 부담이 작다.
+EMBED_BATCH_SIZE = int(os.getenv("EMBED_BATCH_SIZE", "16"))
 
 DOC_DIR = Path(__file__).resolve().parent.parent / "knowledge"
 
@@ -34,12 +43,14 @@ def _hash(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
-def embed_texts(texts: list[str], kind: str = "passage") -> tuple[list[list[float]], str, int]:
+def embed_texts(
+    texts: list[str], kind: str = "passage", timeout: float | None = None
+) -> tuple[list[list[float]], str, int]:
     """embed 서비스에 위임한다. 실패는 호출자가 처리하도록 예외를 그대로 올린다."""
     res = httpx.post(
         f"{EMBED_SERVICE_URL}/embed",
         json={"texts": texts, "kind": kind},
-        timeout=EMBED_TIMEOUT_SECONDS,
+        timeout=timeout if timeout is not None else EMBED_TIMEOUT_SECONDS,
     )
     res.raise_for_status()
     payload = res.json()
@@ -171,10 +182,15 @@ def sync_knowledge(force: bool = False) -> dict[str, int]:
                 )
                 removed += cur.rowcount
 
-            # embed 서비스 호출은 한 번에 몰아서 — 요청당 왕복 비용을 줄인다.
-            for start in range(0, len(pending), 32):
-                batch = pending[start : start + 32]
-                vectors, model, dim = embed_texts([b["content"] for b in batch], kind="passage")
+            # embed 서비스 호출은 배치로 — 요청당 왕복 비용을 줄이되, 한 번에 너무 많이
+            # 보내면 타임아웃 위험이 커지므로 EMBED_BATCH_SIZE로 나눈다.
+            for start in range(0, len(pending), EMBED_BATCH_SIZE):
+                batch = pending[start : start + EMBED_BATCH_SIZE]
+                vectors, model, dim = embed_texts(
+                    [b["content"] for b in batch],
+                    kind="passage",
+                    timeout=EMBED_BATCH_TIMEOUT_SECONDS,
+                )
                 for item, vector in zip(batch, vectors):
                     cur.execute(
                         """INSERT INTO knowledge_chunks

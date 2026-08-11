@@ -37,7 +37,7 @@ spec:
         - name: regcred
       containers:
         - name: embed
-          image: kc-sfacspace05.kr-central-2.kcr.dev/team2-repo/vlur-embed:sha-__EMBED_GIT_SHA__
+          image: kc-sfacspace05.kr-central-2.kcr.dev/team2-repo/vlur-embed:sha-3551b454be77cf402fd143e1229f042e7bca6828
           ports:
             - containerPort: 8100
           resources:
