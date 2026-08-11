@@ -156,6 +156,7 @@ function getFailureReasonLabel(reason) {
   return {
     wrong_answer: '정답 오류',
     bot_blocked: '봇 행동 감지',
+    too_fast: '초고속 응답(0.2초 이하)',
     ambiguous_behavior: '행동 판정 보류',
   }[reason] || '-';
 }
