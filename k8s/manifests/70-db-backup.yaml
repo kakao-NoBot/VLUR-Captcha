@@ -1,0 +1,62 @@
+# DB 백업 — 매일 03:00 KST(= 18:00 UTC) mysqldump를 백업 PVC에 저장, 7일 지난 파일 삭제.
+# 상시 가동(24/7) 서비스라 정기 중지가 없으므로 백업이 사실상 유일한 복구 수단이다.
+# 블록 스토리지 스냅샷(콘솔에서 스케줄 설정)과 병행할 것 — 가이드 Phase 8 참조.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: db-backup
+  namespace: captcha
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: csi-cinder-sc-retain
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: db-backup
+  namespace: captcha
+spec:
+  schedule: "0 18 * * *"          # UTC 기준 — KST 03:00
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: mysqldump
+              image: mysql:8.0
+              envFrom:
+                - secretRef:
+                    name: db-secret
+              command:
+                - sh
+                - -c
+                - |
+                  set -e
+                  FILE=/backup/captcha_$(date +%F_%H%M).sql
+                  mysqldump -h mysql -uroot -p"$MYSQL_ROOT_PASSWORD" \
+                    --single-transaction --routines --triggers captcha > "$FILE"
+                  gzip "$FILE"
+                  echo "backup done: ${FILE}.gz ($(du -h ${FILE}.gz | cut -f1))"
+                  find /backup -name '*.sql.gz' -mtime +7 -delete
+              volumeMounts:
+                - name: backup
+                  mountPath: /backup
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+          volumes:
+            - name: backup
+              persistentVolumeClaim:
+                claimName: db-backup

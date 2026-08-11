@@ -1,0 +1,41 @@
+# TLS 없이 HTTP로만 노출하는 임시 Ingress — cert-manager webhook이 막혀 인증서를 발급받지
+# 못하는 상황에서, 나머지 배포를 완주하고 서비스 동작을 확인하기 위한 대체용이다.
+#
+# 60-ingress.yaml과 이름이 같은 리소스(captcha)이므로 둘 중 하나만 apply할 것.
+# cert-manager 문제가 풀리면 `kubectl apply -f 60-ingress.yaml`로 덮어쓰면 TLS가 붙는다.
+#
+# 이 상태에서 안 되는 것:
+#   - 소셜 로그인(구글/카카오/네이버) — 콘솔에 등록한 리다이렉트 URI가 https라 불일치
+#   - 결제 콜백 — PG사가 https 주소로만 리다이렉트
+#   - 위젯의 제3자 사이트 임베드 — https 페이지에서 http 리소스는 브라우저가 차단
+# 즉 "서비스가 뜨고 화면이 보이는지"까지는 확인 가능하고, 외부 연동은 TLS 이후로 미룬다.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: captcha
+  namespace: captcha
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 10m
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: vlur.site
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80
+    - host: ticket.vlur.site
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: ticketing-demo
+                port:
+                  number: 80

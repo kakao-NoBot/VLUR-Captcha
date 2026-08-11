@@ -1,0 +1,96 @@
+# MySQL 8.0 — StatefulSet(replica 1) + 헤드리스 Service + 블록 스토리지 PVC.
+# 이미지는 CI(database-image.yml)가 빌드하는 vlur-database — mysql:8.0에 database/init/*.sql을
+# /docker-entrypoint-initdb.d 로 구워 넣은 것이라 초기화 SQL ConfigMap이 따로 필요 없다.
+#
+# 전제(가이드 Phase 5):
+#   - db-secret          : MYSQL_ROOT_PASSWORD / MYSQL_DATABASE / MYSQL_USER / MYSQL_PASSWORD
+#   - csi-cinder-sc-retain  : kubectl get sc 로 확인한 블록 스토리지 StorageClass 이름으로 치환
+#   - sha-c03634e203a001db403fbf14acab0b6a17c2ccfd : 다른 이미지와 달리 이 태그만 따로 관리한다 — database-image.yml은
+#     database/ 폴더가 바뀔 때만 도는 워크플로우라, 그 폴더를 안 고친 기간에는 이미지가 옛
+#     커밋에 머문다. SQL 내용이 그대로면 옛 태그가 곧 최신이므로 억지로 재빌드할 필요가 없다.
+#
+# 초기화 SQL은 "데이터가 없는 볼륨"에서만 실행된다. 이후 스키마 변경은 백엔드가 시작 시
+# migrations.py 로 보정하므로, 이미 데이터가 있는 볼륨에 SQL을 다시 태우려고 PVC를 지우면
+# 데이터가 전부 사라진다 — 절대 금지.
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+  namespace: captcha
+spec:
+  clusterIP: None          # 헤드리스 — StatefulSet 파드 DNS(mysql-0.mysql)와 서비스명 접속 둘 다 지원
+  selector:
+    app: mysql
+  ports:
+    - name: mysql
+      port: 3306
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mysql
+  namespace: captcha
+spec:
+  serviceName: mysql
+  replicas: 1              # 단일 프라이머리. 복제 구성이 아니므로 늘리면 안 된다.
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      imagePullSecrets:
+        - name: regcred
+      containers:
+        - name: mysql
+          image: kc-sfacspace05.kr-central-2.kcr.dev/team2-repo/vlur-database:sha-c03634e203a001db403fbf14acab0b6a17c2ccfd
+          args:
+            - --character-set-server=utf8mb4
+            - --collation-server=utf8mb4_unicode_ci
+            - --skip-character-set-client-handshake
+          envFrom:
+            - secretRef:
+                name: db-secret
+          ports:
+            - containerPort: 3306
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/mysql
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: "1"
+              memory: 2Gi
+          # 최초 기동은 초기화 SQL 실행 때문에 오래 걸릴 수 있다 — startupProbe로 여유를 준다.
+          startupProbe:
+            exec:
+              command: ["sh", "-c", "mysqladmin ping -h127.0.0.1 -uroot -p\"$MYSQL_ROOT_PASSWORD\""]
+            periodSeconds: 5
+            failureThreshold: 60      # 최대 5분 대기
+          readinessProbe:
+            exec:
+              command: ["sh", "-c", "mysqladmin ping -h127.0.0.1 -uroot -p\"$MYSQL_ROOT_PASSWORD\""]
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["sh", "-c", "mysqladmin ping -h127.0.0.1 -uroot -p\"$MYSQL_ROOT_PASSWORD\""]
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: csi-cinder-sc-retain
+        resources:
+          requests:
+            # 실습 규모에는 20Gi로 충분하고, 쿼터(50GB 추정)에 백업 10Gi와 여유를 남긴다.
+            # StorageClass가 allowVolumeExpansion=true라 부족해지면 나중에 늘릴 수 있으므로
+            # 처음부터 크게 잡을 이유가 없다.
+            storage: 20Gi

@@ -1,0 +1,64 @@
+# 프론트엔드 — nginx가 정적 파일 서빙 + /api·/static 리버스 프록시까지 담당.
+#
+# 라우팅을 Ingress가 아니라 이 nginx가 하는 이유: nginx/default.conf.template의 규칙이
+# 경로별로 다르게 동작하기 때문이다.
+#   - /api/v1/captcha/*  → 백엔드로 "경로 그대로" 전달 (공개 캡차 API, prefix 유지)
+#   - /api/*             → 백엔드 루트로 "prefix를 떼고" 전달 (내부 API)
+#   - /static/*          → 백엔드 정적 파일(캡차 이미지·위젯 JS)
+# 이 재작성 규칙을 Ingress 애노테이션으로 복제하면 이중 관리가 되므로, Ingress는
+# vlur.site 전체를 frontend Service로만 보내고 세부 라우팅은 여기에 맡긴다.
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: captcha
+spec:
+  selector:
+    app: frontend
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: captcha
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      imagePullSecrets:
+        - name: regcred
+      containers:
+        - name: frontend
+          image: kc-sfacspace05.kr-central-2.kcr.dev/team2-repo/vlur-frontend:sha-209f97dc3e912bd6683c4c83f4fca1e49ce50e86
+          env:
+            # 이미지 기본값과 같지만, 프록시 대상이 k8s Service 이름임을 명시해 둔다.
+            - name: BACKEND_HOST
+              value: backend
+            - name: BACKEND_PORT
+              value: "8000"
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          readinessProbe:
+            httpGet: { path: /healthz, port: 80 }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /healthz, port: 80 }
+            periodSeconds: 20
+            failureThreshold: 3

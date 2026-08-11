@@ -1,0 +1,61 @@
+# AI 추론 서버(드래그 궤적 봇 판별 CNN+BiLSTM 앙상블) — Deployment + ClusterIP Service.
+# 모델(ensemble_checkpoint.pt, 2.3MB)은 이미지에 구워져 있다. 백엔드는 app-config의
+# AI_SERVICE_URL(http://ai:5000)로 호출한다.
+#
+# 클러스터에 GPU 노드 풀(team2-gpu)이 있지만 여기에 toleration/nvidia.com/gpu 요청을 넣지
+# 않는다 — 서빙 경로의 추론이 torch가 아니라 NumPy 구현(ml/ensemble/*_np_forward.py)이라
+# GPU에 올려도 가속되지 않기 때문이다. torch는 체크포인트 로드에만 쓰이고 즉시 numpy로
+# 변환된다. 부하가 늘면 GPU가 아니라 replicas를 늘려 대응할 것 — 가이드 Phase 10 참조.
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai
+  namespace: captcha
+spec:
+  selector:
+    app: ai
+  ports:
+    - name: http
+      port: 5000
+      targetPort: 5000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai
+  namespace: captcha
+spec:
+  replicas: 2              # 무상태(모델 추론만) — 파드 하나 죽어도 캡차 검증 무중단
+  selector:
+    matchLabels:
+      app: ai
+  template:
+    metadata:
+      labels:
+        app: ai
+    spec:
+      imagePullSecrets:
+        - name: regcred
+      containers:
+        - name: ai
+          image: kc-sfacspace05.kr-central-2.kcr.dev/team2-repo/vlur-ai:sha-209f97dc3e912bd6683c4c83f4fca1e49ce50e86
+          ports:
+            - containerPort: 5000
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+          startupProbe:
+            httpGet: { path: /health, port: 5000 }
+            periodSeconds: 5
+            failureThreshold: 24     # torch 로드 여유 최대 2분
+          readinessProbe:
+            httpGet: { path: /health, port: 5000 }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /health, port: 5000 }
+            periodSeconds: 20
+            failureThreshold: 3
