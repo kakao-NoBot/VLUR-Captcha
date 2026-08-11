@@ -8,8 +8,28 @@ from services.chatbot_rate_limit import consume_request
 
 router = APIRouter(tags=["chatbot"])
 
-OPENAI_API_URL = "https://api.openai.com/v1/chat/completions"
-OPENAI_MODEL = "gpt-4o-mini"
+# 챗봇 LLM 엔드포인트. 기본값은 OpenAI지만, vLLM처럼 OpenAI 호환 API를 제공하는 서버를
+# 띄웠다면 CHATBOT_API_URL/CHATBOT_MODEL만 바꿔서 그쪽으로 보낼 수 있다(요청·응답 스키마가
+# 같아서 아래 호출 코드는 그대로 쓴다).
+CHATBOT_API_URL = os.getenv("CHATBOT_API_URL", "https://api.openai.com/v1/chat/completions")
+CHATBOT_MODEL = os.getenv("CHATBOT_MODEL", "gpt-4o-mini")
+
+# 자체 호스팅 서버는 클러스터 내부에서만 접근 가능해 인증이 따로 없다 — 그래도 OpenAI
+# 호환 API가 Authorization 헤더를 요구하므로 자리표시자를 보낸다.
+CHATBOT_API_KEY_PLACEHOLDER = "not-required-for-self-hosted"
+
+
+def _is_self_hosted() -> bool:
+    return not CHATBOT_API_URL.startswith("https://api.openai.com/")
+
+
+def _resolve_api_key() -> str | None:
+    """자체 호스팅으로 전환한 뒤에도 OPENAI_API_KEY는 롤백용으로 .env에 남겨두므로,
+    실제 OpenAI로 보낼 때만 그 키를 쓴다 — 내부 LLM 서버에 외부 키가 흘러가지 않게."""
+    if _is_self_hosted():
+        return CHATBOT_API_KEY_PLACEHOLDER
+    return os.getenv("OPENAI_API_KEY")
+
 
 SYSTEM_PROMPT = """당신은 'VLUR CAPTCHA' 서비스의 고객 지원 챗봇입니다.
 한국어로 친절하고 간결하게(3~5문장 이내) 답변하세요.
@@ -54,7 +74,7 @@ def _client_ip(request: Request) -> str:
 
 @router.post("/chatbot")
 async def chat(body: ChatRequest, request: Request):
-    api_key = os.getenv("OPENAI_API_KEY")
+    api_key = _resolve_api_key()
     if not api_key:
         raise HTTPException(status_code=503, detail="챗봇 서비스가 아직 설정되지 않았습니다.")
 
@@ -82,10 +102,10 @@ async def chat(body: ChatRequest, request: Request):
     async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             res = await client.post(
-                OPENAI_API_URL,
+                CHATBOT_API_URL,
                 headers={"Authorization": f"Bearer {api_key}"},
                 json={
-                    "model": OPENAI_MODEL,
+                    "model": CHATBOT_MODEL,
                     "messages": [{"role": "system", "content": SYSTEM_PROMPT}, *history],
                     "max_tokens": 500,
                     "temperature": 0.3,

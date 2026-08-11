@@ -23,7 +23,9 @@ spec:
   storageClassName: csi-cinder-sc-retain
   resources:
     requests:
-      storage: 50Gi
+      # 3B 모델 가중치가 ~6GB. 블록 스토리지 쿼터를 아끼려고 20Gi로 잡았다
+      # (mysql 20 + 백업 10 + 여기 20 = 50Gi).
+      storage: 20Gi
 ---
 apiVersion: v1
 kind: Service
@@ -66,13 +68,16 @@ spec:
             - --model=$(MODEL_ID)
             - --served-model-name=vlur-chatbot   # 요청에 쓰는 이름을 모델 경로와 분리
             - --max-model-len=4096               # 시스템 프롬프트 + 최근 10개 메시지면 충분
-            - --gpu-memory-utilization=0.85
-            - --dtype=auto
+            - --gpu-memory-utilization=0.90
+            # T4는 Turing 세대라 bfloat16 연산 유닛이 없다. Qwen2.5의 기본 dtype이
+            # bfloat16이므로 auto로 두면 실패하거나 극도로 느려진다 — float16을 명시한다.
+            - --dtype=half
           env:
             - name: MODEL_ID
-              # 한국어 응대 품질과 VRAM 사이의 절충. GPU VRAM이 부족하면 가이드 Phase 11-2의
-              # 대안 모델로 교체한다.
-              value: Qwen/Qwen2.5-7B-Instruct
+              # GPU가 Tesla T4(VRAM 15GB) 한 장이라 7B는 들어가지 않는다(fp16 가중치만 ~14.5GB).
+              # 3B는 가중치 ~6GB + KV 캐시 ~7GB로 여유가 있다. 이 챗봇은 고정 시스템 프롬프트로
+              # 서비스 FAQ만 답하는 용도라 3B로 충분하다.
+              value: Qwen/Qwen2.5-3B-Instruct
             - name: HF_HOME
               value: /model-cache
           ports:
