@@ -625,6 +625,50 @@ function AdminModalShell({ eyebrow, title, onClose, children, footer, labelledBy
   );
 }
 
+function ConfirmDialog({ title, message, confirmLabel = '확인', cancelLabel = '취소', busy, onConfirm, onCancel }) {
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape' && !busy) onCancel();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [busy, onCancel]);
+
+  return (
+    <div
+      className="terms-modal-backdrop board-delete-backdrop"
+      role="presentation"
+      onClick={(event) => {
+        if (event.target === event.currentTarget && !busy) onCancel();
+      }}
+    >
+      <section
+        className="terms-modal board-delete-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="admin-confirm-title"
+        aria-describedby="admin-confirm-description"
+      >
+        <div className="board-delete-content">
+          <div className="board-delete-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5" />
+            </svg>
+          </div>
+          <h2 id="admin-confirm-title" style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>{title}</h2>
+          <p id="admin-confirm-description" style={{ fontSize: 13 }}>{message}</p>
+        </div>
+        <div className="board-delete-actions">
+          <button type="button" className="pg-btn" onClick={onCancel} disabled={busy}>{cancelLabel}</button>
+          <button type="button" className="pg-btn danger" onClick={onConfirm} disabled={busy}>
+            {busy ? '삭제 중...' : confirmLabel}
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function ScoreDetailModal({ log, onClose }) {
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -696,8 +740,25 @@ function ScoreDetailModal({ log, onClose }) {
   );
 }
 
-function InquiryDetailModal({ detail, onClose, onStatusChange }) {
+function InquiryDetailModal({ detail, onClose, onStatusChange, onDelete }) {
   const [statusMenuOpen, setStatusMenuOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const requestDelete = () => {
+    if (deleting) return;
+    setConfirmOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    setConfirmOpen(false);
+    setDeleting(true);
+    try {
+      await onDelete();
+    } catch {
+      setDeleting(false);
+    }
+  };
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -733,12 +794,29 @@ function InquiryDetailModal({ detail, onClose, onStatusChange }) {
     ];
 
   return (
+    <>
     <AdminModalShell
       eyebrow="INQUIRY DETAIL"
       title={title}
       onClose={onClose}
       labelledBy="admin-inquiry-detail-title"
-      footer={<button type="button" className="btn btn-primary" onClick={onClose} style={{ fontSize: 14, padding: '9px 22px' }}>확인</button>}
+      footer={(
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+          <button
+            type="button"
+            className="btn"
+            onClick={requestDelete}
+            disabled={deleting}
+            style={{
+              fontSize: 14, padding: '9px 22px', borderRadius: 12,
+              border: '1.5px solid #e0554a', background: 'transparent', color: '#e0554a',
+              cursor: deleting ? 'default' : 'pointer', opacity: deleting ? 0.6 : 1,
+              boxSizing: 'border-box',
+            }}
+          >{deleting ? '삭제 중...' : '삭제'}</button>
+          <button type="button" className="btn btn-primary" onClick={onClose} style={{ fontSize: 14, padding: '9px 22px' }}>확인</button>
+        </div>
+      )}
     >
       <dl style={{ display: 'flex', flexDirection: 'column', gap: 0, marginBottom: 20 }}>
         {rows.map(([label, value]) => (
@@ -786,6 +864,18 @@ function InquiryDetailModal({ detail, onClose, onStatusChange }) {
         </p>
       </div>
     </AdminModalShell>
+    {confirmOpen && (
+      <ConfirmDialog
+        title="문의를 삭제할까요?"
+        message="삭제한 문의는 다시 복구할 수 없습니다."
+        confirmLabel="삭제"
+        cancelLabel="취소"
+        busy={deleting}
+        onConfirm={confirmDelete}
+        onCancel={() => setConfirmOpen(false)}
+      />
+    )}
+    </>
   );
 }
 
@@ -1403,6 +1493,28 @@ const usagePlanSummary = useMemo(() => {
         inquiry.id === key ? { ...inquiry, status: previousStatus ?? inquiry.status } : inquiry
       )));
       setToast({ type: 'error', message: '문의 상태 변경에 실패했습니다.' });
+    }
+  };
+
+  const deleteInquiry = async (type, key) => {
+    const setInquiries = type === 'general' ? setGeneralInquiries : setBusinessInquiries;
+
+    let removed = null;
+    setInquiries((inquiries) => {
+      removed = inquiries.find((inquiry) => inquiry.id === key) || null;
+      return inquiries.filter((inquiry) => inquiry.id !== key);
+    });
+
+    try {
+      await api.delete(`/admin/inquiries/${key}`);
+      setToast({ type: 'success', message: '문의가 삭제되었습니다.' });
+    } catch (err) {
+      // 실패하면 목록에 되돌려놓는다
+      if (removed) {
+        setInquiries((inquiries) => [...inquiries, removed]);
+      }
+      setToast({ type: 'error', message: '문의 삭제에 실패했습니다.' });
+      throw err;
     }
   };
 
@@ -2455,6 +2567,11 @@ const usagePlanSummary = useMemo(() => {
             setSelectedInquiryDetail((prev) => (
               prev ? { ...prev, inquiry: { ...prev.inquiry, status: option } } : prev
             ));
+          }}
+          onDelete={async () => {
+            const sourceType = selectedInquiryDetail.inquiry.sourceType || selectedInquiryDetail.type;
+            await deleteInquiry(sourceType, selectedInquiryDetail.inquiry.id);
+            setSelectedInquiryDetail(null);
           }}
         />
       )}
