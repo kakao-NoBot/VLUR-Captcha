@@ -18,9 +18,15 @@ export PATH="$HOME/bin:$PATH"
 
 source "$HERE/versions.env"
 
+EMBED_SHA="${EMBED_SHA:-}"          # 아직 안 만든 환경에서도 스크립트가 돌게
+
 for v in APP_SHA DB_SHA DEMO_SHA; do
   [[ "${!v}" =~ ^[0-9a-f]{40}$ ]] || { echo "오류: $v 가 40자리 커밋 SHA가 아닙니다 → ${!v}"; exit 1; }
 done
+# embed는 선택 — 값이 있으면 형식만 검사한다.
+if [[ -n "$EMBED_SHA" && ! "$EMBED_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+  echo "오류: EMBED_SHA 가 40자리 커밋 SHA가 아닙니다 → $EMBED_SHA"; exit 1
+fi
 
 current() {  # 지금 클러스터에 떠 있는 이미지 태그
   kubectl -n "$NS" get "$1" "$2" -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null \
@@ -35,6 +41,7 @@ if [[ "${1:-}" == "--check" ]]; then
   done
   printf '%-16s %-14s %-14s\n' ticketing-demo "$(current deploy ticketing-demo | cut -c1-12)" "$(echo "$DEMO_SHA" | cut -c1-12)"
   printf '%-16s %-14s %-14s\n' mysql "$(current statefulset mysql | cut -c1-12)" "$(echo "$DB_SHA" | cut -c1-12)"
+  printf '%-16s %-14s %-14s\n' embed "$(current deploy embed | cut -c1-12)" "$(echo "${EMBED_SHA:0:12}")"
 
   echo
   echo "CI가 빌드한 최신 커밋:"
@@ -65,6 +72,9 @@ kubectl -n "$NS" set image deploy/backend        "backend=$REG/vlur-backend:sha-
 kubectl -n "$NS" set image deploy/ai             "ai=$REG/vlur-ai:sha-$APP_SHA"
 kubectl -n "$NS" set image deploy/frontend       "frontend=$REG/vlur-frontend:sha-$APP_SHA"
 kubectl -n "$NS" set image deploy/ticketing-demo "ticketing-demo=$REG/vlur-ticketing-demo:sha-$DEMO_SHA"
+if [[ -n "$EMBED_SHA" ]] && kubectl -n "$NS" get deploy embed >/dev/null 2>&1; then
+  kubectl -n "$NS" set image deploy/embed "embed=$REG/vlur-embed:sha-$EMBED_SHA"
+fi
 
 if [[ "${1:-}" == "--with-db" ]]; then
   read -r -p "MySQL을 재시작합니다. DB가 잠시 끊깁니다. 계속할까요? (yes 입력) " ans
@@ -76,6 +86,9 @@ echo
 for d in backend ai frontend ticketing-demo; do
   kubectl -n "$NS" rollout status "deploy/$d" --timeout=180s
 done
+if [[ -n "$EMBED_SHA" ]] && kubectl -n "$NS" get deploy embed >/dev/null 2>&1; then
+  kubectl -n "$NS" rollout status deploy/embed --timeout=180s
+fi
 
 echo
 echo "완료. 문제가 있으면 되돌리세요:"
