@@ -142,6 +142,20 @@ def list_inquiries(admin: dict = Depends(get_current_admin)):
     return {"inquiries": rows}
 
 
+@router.delete("/admin/inquiries/{inquiry_id}")
+def delete_inquiry(inquiry_id: int, admin: dict = Depends(get_current_admin)):
+    """관리자 전용 — 문의 영구 삭제."""
+    conn = get_conn()
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT inquiry_id FROM contact_inquiries WHERE inquiry_id = %s", (inquiry_id,))
+            if not cur.fetchone():
+                raise HTTPException(status_code=404, detail="해당 문의를 찾을 수 없습니다.")
+            cur.execute("DELETE FROM contact_inquiries WHERE inquiry_id = %s", (inquiry_id,))
+        conn.commit()
+    return {"message": "문의가 삭제되었습니다.", "inquiry_id": inquiry_id}
+
+
 @router.patch("/admin/inquiries/{inquiry_id}/status")
 async def update_inquiry_status(
     inquiry_id: int,
