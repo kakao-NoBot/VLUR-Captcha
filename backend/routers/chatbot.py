@@ -15,10 +15,14 @@ router = APIRouter(tags=["chatbot"])
 RAG_TOP_K = int(os.getenv("RAG_TOP_K", "3"))
 RAG_ENABLED = os.getenv("RAG_ENABLED", "1") == "1"
 
-# 한중일 통합 한자 영역. Qwen 계열은 마무리 인사 맥락에서 "联系我们" 같은 중국어를
-# 섞는 습관이 있는데, 프롬프트로 금지해도 눌리지 않아(토큰 수준의 습관) 생성 결과를
-# 직접 검사한다.
-_CJK = re.compile(r"[一-鿿]")
+# Qwen 계열은 "联系我们"(중국어), "کیف"(아랍어)처럼 맥락과 무관한 다른 문자 체계를
+# 섞는 습관이 있다 — "안녕" 같은 짧고 일반적인 인사에서 특히 잘 나온다. 프롬프트로
+# 금지해도 눌리지 않는 토큰 수준의 습관이라 생성 결과를 직접 검사한다. 처음엔 한자만
+# 걸렀는데 아랍어가 그대로 새는 걸 확인해서, 한국어 응답에 나올 일이 없는 문자 체계를
+# 폭넓게 잡는다(중국어/일본어 가나/아랍어/히브리어/키릴/태국어/데바나가리).
+_FOREIGN_SCRIPT = re.compile(
+    r"[一-鿿぀-ヿ؀-ۿ֐-׿Ѐ-ӿ฀-๿ऀ-ॿ]"
+)
 
 # 챗봇 LLM 엔드포인트. 기본값은 OpenAI지만, vLLM처럼 OpenAI 호환 API를 제공하는 서버를
 # 띄웠다면 CHATBOT_API_URL/CHATBOT_MODEL만 바꿔서 그쪽으로 보낼 수 있다(요청·응답 스키마가
@@ -127,14 +131,14 @@ def _build_system_prompt(history: list[dict]) -> str:
     )
 
 
-def _strip_trailing_cjk(text: str) -> str:
-    """중국어가 섞인 문장을 통째로 덜어낸다.
+def _strip_trailing_foreign(text: str) -> str:
+    """엉뚱한 문자 체계가 섞인 문장을 통째로 덜어낸다.
 
     글자만 지우면 '언제든지 하세요'처럼 어색한 문장이 남으므로 문장 단위로 버린다.
     남는 문장이 하나도 없으면 호출자가 안내 문구로 대체한다.
     """
     sentences = re.split(r"(?<=[.!?。])\s+|\n+", text)
-    kept = [s for s in sentences if s.strip() and not _CJK.search(s)]
+    kept = [s for s in sentences if s.strip() and not _FOREIGN_SCRIPT.search(s)]
     return " ".join(kept).strip()
 
 
@@ -184,17 +188,17 @@ async def chat(body: ChatRequest, request: Request):
     async with httpx.AsyncClient(timeout=60.0) as client:
         try:
             answer = await generate(client, 0.3)
-            # 중국어가 섞이면 한 번만 다시 생성한다. temperature를 올려 다른 표현이
-            # 나오게 하고, 그래도 섞이면 해당 문장을 덜어낸다.
-            if _CJK.search(answer):
+            # 엉뚱한 문자 체계가 섞이면 한 번만 다시 생성한다. temperature를 올려 다른
+            # 표현이 나오게 하고, 그래도 섞이면 해당 문장을 덜어낸다.
+            if _FOREIGN_SCRIPT.search(answer):
                 answer = await generate(client, 0.7)
         except httpx.HTTPStatusError:
             raise HTTPException(status_code=502, detail="챗봇 응답 생성에 실패했습니다. 잠시 후 다시 시도해 주세요.")
         except httpx.HTTPError:
             raise HTTPException(status_code=502, detail="챗봇 서버 연결에 실패했습니다. 잠시 후 다시 시도해 주세요.")
 
-    if _CJK.search(answer):
-        answer = _strip_trailing_cjk(answer) or (
+    if _FOREIGN_SCRIPT.search(answer):
+        answer = _strip_trailing_foreign(answer) or (
             "죄송합니다, 답변을 정리하지 못했습니다. 다시 질문해 주시겠어요?"
         )
     return {"answer": answer}
