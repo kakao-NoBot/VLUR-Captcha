@@ -48,9 +48,9 @@ SYSTEM_PROMPT = """당신은 'VLUR CAPTCHA' 서비스의 고객 지원 챗봇입
 
 [서비스 정보]
 - VLUR CAPTCHA는 AI 기반 CAPTCHA 서비스입니다. 실측 지표는 분류 정확도 97.5%(자체 데이터셋 검증), 오탐률 0.3% 이하, 검증 처리량 초당 25~40건입니다.
-- CAPTCHA 유형: 유형 1(드래그-투-타깃), 유형 2(경유 지점을 지나 정답 보기를 드래그). 둘 다 드래그 궤적 검증으로 스크립트 봇을 탐지하며, 유형 2 실패 시 유형 1로 자동 폴백됩니다.
+- CAPTCHA 유형: 두 유형 모두 경유 지점을 지나 정답 보기를 드래그하는 방식이며, 문제를 아스키아트로 보여주는 방식만 다릅니다. 유형 1은 한글 지시문을 아스키아트로, 유형 2는 이미지를 아스키아트로 표현합니다. 둘 다 드래그 궤적 검증으로 스크립트 봇을 탐지하며, 유형 1 실패 시 유형 2로 자동 전환됩니다.
 - 요금제: Basic(무료, 월 10만 호출) / Pro(₩89,000/월, 월 50만 호출) / Enterprise(문의, 무제한)
-- 결제: KakaoPay 단건결제 또는 토스페이먼츠 결제위젯 v2. 월 단위 구독이며 언제든 해지 가능합니다.
+- 결제: 카카오페이 단건결제 또는 토스페이먼츠 결제위젯 v2. 월 단위 구독이며 언제든 해지 가능합니다.
 - API Key 발급: 이용 신청 페이지에서 요금제 선택 후 신청하면 즉시 발급. 마이페이지 > API Key 관리에서 확인 가능.
 - 토큰: 검증 성공 시 발급되는 one-time token의 기본 유효 시간은 180초(3분). 재사용 불가, 만료 시 CAPTCHA 재시도 필요.
 - 검증 처리량: 레코드 단위 초당 25~40건 (궤적 분석 포함).
@@ -84,16 +84,33 @@ def _client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
-def _build_system_prompt(question: str) -> str:
-    """질문과 관련된 지식을 찾아 시스템 프롬프트 뒤에 덧붙인다.
+RAG_CONTEXT_TURNS = int(os.getenv("RAG_CONTEXT_TURNS", "3"))
+
+
+def _build_search_query(history: list[dict]) -> str:
+    """검색 질의를 마지막 한 마디가 아니라 최근 대화 맥락으로 구성한다.
+
+    "더 자세히", "그럼 그건?"처럼 지시어만 있는 짧은 후속 질문은 그 문장 하나만으로는
+    임베딩이 어떤 주제에도 잘 안 붙는다(min_score를 못 넘겨 검색 결과가 0건이 되고, 그러면
+    LLM이 근거 없이 통째로 답변을 거절해버리는 문제로 이어졌다). 직전 몇 턴을 이어 붙이면
+    "CNN 모델 설명 → 더 자세히" 같은 흐름에서 주제가 함께 실려 검색이 훨씬 잘 맞는다."""
+    recent = history[-RAG_CONTEXT_TURNS:]
+    return "\n".join(m["content"] for m in recent).strip()
+
+
+def _build_system_prompt(history: list[dict]) -> str:
+    """최근 대화 맥락과 관련된 지식을 찾아 시스템 프롬프트 뒤에 덧붙인다.
 
     검색이나 embed 서비스가 실패해도 챗봇 자체는 계속 동작해야 하므로, 예외가 나면
     검색 결과 없이 기본 프롬프트만 쓴다 — 부가 기능이 본 기능을 끌어내리지 않게.
     """
     if not RAG_ENABLED:
         return SYSTEM_PROMPT
+    query = _build_search_query(history)
+    if not query:
+        return SYSTEM_PROMPT
     try:
-        hits = knowledge_base.search(question, top_k=RAG_TOP_K)
+        hits = knowledge_base.search(query, top_k=RAG_TOP_K)
     except Exception:
         return SYSTEM_PROMPT
     if not hits:
@@ -147,9 +164,7 @@ async def chat(body: ChatRequest, request: Request):
             headers={"Retry-After": str(retry_after)},
         )
 
-    # 마지막 사용자 발화를 검색 질의로 쓴다.
-    last_user = next((m["content"] for m in reversed(history) if m["role"] == "user"), "")
-    system_prompt = _build_system_prompt(last_user)
+    system_prompt = _build_system_prompt(history)
 
     async def generate(client: httpx.AsyncClient, temperature: float) -> str:
         res = await client.post(

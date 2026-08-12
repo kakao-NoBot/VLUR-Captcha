@@ -45,6 +45,8 @@ services:
         condition: service_healthy
       ai:
         condition: service_healthy
+      embed:
+        condition: service_started
     restart: always
 
   ai:
@@ -56,6 +58,14 @@ services:
       - MODEL_VERSION=${AI_MODEL_VERSION:-cnn-bilstm-ensemble-v1}
     expose:
       - "5000"
+    restart: always
+
+  embed:
+    build:
+      context: ./embed
+    container_name: captcha-embed
+    expose:
+      - "8100"
     restart: always
 
   frontend:

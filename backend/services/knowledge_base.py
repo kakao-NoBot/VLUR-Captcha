@@ -216,7 +216,10 @@ def sync_knowledge(force: bool = False) -> dict[str, int]:
     return {"added": added, "updated": updated, "skipped": skipped, "deactivated": removed}
 
 
-def search(question: str, top_k: int = 3, min_score: float = 0.75) -> list[dict[str, Any]]:
+RAG_MIN_SCORE = float(os.getenv("RAG_MIN_SCORE", "0.6"))
+
+
+def search(question: str, top_k: int = 3, min_score: float = RAG_MIN_SCORE) -> list[dict[str, Any]]:
     """질문과 가장 가까운 청크를 고른다.
 
     임베딩이 정규화되어 있어 코사인 유사도가 내적과 같으므로 곱셈-합만으로 끝난다.

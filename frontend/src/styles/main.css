@@ -4033,6 +4033,13 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
 }
 .warn-box strong { display: block; font-size: 15px; margin-bottom: 8px; }
 
+/* 챗봇 추천 질문 패널 — 얇고 은은한 스크롤바 */
+.chatbot-suggest-scroll { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+.chatbot-suggest-scroll::-webkit-scrollbar { width: 6px; }
+.chatbot-suggest-scroll::-webkit-scrollbar-track { background: transparent; }
+.chatbot-suggest-scroll::-webkit-scrollbar-thumb { background: var(--line); border-radius: 999px; }
+.chatbot-suggest-scroll::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
 /* 헤더가 모바일 메뉴로 전환되는 폭에서는 마이페이지도 한 열 레이아웃으로 전환 */
 @media (max-width: 940px) {
   .mp-wrap { grid-template-columns: 1fr; }
