@@ -175,7 +175,7 @@ function FaqSheet({ onSelect, onClose, triggerRef }) {
           참고 이미지처럼 항목 수를 딱 맞추려 하지 않고 자연스럽게 넘치면 스크롤로 본다. */}
       <div
         className="chatbot-suggest-scroll"
-        style={{ maxHeight: 155, overflowY: 'auto', padding: '10px' }}
+        style={{ maxHeight: 110, overflowY: 'auto', padding: '10px' }}
       >
         {FAQ_TREE.map((item) => (
           <button
