@@ -16,7 +16,7 @@ const FAQ_TREE = [
   },
   {
     q: 'CAPTCHA 유형은 몇 가지인가요?',
-    a: '현재 두 가지 유형이 있습니다.\n• 유형 1 — 드래그-투-타깃\n• 유형 2 — 경유 지점을 지나 정답 보기 드래그\n유형 2 실패 시 유형 1로 자동 폴백됩니다.',
+    a: '현재 두 가지 유형이 있습니다. 둘 다 경유 지점을 지나 정답 보기를 드래그하는 방식이고, 문제를 아스키아트로 보여주는 방식이 다릅니다.\n• 유형 1 — 한글 지시문을 아스키아트로 표현\n• 유형 2 — 이미지를 아스키아트로 표현\n유형 1 실패 시 유형 2로 자동 전환됩니다.',
     follow: ['API Key 발급은 어떻게 하나요?', '요금제 종류가 궁금해요'],
     keywords: ['유형', '캡차 종류', 'captcha 유형', '종류', '타입'],
   },
@@ -28,7 +28,7 @@ const FAQ_TREE = [
   },
   {
     q: '결제는 어떻게 하나요?',
-    a: 'KakaoPay 단건결제 또는 토스페이먼츠 결제위젯 v2를 지원합니다. 월 단위 구독이며 언제든지 해지 가능합니다.',
+    a: '카카오페이 단건결제 또는 토스페이먼츠 결제위젯 v2를 지원합니다. 월 단위 구독이며 언제든지 해지 가능합니다.',
     follow: ['요금제 종류가 궁금해요', '토큰 유효 시간이 얼마인가요?'],
     keywords: ['결제', '카카오페이', '토스', '구독', '해지'],
   },
@@ -74,13 +74,6 @@ const FAQ_TREE = [
     follow: ['마이페이지는 어디 있나요?', '비밀번호는 어떻게 변경하나요?'],
     keywords: ['탈퇴', '계정 삭제', '회원 탈퇴', '계정 탈퇴'],
   },
-];
-
-const QUICK_STARTS = [
-  'API Key 발급은 어떻게 하나요?',
-  '봇 차단율이 얼마나 되나요?',
-  'CAPTCHA 유형은 몇 가지인가요?',
-  '요금제 종류가 궁금해요',
 ];
 
 function TypingBubble() {
@@ -149,15 +142,85 @@ function UserBubble({ text }) {
   );
 }
 
+// FAQ 트리거 바로 위에 작게 뜨는 카드 위젯(ChatGPT의 + 메뉴 참고). 화면을 덮지 않고
+// 항목 4개 정도가 보이도록 하고, 그 이상은 스크롤로 본다.
+function FaqSheet({ onSelect, onClose, triggerRef }) {
+  const cardRef = useRef(null);
+
+  // 전체를 덮는 오버레이 대신 바깥 클릭만 감지 — 오버레이를 두면 뒤 채팅 스크롤이 막혀버림.
+  // 토글 버튼(triggerRef)까지 "바깥"으로 치면 mousedown이 먼저 닫고 뒤이은 click이 다시 열어
+  // 버튼이 안 먹는 것처럼 보이므로, 버튼 클릭은 바깥 클릭 판정에서 제외한다.
+  useEffect(() => {
+    const handleClickAway = (e) => {
+      if (cardRef.current && cardRef.current.contains(e.target)) return;
+      if (triggerRef?.current && triggerRef.current.contains(e.target)) return;
+      onClose();
+    };
+    document.addEventListener('mousedown', handleClickAway);
+    return () => document.removeEventListener('mousedown', handleClickAway);
+  }, [onClose, triggerRef]);
+
+  return (
+    <div
+      ref={cardRef}
+      style={{
+        position: 'absolute', left: 10, right: 10, bottom: 60,
+        zIndex: 50, background: 'var(--paper)', border: '1px solid var(--line)',
+        borderRadius: 18, boxShadow: '0 14px 32px -12px rgba(36,27,21,.32)',
+        overflow: 'hidden',
+        animation: 'chatbot-sheet-in .16s cubic-bezier(.22,.85,.4,1) both',
+      }}
+    >
+      {/* 스크롤바가 둥근 모서리를 뚫고 나오지 않도록 스크롤은 안쪽 레이어에서만 처리한다.
+          참고 이미지처럼 항목 수를 딱 맞추려 하지 않고 자연스럽게 넘치면 스크롤로 본다. */}
+      <div
+        className="chatbot-suggest-scroll"
+        style={{ maxHeight: 155, overflowY: 'auto', padding: '10px' }}
+      >
+        {FAQ_TREE.map((item) => (
+          <button
+            key={item.q}
+            onClick={() => onSelect(item.q)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8, width: '100%', boxSizing: 'border-box',
+              background: 'var(--paper)', border: 'none',
+              borderRadius: 14, marginBottom: 6,
+              padding: '9px 12px 9px 8px', fontSize: 13.5, color: 'var(--ink)',
+              textAlign: 'left', cursor: 'pointer', fontFamily: 'var(--body)', fontWeight: 500,
+              transition: '.15s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--peach)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'var(--paper)'; }}
+          >
+            <span style={{
+              width: 26, height: 26, borderRadius: '50%', background: 'var(--peach)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" strokeWidth="2.4" strokeLinecap="round">
+                <path d="M21 11.5a8.4 8.4 0 0 1-12 7.6L3 21l1.9-6A8.5 8.5 0 1 1 21 11.5Z"/>
+              </svg>
+            </span>
+            {item.q}
+          </button>
+        ))}
+      </div>
+      <style>{`
+        @keyframes chatbot-sheet-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+      `}</style>
+    </div>
+  );
+}
+
 export default function ChatbotWidget() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([
-    { type: 'bot', text: '안녕하세요! VLUR CAPTCHA 챗봇입니다 👋\n궁금한 내용을 선택하거나 직접 질문해 주세요.' },
+    { type: 'bot', text: '안녕하세요! VLUR CAPTCHA 챗봇입니다.\n궁금한 내용을 선택하거나 직접 질문해 주세요.' },
   ]);
-  const [follows, setFollows] = useState(QUICK_STARTS);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [faqSheetOpen, setFaqSheetOpen] = useState(false);
   const bottomRef = useRef(null);
+  const faqButtonRef = useRef(null);
 
   useEffect(() => {
     if (open) bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -171,7 +234,7 @@ export default function ChatbotWidget() {
       { type: 'bot', text: item ? item.a : '죄송해요, 해당 질문에 대한 답변을 찾지 못했습니다. 가이드 페이지를 확인하거나 직접 문의해 주세요.' },
     ];
     setMessages(newMsgs);
-    setFollows(item?.follow || QUICK_STARTS);
+    setFaqSheetOpen(false);
   };
 
   // 자유 입력 질문에서 FAQ 키워드가 발견되면 API 호출 없이 즉시 정확한 답변을 준다.
@@ -200,12 +263,10 @@ export default function ChatbotWidget() {
 
     const withUser = [...messages, { type: 'user', text: q }];
     setMessages(withUser);
-    setFollows([]);
 
     const matched = matchFaqByKeyword(q);
     if (matched) {
       setMessages([...withUser, { type: 'bot', text: matched.a }]);
-      setFollows(matched.follow);
       return;
     }
 
@@ -231,7 +292,6 @@ export default function ChatbotWidget() {
       ]);
     } finally {
       setLoading(false);
-      setFollows(QUICK_STARTS);
     }
   };
 
@@ -255,7 +315,7 @@ export default function ChatbotWidget() {
         )}
       </button>
 
-      {/* Chat window */}
+      {/* Chat window — 바깥 래퍼는 overflow를 자르지 않아서 FaqSheet가 창 경계를 넘어 커질 수 있다 */}
       {open && (
         <div style={{
           position: 'fixed',
@@ -265,6 +325,9 @@ export default function ChatbotWidget() {
           width: 360,
           maxWidth: 'calc(100vw - 48px)',
           height: 'min(540px, calc(100dvh - 196px), calc(100vh - 196px))',
+        }}>
+        <div style={{
+          position: 'absolute', inset: 0,
           background: 'var(--paper)', border: '1px solid var(--line)',
           borderRadius: 20, boxShadow: '0 24px 60px -16px rgba(36,27,21,.28)',
           display: 'flex', flexDirection: 'column', overflow: 'hidden',
@@ -286,7 +349,7 @@ export default function ChatbotWidget() {
           </div>
 
           {/* Messages */}
-          <div style={{
+          <div className="chatbot-suggest-scroll" style={{
             flex: 1,
             minHeight: 0,
             overflowY: 'auto',
@@ -302,30 +365,37 @@ export default function ChatbotWidget() {
             )}
 
             {loading && <TypingBubble />}
-
-            {/* Follow-up suggestions */}
-            {follows.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
-                {follows.map(f => (
-                  <button key={f} onClick={() => handleSelect(f)} style={{
-                    background: 'var(--card)', border: '1.5px solid var(--line)',
-                    borderRadius: 10, padding: '8px 12px', fontSize: 12.5,
-                    color: 'var(--ink-soft)', textAlign: 'left', cursor: 'pointer',
-                    transition: '.15s', fontFamily: 'var(--body)', fontWeight: 500,
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--orange)'; e.currentTarget.style.color = 'var(--orange-2)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line)'; e.currentTarget.style.color = 'var(--ink-soft)'; }}
-                  >
-                    {f}
-                  </button>
-                ))}
-              </div>
-            )}
             <div ref={bottomRef}/>
           </div>
 
-          {/* Input */}
+          {/* 입력창 */}
           <div style={{ padding: '10px 14px 14px', borderTop: '1px solid var(--line-soft)', display: 'flex', gap: 8 }}>
+            <button
+              ref={faqButtonRef}
+              type="button"
+              onClick={() => setFaqSheetOpen(o => !o)}
+              disabled={loading}
+              aria-label="자주 묻는 질문"
+              style={{
+                background: faqSheetOpen ? 'var(--orange)' : 'var(--card)',
+                border: faqSheetOpen ? 'none' : '1.5px solid var(--line)',
+                borderRadius: 10,
+                width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: loading ? 'default' : 'pointer', flexShrink: 0, opacity: loading ? 0.5 : 1,
+                zIndex: 2,
+              }}
+            >
+              {faqSheetOpen ? (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round">
+                  <path d="M18 6 6 18M6 6l12 12"/>
+                </svg>
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ink-soft)" strokeWidth="2.5" strokeLinecap="round">
+                  <path d="M12 5v14M5 12h14"/>
+                </svg>
+              )}
+            </button>
+
             <input
               className="pg-input"
               placeholder="직접 질문하기..."
@@ -336,18 +406,28 @@ export default function ChatbotWidget() {
                 if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleSend();
               }}
               disabled={loading}
-              style={{ flex: 1, padding: '9px 12px', fontSize: 13, borderRadius: 10 }}
+              style={{ flex: 1, padding: '9px 12px', fontSize: 13.5, borderRadius: 10, zIndex: 2 }}
             />
             <button onClick={handleSend} disabled={loading} style={{
               background: 'var(--orange)', border: 'none', borderRadius: 10,
               width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center',
               cursor: loading ? 'default' : 'pointer', flexShrink: 0, opacity: loading ? 0.5 : 1,
+              zIndex: 2,
             }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M22 2 11 13M22 2 15 22l-4-9-9-4 20-7Z"/>
               </svg>
             </button>
           </div>
+        </div>
+
+        {faqSheetOpen && (
+          <FaqSheet
+            onSelect={handleSelect}
+            onClose={() => setFaqSheetOpen(false)}
+            triggerRef={faqButtonRef}
+          />
+        )}
         </div>
       )}
     </>
