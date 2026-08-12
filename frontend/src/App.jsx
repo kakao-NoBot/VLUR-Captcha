@@ -1,6 +1,6 @@
 // App.jsx
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import './styles/main.css';
 import api, { AUTH_UNAUTHORIZED_EVENT } from './api/axios';
@@ -121,6 +121,7 @@ function readReopenLogin() {
 export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
+  const hasRestoredExternalFlow = useRef(false);
   const [completedPayment] = useState(readCompletedPayment);
   const [cancelledPayment] = useState(readCancelledPayment);
   const [reopenLogin] = useState(readReopenLogin);
@@ -201,10 +202,12 @@ export default function App() {
 
   // 외부 결제·소셜 로그인에서 루트로 돌아온 직후에도 이전 흐름을 URL로 복원한다.
   useEffect(() => {
-    if (location.pathname !== '/') return;
+    if (location.pathname !== '/' || hasRestoredExternalFlow.current) return;
     if (completedPayment || cancelledPayment) {
+      hasRestoredExternalFlow.current = true;
       navigate('/plan-pay', { replace: true });
     } else if (reopenLogin) {
+      hasRestoredExternalFlow.current = true;
       navigate('/login', { replace: true });
     }
   }, [cancelledPayment, completedPayment, location.pathname, navigate, reopenLogin]);
