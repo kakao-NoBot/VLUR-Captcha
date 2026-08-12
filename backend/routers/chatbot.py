@@ -24,6 +24,18 @@ _FOREIGN_SCRIPT = re.compile(
     r"[一-鿿぀-ヿ؀-ۿ֐-׿Ѐ-ӿ฀-๿ऀ-ॿ]"
 )
 
+# 문자는 한글인데 문장부호만 전각(。，！？：；)으로 나오는 경우가 있다 — 위 문자
+# 체계 필터는 "글자"만 잡아서 이런 부호는 안 걸리고 그대로 새어나가 "습니다。"처럼
+# 어색하게 보인다. 한국어 문장부호로 치환한다.
+_FULLWIDTH_PUNCT = str.maketrans({
+    "。": ".", "，": ",", "、": ",", "！": "!", "？": "?",
+    "：": ":", "；": ";", "（": "(", "）": ")",
+})
+
+
+def _normalize_punctuation(text: str) -> str:
+    return text.translate(_FULLWIDTH_PUNCT)
+
 # 챗봇 LLM 엔드포인트. 기본값은 OpenAI지만, vLLM처럼 OpenAI 호환 API를 제공하는 서버를
 # 띄웠다면 CHATBOT_API_URL/CHATBOT_MODEL만 바꿔서 그쪽으로 보낼 수 있다(요청·응답 스키마가
 # 같아서 아래 호출 코드는 그대로 쓴다).
@@ -52,7 +64,7 @@ SYSTEM_PROMPT = """당신은 'VLUR CAPTCHA' 서비스의 고객 지원 챗봇입
 
 [서비스 정보]
 - VLUR CAPTCHA는 AI 기반 CAPTCHA 서비스입니다. 실측 지표는 분류 정확도 97.5%(자체 데이터셋 검증), 오탐률 0.3% 이하, 검증 처리량 초당 25~40건입니다.
-- 사용 모델: 1D CNN과 BiLSTM 두 개의 딥러닝 모델을 앙상블하여 드래그 궤적을 분석합니다. CNN은 궤적의 형태·국소적인 움직임 패턴을, BiLSTM은 시간 순서에 따른 속도 변화의 문맥적 흐름을 분석해 서로 다른 유형의 봇을 보완적으로 탐지합니다. 정확한 임계값·내부 수치 등은 보안상 비공개입니다.
+- 사용 모델: 1D CNN과 BiLSTM 두 개의 딥러닝 모델을 앙상블하여 드래그 궤적을 분석합니다. CNN은 궤적의 형태·국소적인 움직임 패턴을, BiLSTM은 시간 순서에 따른 속도 변화의 문맥적 흐름을 분석해 서로 다른 유형의 봇을 보완적으로 탐지합니다. 레이어 구성(필터 크기, 채널 수, LSTM 유닛 수 등 세부 아키텍처)과 정확한 임계값·내부 수치는 보안상 공개하지 않으며, 물어보면 이 사실을 그대로 안내하세요. 모를 때 추측해서 답하지 마세요.
 - CAPTCHA 유형: 두 유형 모두 경유 지점을 지나 정답 보기를 드래그하는 방식이며, 문제를 아스키아트로 보여주는 방식만 다릅니다. 유형 1은 한글 지시문을 아스키아트로, 유형 2는 이미지를 아스키아트로 표현합니다. 둘 다 드래그 궤적 검증으로 스크립트 봇을 탐지하며, 유형 1 실패 시 유형 2로 자동 전환됩니다.
 - 요금제: Basic(무료, 월 10만 호출) / Pro(₩89,000/월, 월 50만 호출) / Enterprise(문의, 무제한)
 - 결제: 카카오페이 단건결제 또는 토스페이먼츠 결제위젯 v2. 월 단위 구독이며 언제든 해지 가능합니다.
@@ -187,11 +199,11 @@ async def chat(body: ChatRequest, request: Request):
 
     async with httpx.AsyncClient(timeout=60.0) as client:
         try:
-            answer = await generate(client, 0.3)
+            answer = _normalize_punctuation(await generate(client, 0.3))
             # 엉뚱한 문자 체계가 섞이면 한 번만 다시 생성한다. temperature를 올려 다른
             # 표현이 나오게 하고, 그래도 섞이면 해당 문장을 덜어낸다.
             if _FOREIGN_SCRIPT.search(answer):
-                answer = await generate(client, 0.7)
+                answer = _normalize_punctuation(await generate(client, 0.7))
         except httpx.HTTPStatusError:
             raise HTTPException(status_code=502, detail="챗봇 응답 생성에 실패했습니다. 잠시 후 다시 시도해 주세요.")
         except httpx.HTTPError:
