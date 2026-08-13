@@ -92,6 +92,12 @@ def split_markdown(text: str) -> list[str]:
     return [c for c in chunks if c.strip()]
 
 
+# board_type 값은 DB 내부 표기라 그대로 노출하면 챗봇이 "[notice] 섹션" 처럼 실제
+# UI에 없는 문구를 그대로 따라 말해버린다(실제 사례로 확인됨). 사용자에게 자연스러운
+# 한국어 라벨로 바꿔서 청크 제목에 넣는다.
+_BOARD_TYPE_LABEL = {"faq": "자주 묻는 질문", "research": "자료실", "notice": "공지사항"}
+
+
 def _collect_board_chunks(cur) -> list[dict[str, Any]]:
     """게시글은 제목과 본문이 함께 있어야 의미가 통하므로 한 건을 한 청크로 둔다.
     본문이 아주 길면 잘라서 여러 청크가 된다."""
@@ -103,6 +109,7 @@ def _collect_board_chunks(cur) -> list[dict[str, Any]]:
     for row in cur.fetchall():
         body = (row["content"] or "").strip()
         title = (row["title"] or "").strip()
+        label = _BOARD_TYPE_LABEL.get(row["board_type"], row["board_type"])
         pieces = split_markdown(body) if len(body) > CHUNK_MAX_CHARS else [body]
         for index, piece in enumerate(pieces):
             items.append(
@@ -110,7 +117,7 @@ def _collect_board_chunks(cur) -> list[dict[str, Any]]:
                     "source_type": "board",
                     "source_ref": str(row["board_id"]),
                     "chunk_index": index,
-                    "title": f"[{row['board_type']}] {title}",
+                    "title": f"{label} - {title}",
                     # 검색 대상 문자열에 제목을 포함시켜야 "API Key 발급" 같은 질문이
                     # 본문에 그 표현이 없어도 걸린다.
                     "content": f"{title}\n{piece}".strip(),
