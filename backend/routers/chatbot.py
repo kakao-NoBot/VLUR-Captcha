@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 from typing import Literal
@@ -7,6 +8,8 @@ from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from services.chatbot_rate_limit import consume_request
 from services import knowledge_base
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["chatbot"])
 
@@ -64,12 +67,22 @@ SYSTEM_PROMPT = """당신은 'VLUR CAPTCHA' 서비스의 고객 지원 챗봇입
 
 VLUR CAPTCHA는 AI 기반 CAPTCHA 서비스로, 1D CNN과 BiLSTM 앙상블 모델로 드래그 궤적을 분석해 봇을 탐지합니다. 실측 지표는 분류 정확도 97.5%, 오탐률 0.3% 이하, 검증 처리량 초당 25~40건입니다. 모델 레이어 구성이나 정확한 임계값 같은 세부 아키텍처 수치는 보안상 공개하지 않습니다.
 
+[핵심 요약 — 아래 참고 자료가 검색되지 않아도 최소한 이 정도는 답하세요]
+- 로그인/회원가입: 화면 우측 상단 [로그인]/[회원가입] 버튼. 카카오·네이버·구글 소셜 로그인 지원.
+- 요금제: Basic(무료, 월 10만 호출)/Pro(₩89,000, 월 50만 호출)/Enterprise(문의). 메인페이지 스크롤하면 나오는 [요금제] 섹션에서 가입.
+- 가이드: 가입 완료 후 가이드 페이지·마이페이지에서 확인.
+- 기업(Enterprise) 문의: 메인페이지 [요금제] 섹션의 [도입 문의하기] 버튼.
+- 데모 체험: 회원가입·로그인 없이 메인페이지 맨 위쪽 [지금 체험하기] 버튼을 누르면 실제 CAPTCHA를 바로 풀어볼 수 있는 데모 창이 뜸.
+- 로컬(localhost) 테스트: API Key 발급 시 등록해둔 주소에서만 CAPTCHA가 동작합니다. 마이페이지 > API Key 관리에서 이 등록 주소를 "localhost"로 바꾸면 로컬 개발 환경에서도 테스트할 수 있습니다. "지원 안 한다"고 단정하지 마세요.
+- 마이페이지: 로그인 후 API Key 관리·사용량 조회·결제 내역·계정 탈퇴 확인.
+자세한 절차나 세부 조건은 [참고 자료]가 있으면 그것도 함께 활용하세요.
+
 [규칙]
 - 아래 [참고 자료]로 검색된 문서를 최우선 근거로 답하세요. 문서에 없는 세부 수치·함수명·페이지 이름은 지어내지 말고, 모르면 "홈페이지 하단의 일반 문의 페이지나 이메일로 문의해달라"고 안내하세요.
 - "이용 신청 페이지"라는 페이지는 존재하지 않습니다. 요금제는 메인페이지를 스크롤하면 나오는 섹션이지 별도 메뉴·페이지가 아니니, "상단 메뉴에서" 같은 표현을 쓰지 마세요.
 - 아스키 지각, 아스키아트, 레이어 구성, 드래그 궤적, 토큰, rate limit, 공지사항, 깃허브, VLUR 의미, SDK, 다크모드, 위젯 커스터마이징, CSV 다운로드, 요금제 변경, API Key 노출, 코드 예시, 고객 이탈, CAPTCHA 배치 시점은 모두 VLUR CAPTCHA와 직접 관련된 질문입니다 — 무관한 질문으로 판단해 거절하지 마세요.
 - 서비스와 전혀 무관한 질문(날씨, 다른 회사 제품 등)에만 "VLUR CAPTCHA 관련 문의만 도와드릴 수 있어요"라고 안내하세요.
-- 아직 지원하지 않는 기능(예: 연 단위 구독)을 물으면 타사 서비스를 추천하지 말고 미지원 사실만 안내한 뒤 문의를 유도하세요. "~ 지원은 아닙니다"보다 "~는 지원하지 않습니다"처럼 자연스럽게 쓰세요.
+- 아직 지원하지 않는 기능(예: 연 단위 구독, 시각장애인용 인증 방법 등)을 물으면 "다른 서비스를 이용해보세요", "다른 방법을 고려해보세요"처럼 대안을 알아서 찾아보라는 식으로 답하지 마세요. 미지원 사실만 담백하게 안내한 뒤, 필요하면 문의를 유도하세요. "~ 지원은 아닙니다"보다 "~는 지원하지 않습니다"처럼 자연스럽게 쓰세요.
 - 같은 질문을 다시 물어도 이미 한 말을 표현만 바꿔 반복하지 마세요. 세부 수치가 비공개라면 그렇다고 말하되 "모른다"고 하지 말고, 참고 자료에 개략적인 설명이 있으면 그걸 활용하세요.
 - "하루 방문자가 N명이면 비용이 얼마냐"처럼 트래픽 가정이 필요한 계산은 직접 하지 말고, 요금제별 월 호출 한도만 안내한 뒤 문의를 유도하세요."""
 
@@ -120,8 +133,12 @@ def _build_system_prompt(history: list[dict]) -> str:
     try:
         hits = knowledge_base.search(query, top_k=RAG_TOP_K)
     except Exception:
+        # 지금까지는 여기서 조용히 삼켜서 "왜 매번 검색 결과가 0건이지"를 절대 알 수
+        # 없었다 — embed 서비스 연결 실패든 DB 오류든 로그로 남겨야 원인을 좁힐 수 있다.
+        logger.exception("RAG search failed, falling back to base prompt (query=%r)", query[:200])
         return SYSTEM_PROMPT
     if not hits:
+        logger.warning("RAG search returned 0 hits (query=%r, top_k=%s)", query[:200], RAG_TOP_K)
         return SYSTEM_PROMPT
 
     passages = "\n\n".join(f"### {h['title']}\n{h['content']}" for h in hits)
