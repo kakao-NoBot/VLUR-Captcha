@@ -67,7 +67,8 @@ spec:
           args:
             - --model=$(MODEL_ID)
             - --served-model-name=vlur-chatbot   # 요청에 쓰는 이름을 모델 경로와 분리
-            - --max-model-len=4096               # 시스템 프롬프트 + 최근 10개 메시지면 충분
+            - --max-model-len=8192               # RAG 문서 3건 + 시스템 프롬프트 + 최근 10개 메시지 여유분
+                                                   # (T4 15GB, 3B 가중치 ~6GB로 KV 캐시 여력 충분)
             - --gpu-memory-utilization=0.90
             # T4는 Turing 세대라 bfloat16 연산 유닛이 없다. Qwen2.5의 기본 dtype이
             # bfloat16이므로 auto로 두면 실패하거나 극도로 느려진다 — float16을 명시한다.
