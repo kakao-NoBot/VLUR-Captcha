@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import api from '../api/axios';
 
+// 이 배열은 더 이상 새 항목을 추가하지 않는다 — 새로운 질문 유형은 백엔드
+// SYSTEM_PROMPT(chatbot.py)에 사실을 추가해 LLM이 답하게 한다.
 const FAQ_TREE = [
   {
     q: 'API Key 발급은 어떻게 하나요?',
@@ -16,21 +18,9 @@ const FAQ_TREE = [
   },
   {
     q: 'CAPTCHA 유형은 몇 가지인가요?',
-    a: '현재 두 가지 유형이 있습니다. 둘 다 경유 지점을 지나 정답 보기를 드래그하는 방식이고, 문제를 아스키아트로 보여주는 방식이 다릅니다.\n• 유형 1 — 한글 지시문을 아스키아트로 표현\n• 유형 2 — 이미지를 아스키아트로 표현\n유형 1 실패 시 유형 2로 자동 전환됩니다.',
+    a: '현재 두 가지 유형이 있습니다. 둘 다 경유 지점을 지나 정답 보기를 드래그하는 방식이고, 문제를 아스키아트로 보여주는 방식이 다릅니다.\n• 유형 1 — 아스키 아트 한글 지시문을 읽고 지시 수행\n• 유형 2 — 아스키 아트 이미지를 보고 지시 수행\n유형 1 실패 시 유형 2로 자동 전환하여 봇의 연속 시도를 차단합니다.',
     follow: ['API Key 발급은 어떻게 하나요?', '요금제 종류가 궁금해요'],
     keywords: ['유형', '캡차 종류', 'captcha 유형', '종류', '타입'],
-  },
-  {
-    q: '공지사항은 어디서 보나요?',
-    a: '홈페이지 상단 메뉴에 있는 [공지사항] 링크를 클릭하면 공지사항 게시판으로 이동해서 확인할 수 있습니다.',
-    follow: ['로그인과 회원가입은 어디서 하나요?', 'API Key 발급은 어떻게 하나요?'],
-    keywords: ['공지사항', '공지', 'notice'],
-  },
-  {
-    q: '아스키 지각이 뭐예요?',
-    a: '"아스키 지각"은 사람과 AI 사이의 인지 능력 차이를 활용한 개념이에요. 사람은 문자로 그려진 아스키아트도 눈으로 쉽게 형태를 알아보지만, 이미지 인식 AI(VLM)는 일반 사진 인식에 최적화되어 있어서 문자 패턴으로 그려진 그림은 상대적으로 잘 인식하지 못해요. VLUR CAPTCHA는 이 인지 격차를 이용해 사람에게는 쉽고 이미지 인식 기반 봇에게는 어려운 문제를 만듭니다. 다만 최종 봇 판별의 핵심은 아스키아트 인식 자체가 아니라 드래그 궤적(움직임 패턴) 분석에 있어요.',
-    follow: ['CAPTCHA 유형은 몇 가지인가요?', '봇 차단율이 얼마나 되나요?'],
-    keywords: ['아스키 지각', '아스키지각', 'ascii 지각', '지각 격차', 'perceptual gap'],
   },
   {
     q: '요금제 종류가 궁금해요',
@@ -68,30 +58,6 @@ const FAQ_TREE = [
     follow: ['API Key 발급은 어떻게 하나요?', '요금제 종류가 궁금해요'],
     keywords: ['sdk', 'react', 'vue', 'fastapi', 'django', '연동'],
   },
-  {
-    q: '로그인과 회원가입은 어디서 하나요?',
-    a: '우측 상단에 [로그인]과 [회원가입] 버튼이 따로 있습니다. 이메일로 가입하려면 [회원가입] 버튼을 눌러 진행하시면 되고, 카카오·네이버·구글 계정은 [로그인] 페이지의 소셜 로그인 버튼 하나로 회원가입과 로그인이 함께 처리됩니다 — 처음 누르면 자동으로 계정이 만들어지고, 이후에는 같은 버튼으로 로그인됩니다.',
-    follow: ['마이페이지는 어디 있나요?', '비밀번호는 어떻게 변경하나요?'],
-    keywords: ['로그인', '회원가입', '가입', '소셜 로그인', '카카오 로그인', '네이버 로그인', '구글 로그인'],
-  },
-  {
-    q: '마이페이지는 어디 있나요?',
-    a: '우측 상단 [로그인] 버튼으로 로그인 후 마이페이지에서 API Key 관리, 사용량 조회 등을 확인할 수 있습니다.',
-    follow: ['API Key 발급은 어떻게 하나요?', '결제는 어떻게 하나요?'],
-    keywords: ['마이페이지', '사용량'],
-  },
-  {
-    q: '비밀번호는 어떻게 변경하나요?',
-    a: '마이페이지 > 내 정보 탭에서 [비밀번호 변경] 버튼을 누르고, 현재 비밀번호 확인 후 새 비밀번호(8~16자, 영문 대소문자·숫자·특수문자 포함)를 입력하면 변경됩니다.',
-    follow: ['마이페이지는 어디 있나요?', '계정 탈퇴는 어떻게 하나요?'],
-    keywords: ['비밀번호', '비밀번호 변경', '패스워드', 'password', '비번'],
-  },
-  {
-    q: '계정 탈퇴는 어떻게 하나요?',
-    a: '마이페이지 > 계정 탈퇴 탭에서 진행할 수 있습니다. 탈퇴 시 API Key와 계정 데이터가 삭제되며 복구할 수 없어요.',
-    follow: ['마이페이지는 어디 있나요?', '비밀번호는 어떻게 변경하나요?'],
-    keywords: ['탈퇴', '계정 삭제', '회원 탈퇴', '계정 탈퇴'],
-  },
 ];
 
 function TypingBubble() {
@@ -122,7 +88,159 @@ function TypingBubble() {
   );
 }
 
+// 인라인 **굵게** / `코드`만 지원하는 가벼운 마크다운 — 챗봇 답변에 코드블록·목록이
+// 섞여 와도 원문 기호(```,**,-,1.)가 그대로 노출되지 않게 렌더링한다.
+function renderInline(text, keyPrefix) {
+  const parts = [];
+  const regex = /(\*\*(.+?)\*\*|`([^`]+)`)/g;
+  let lastIndex = 0;
+  let m;
+  let i = 0;
+  while ((m = regex.exec(text))) {
+    if (m.index > lastIndex) parts.push(text.slice(lastIndex, m.index));
+    if (m[2] !== undefined) {
+      parts.push(<strong key={`${keyPrefix}-b${i++}`}>{m[2]}</strong>);
+    } else {
+      parts.push(
+        <code key={`${keyPrefix}-c${i++}`} style={{
+          background: 'var(--peach)', color: 'var(--orange)', borderRadius: 4,
+          padding: '1px 5px', fontSize: '.92em', fontFamily: 'ui-monospace, SFMono-Regular, monospace',
+        }}>{m[3]}</code>
+      );
+    }
+    lastIndex = regex.lastIndex;
+  }
+  if (lastIndex < text.length) parts.push(text.slice(lastIndex));
+  return parts;
+}
+
+// 코드펜스가 아닌 일반 텍스트 구간 — 줄 단위로 번호목록(1. )/불릿목록(-,•)을 묶고,
+// 그 외는 문단으로 렌더링한다.
+function renderTextBlock(block, keyPrefix) {
+  const lines = block.split('\n');
+  const nodes = [];
+  let listBuffer = [];
+  let listType = null;
+  let para = [];
+
+  const flushList = () => {
+    if (!listBuffer.length) return;
+    const Tag = listType === 'ol' ? 'ol' : 'ul';
+    nodes.push(
+      <Tag key={`${keyPrefix}-list${nodes.length}`} style={{ margin: '2px 0 6px', paddingLeft: 20 }}>
+        {listBuffer.map((item, idx) => (
+          <li key={idx} style={{ marginBottom: 2 }}>{renderInline(item, `${keyPrefix}-li${idx}`)}</li>
+        ))}
+      </Tag>
+    );
+    listBuffer = [];
+    listType = null;
+  };
+  const flushPara = () => {
+    if (!para.length) return;
+    nodes.push(
+      <p key={`${keyPrefix}-p${nodes.length}`} style={{ margin: '0 0 6px', whiteSpace: 'pre-line' }}>
+        {renderInline(para.join('\n'), `${keyPrefix}-p${nodes.length}`)}
+      </p>
+    );
+    para = [];
+  };
+
+  for (const line of lines) {
+    const numbered = line.match(/^\s*\d+\.\s+(.*)/);
+    const bulleted = line.match(/^\s*[-•]\s+(.*)/);
+    if (numbered) {
+      flushPara();
+      if (listType !== 'ol') flushList();
+      listType = 'ol';
+      listBuffer.push(numbered[1]);
+    } else if (bulleted) {
+      flushPara();
+      if (listType !== 'ul') flushList();
+      listType = 'ul';
+      listBuffer.push(bulleted[1]);
+    } else if (line.trim() === '') {
+      flushList();
+      flushPara();
+    } else {
+      flushList();
+      para.push(line);
+    }
+  }
+  flushList();
+  flushPara();
+  return nodes.length ? nodes : null;
+}
+
+function CopyButton({ getText }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={async () => {
+        try { await navigator.clipboard.writeText(getText()); } catch { /* no-op */ }
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      }}
+      style={{
+        background: 'none', border: 'none', color: '#aaa', fontSize: 11,
+        cursor: 'pointer', padding: '2px 6px', fontFamily: 'var(--body)',
+      }}
+    >
+      {copied ? '복사됨' : '복사'}
+    </button>
+  );
+}
+
+function CodeBlock({ lang, code }) {
+  return (
+    <div style={{
+      borderRadius: 12, overflow: 'hidden', border: '1px solid var(--line)',
+      margin: '4px 0 8px', background: '#1e1e1e',
+      maxWidth: '100%', minWidth: 0, boxSizing: 'border-box',
+    }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '6px 10px', background: '#2a2a2a',
+      }}>
+        <span style={{ fontSize: 11, color: '#aaa', fontFamily: 'ui-monospace, monospace' }}>{lang || 'code'}</span>
+        <CopyButton getText={() => code} />
+      </div>
+      <pre className="chatbot-suggest-scroll" style={{ margin: 0, padding: '10px 12px', overflowX: 'auto' }}>
+        <code style={{
+          fontFamily: 'ui-monospace, SFMono-Regular, monospace', fontSize: 12.5,
+          color: '#e6e6e6', lineHeight: 1.5, whiteSpace: 'pre',
+        }}>{code}</code>
+      </pre>
+    </div>
+  );
+}
+
+// ```코드``` 펜스는 CodeBlock으로, 나머지는 renderTextBlock으로 렌더링한다.
+function renderMarkdown(text) {
+  const nodes = [];
+  const fenceRegex = /```(\w+)?\n?([\s\S]*?)```/g;
+  let lastIndex = 0;
+  let m;
+  let idx = 0;
+  while ((m = fenceRegex.exec(text))) {
+    if (m.index > lastIndex) {
+      const block = renderTextBlock(text.slice(lastIndex, m.index), `t${idx}`);
+      if (block) nodes.push(...block);
+    }
+    nodes.push(<CodeBlock key={`code${idx}`} lang={m[1]} code={m[2].replace(/\n$/, '')} />);
+    idx += 1;
+    lastIndex = fenceRegex.lastIndex;
+  }
+  if (lastIndex < text.length) {
+    const block = renderTextBlock(text.slice(lastIndex), `t${idx}`);
+    if (block) nodes.push(...block);
+  }
+  return nodes;
+}
+
 function BotBubble({ text }) {
+  const hasCode = text.includes('```');
   return (
     <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
       <div style={{
@@ -136,10 +254,11 @@ function BotBubble({ text }) {
       <div style={{
         background: 'var(--card)', border: '1px solid var(--line)', borderRadius: '4px 14px 14px 14px',
         padding: '10px 14px', fontSize: 13.5, color: 'var(--ink)', lineHeight: 1.6,
-        maxWidth: '82%', whiteSpace: 'pre-line',
+        maxWidth: hasCode ? '94%' : '82%',
+        minWidth: 0, boxSizing: 'border-box',
         boxShadow: '0 1px 4px rgba(36,27,21,.07)',
       }}>
-        {text}
+        <div className="chatbot-msg-md">{renderMarkdown(text)}</div>
       </div>
     </div>
   );
@@ -282,11 +401,16 @@ export default function ChatbotWidget() {
     const withUser = [...messages, { type: 'user', text: q }];
     setMessages(withUser);
 
-    // 즉답 키워드 매칭은 대화 맥락이 없는 "첫 질문"에만 쓴다. 대화가 이어진 뒤에는
-    // "이용신청 페이지는 어디야?"처럼 단어 하나만 겹쳐도 완전히 다른 질문인 이전 FAQ
-    // 답변이 튀어나오는 문제가 있어서, 후속 질문은 항상 대화 맥락을 보는 백엔드로 보낸다.
+    // 즉답 키워드 매칭은 대화 맥락이 없는 "첫 질문"이면서, FAQ 문항과 비슷하게 짧고
+    // 단순한 질문일 때만 쓴다. 대화가 이어진 뒤에는 "이용신청 페이지는 어디야?"처럼
+    // 단어 하나만 겹쳐도 다른 질문인 이전 FAQ 답변이 튀어나오는 문제가 있었고, 첫
+    // 질문이라도 "React 쇼핑몰에 붙이려면? 코드 예시와 소요 시간도 알려줘"처럼 길고
+    // 구체적인 요청은 키워드 하나(react/sdk)에 걸려 뻔한 FAQ 답변으로 가로채이면 안
+    // 되므로, 길이가 짧은 질문(대략 한 문장)에만 즉답을 쓰고 나머지는 백엔드로 보낸다.
+    const FAQ_SHORTCUT_MAX_LEN = 25;
     const isFirstQuestion = !messages.some(m => m.type === 'user');
-    const matched = isFirstQuestion ? matchFaqByKeyword(q) : null;
+    const isSimpleQuestion = q.length <= FAQ_SHORTCUT_MAX_LEN;
+    const matched = (isFirstQuestion && isSimpleQuestion) ? matchFaqByKeyword(q) : null;
     if (matched) {
       setMessages([...withUser, { type: 'bot', text: matched.a }]);
       return;
@@ -366,7 +490,6 @@ export default function ChatbotWidget() {
             </div>
             <div>
               <div style={{ color: '#fff', fontFamily: 'var(--disp)', fontWeight: 700, fontSize: 14 }}>VLUR CAPTCHA 챗봇</div>
-              <div style={{ color: 'rgba(255,255,255,.8)', fontSize: 11 }}>자주 묻는 질문 안내</div>
             </div>
           </div>
 
@@ -375,6 +498,7 @@ export default function ChatbotWidget() {
             flex: 1,
             minHeight: 0,
             overflowY: 'auto',
+            overflowX: 'hidden',
             padding: '16px 14px',
             display: 'flex',
             flexDirection: 'column',
