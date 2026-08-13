@@ -36,6 +36,12 @@
   overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
 }
 html { scroll-behavior: smooth; }
+/* 메인 화면 전체 스크롤도 챗봇 패널과 같은 얇고 은은한 스크롤바로 통일 */
+html { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+html::-webkit-scrollbar { width: 8px; }
+html::-webkit-scrollbar-track { background: transparent; }
+html::-webkit-scrollbar-thumb { background: var(--line); border-radius: 999px; }
+html::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 body {
   margin: 0; background: var(--paper); color: var(--ink);
   font-family: var(--body); font-size: 16px; line-height: 1.6;
@@ -4032,6 +4038,10 @@ footer { border-top: 1px solid var(--line); background: var(--paper); }
   padding: 20px 22px; color: #c0392b; font-size: 14px; line-height: 1.7;
 }
 .warn-box strong { display: block; font-size: 15px; margin-bottom: 8px; }
+
+/* 챗봇 답변 말풍선 — 문단/목록/코드블록 렌더링 시 마지막 요소의 하단 여백을
+   없애서 말풍선 아래쪽에 불필요한 빈 공간이 생기지 않게 한다 */
+.chatbot-msg-md > *:last-child { margin-bottom: 0 !important; }
 
 /* 챗봇 추천 질문 패널 — 얇고 은은한 스크롤바 */
 .chatbot-suggest-scroll { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
