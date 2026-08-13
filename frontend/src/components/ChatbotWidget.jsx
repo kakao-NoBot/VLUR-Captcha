@@ -3,6 +3,42 @@ import api from '../api/axios';
 
 const FAQ_TREE = [
   {
+    q: '실제 CAPTCHA를 체험해볼 수 있나요?',
+    a: '네! 회원가입이나 로그인 없이 홈페이지 상단의 [지금 체험하기] 버튼을 누르면 실제 CAPTCHA를 바로 풀어볼 수 있는 데모 창이 뜹니다.',
+    follow: ['CAPTCHA 유형은 몇 가지인가요?', '요금제 종류가 궁금해요'],
+    keywords: ['체험', '데모', 'demo', '테스트해', '써볼'],
+  },
+  {
+    q: 'VLUR의 뜻이 뭐야?',
+    a: 'VLUR는 Verify · Learn · User · Reliability의 약자로, 사용자 행동을 학습하여 신뢰성을 검증하는 AI 보안 서비스예요. 멀티모달 LLM으로 무력화되고 있는 기존 이미지·문자 기반 CAPTCHA의 보안 한계와 티켓팅 서비스의 매크로 대량 선점 문제를 해결하기 위해, ASCII 아트와 행동 기반 인증을 결합한 차세대 사용자 인증 기술이에요.',
+    follow: ['아스키 지각이 뭐예요?', 'CAPTCHA 유형은 몇 가지인가요?'],
+    keywords: ['vlur의 뜻', 'vlur 뜻', 'vlur란', 'vlur가 뭐', 'vlur는 뭐'],
+  },
+  {
+    q: '챗봇창을 닫고싶으면 어떻게 하나요?',
+    a: '우측 하단의 X 버튼을 누르면 돼요.',
+    follow: ['다크 모드를 지원하나요?', 'API Key 발급은 어떻게 하나요?'],
+    keywords: ['챗봇창을 닫', '챗봇 창을 닫', '챗봇 닫는', '챗봇 종료'],
+  },
+  {
+    q: '다크 모드를 지원하나요?',
+    a: '지금 보고 계신 VLUR CAPTCHA 홈페이지는 우측 상단 토글 버튼으로 다크 모드를 지원합니다. 다만 API Key로 발급받아 실제 서비스에 삽입하는 CAPTCHA 위젯(사용자가 문제를 푸는 화면) 자체는 다크 모드를 지원하지 않습니다.',
+    follow: ['위젯의 크기와 색상을 변경할 수 있나요?', 'React/Vue SDK 지원하나요?'],
+    keywords: ['다크모드', '다크 모드', 'dark mode', '다크테마', '다크 테마'],
+  },
+  {
+    q: 'API Key가 노출되면 어떻게 해야 하나요?',
+    a: '마이페이지 > API Key 관리에서 [키 재발급] 버튼을 누르면 기존 키가 즉시 무효화되고 새 키가 발급됩니다. 노출을 알아차렸다면 바로 재발급받아 주세요.',
+    follow: ['마이페이지는 어디 있나요?', 'API Key 발급은 어떻게 하나요?'],
+    keywords: ['api key가 노출', 'api key 노출', '키 노출', '키 유출', '키 재발급'],
+  },
+  {
+    q: '위젯의 크기와 색상을 변경할 수 있나요?',
+    a: '위젯 크기 변경은 지원하지 않지만, 색상은 변경할 수 있어요. 마이페이지 > API Key 관리에서 해당 API Key로 표시되는 CAPTCHA의 강조 색상(브랜드 HEX 색상)을 지정할 수 있습니다.',
+    follow: ['API Key 발급은 어떻게 하나요?', 'React/Vue SDK 지원하나요?'],
+    keywords: ['위젯 크기', '위젯 색상', '테마 색상', '커스터마이징', '색상 변경'],
+  },
+  {
     q: 'API Key 발급은 어떻게 하나요?',
     a: '홈페이지의 [요금제] 섹션에서 원하는 요금제 버튼(무료로 시작하기 / 결제하고 시작하기)을 눌러 가입을 완료하면 API Key가 즉시 발급됩니다. 마이페이지 > API Key 관리에서도 확인할 수 있어요.',
     follow: ['요금제 종류가 궁금해요', '마이페이지는 어디 있나요?'],
@@ -16,7 +52,7 @@ const FAQ_TREE = [
   },
   {
     q: 'CAPTCHA 유형은 몇 가지인가요?',
-    a: '현재 두 가지 유형이 있습니다. 둘 다 경유 지점을 지나 정답 보기를 드래그하는 방식이고, 문제를 아스키아트로 보여주는 방식이 다릅니다.\n• 유형 1 — 한글 지시문을 아스키아트로 표현\n• 유형 2 — 이미지를 아스키아트로 표현\n유형 1 실패 시 유형 2로 자동 전환됩니다.',
+    a: '현재 두 가지 유형이 있습니다. 둘 다 경유 지점을 지나 정답 보기를 드래그하는 방식이고, 문제를 아스키아트로 보여주는 방식이 다릅니다.\n• 유형 1 — 아스키 아트 한글 지시문을 읽고 지시 수행\n• 유형 2 — 아스키 아트 이미지를 보고 지시 수행\n유형 1 실패 시 유형 2로 자동 전환하여 봇의 연속 시도를 차단합니다.',
     follow: ['API Key 발급은 어떻게 하나요?', '요금제 종류가 궁금해요'],
     keywords: ['유형', '캡차 종류', 'captcha 유형', '종류', '타입'],
   },
@@ -122,7 +158,159 @@ function TypingBubble() {
   );
 }
 
+// 인라인 **굵게** / `코드`만 지원하는 가벼운 마크다운 — 챗봇 답변에 코드블록·목록이
+// 섞여 와도 원문 기호(```,**,-,1.)가 그대로 노출되지 않게 렌더링한다.
+function renderInline(text, keyPrefix) {
+  const parts = [];
+  const regex = /(\*\*(.+?)\*\*|`([^`]+)`)/g;
+  let lastIndex = 0;
+  let m;
+  let i = 0;
+  while ((m = regex.exec(text))) {
+    if (m.index > lastIndex) parts.push(text.slice(lastIndex, m.index));
+    if (m[2] !== undefined) {
+      parts.push(<strong key={`${keyPrefix}-b${i++}`}>{m[2]}</strong>);
+    } else {
+      parts.push(
+        <code key={`${keyPrefix}-c${i++}`} style={{
+          background: 'var(--peach)', color: 'var(--orange)', borderRadius: 4,
+          padding: '1px 5px', fontSize: '.92em', fontFamily: 'ui-monospace, SFMono-Regular, monospace',
+        }}>{m[3]}</code>
+      );
+    }
+    lastIndex = regex.lastIndex;
+  }
+  if (lastIndex < text.length) parts.push(text.slice(lastIndex));
+  return parts;
+}
+
+// 코드펜스가 아닌 일반 텍스트 구간 — 줄 단위로 번호목록(1. )/불릿목록(-,•)을 묶고,
+// 그 외는 문단으로 렌더링한다.
+function renderTextBlock(block, keyPrefix) {
+  const lines = block.split('\n');
+  const nodes = [];
+  let listBuffer = [];
+  let listType = null;
+  let para = [];
+
+  const flushList = () => {
+    if (!listBuffer.length) return;
+    const Tag = listType === 'ol' ? 'ol' : 'ul';
+    nodes.push(
+      <Tag key={`${keyPrefix}-list${nodes.length}`} style={{ margin: '2px 0 6px', paddingLeft: 20 }}>
+        {listBuffer.map((item, idx) => (
+          <li key={idx} style={{ marginBottom: 2 }}>{renderInline(item, `${keyPrefix}-li${idx}`)}</li>
+        ))}
+      </Tag>
+    );
+    listBuffer = [];
+    listType = null;
+  };
+  const flushPara = () => {
+    if (!para.length) return;
+    nodes.push(
+      <p key={`${keyPrefix}-p${nodes.length}`} style={{ margin: '0 0 6px', whiteSpace: 'pre-line' }}>
+        {renderInline(para.join('\n'), `${keyPrefix}-p${nodes.length}`)}
+      </p>
+    );
+    para = [];
+  };
+
+  for (const line of lines) {
+    const numbered = line.match(/^\s*\d+\.\s+(.*)/);
+    const bulleted = line.match(/^\s*[-•]\s+(.*)/);
+    if (numbered) {
+      flushPara();
+      if (listType !== 'ol') flushList();
+      listType = 'ol';
+      listBuffer.push(numbered[1]);
+    } else if (bulleted) {
+      flushPara();
+      if (listType !== 'ul') flushList();
+      listType = 'ul';
+      listBuffer.push(bulleted[1]);
+    } else if (line.trim() === '') {
+      flushList();
+      flushPara();
+    } else {
+      flushList();
+      para.push(line);
+    }
+  }
+  flushList();
+  flushPara();
+  return nodes.length ? nodes : null;
+}
+
+function CopyButton({ getText }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={async () => {
+        try { await navigator.clipboard.writeText(getText()); } catch { /* no-op */ }
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      }}
+      style={{
+        background: 'none', border: 'none', color: '#aaa', fontSize: 11,
+        cursor: 'pointer', padding: '2px 6px', fontFamily: 'var(--body)',
+      }}
+    >
+      {copied ? '복사됨' : '복사'}
+    </button>
+  );
+}
+
+function CodeBlock({ lang, code }) {
+  return (
+    <div style={{
+      borderRadius: 12, overflow: 'hidden', border: '1px solid var(--line)',
+      margin: '4px 0 8px', background: '#1e1e1e',
+      maxWidth: '100%', minWidth: 0, boxSizing: 'border-box',
+    }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '6px 10px', background: '#2a2a2a',
+      }}>
+        <span style={{ fontSize: 11, color: '#aaa', fontFamily: 'ui-monospace, monospace' }}>{lang || 'code'}</span>
+        <CopyButton getText={() => code} />
+      </div>
+      <pre className="chatbot-suggest-scroll" style={{ margin: 0, padding: '10px 12px', overflowX: 'auto' }}>
+        <code style={{
+          fontFamily: 'ui-monospace, SFMono-Regular, monospace', fontSize: 12.5,
+          color: '#e6e6e6', lineHeight: 1.5, whiteSpace: 'pre',
+        }}>{code}</code>
+      </pre>
+    </div>
+  );
+}
+
+// ```코드``` 펜스는 CodeBlock으로, 나머지는 renderTextBlock으로 렌더링한다.
+function renderMarkdown(text) {
+  const nodes = [];
+  const fenceRegex = /```(\w+)?\n?([\s\S]*?)```/g;
+  let lastIndex = 0;
+  let m;
+  let idx = 0;
+  while ((m = fenceRegex.exec(text))) {
+    if (m.index > lastIndex) {
+      const block = renderTextBlock(text.slice(lastIndex, m.index), `t${idx}`);
+      if (block) nodes.push(...block);
+    }
+    nodes.push(<CodeBlock key={`code${idx}`} lang={m[1]} code={m[2].replace(/\n$/, '')} />);
+    idx += 1;
+    lastIndex = fenceRegex.lastIndex;
+  }
+  if (lastIndex < text.length) {
+    const block = renderTextBlock(text.slice(lastIndex), `t${idx}`);
+    if (block) nodes.push(...block);
+  }
+  return nodes;
+}
+
 function BotBubble({ text }) {
+  const hasCode = text.includes('```');
   return (
     <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
       <div style={{
@@ -136,10 +324,11 @@ function BotBubble({ text }) {
       <div style={{
         background: 'var(--card)', border: '1px solid var(--line)', borderRadius: '4px 14px 14px 14px',
         padding: '10px 14px', fontSize: 13.5, color: 'var(--ink)', lineHeight: 1.6,
-        maxWidth: '82%', whiteSpace: 'pre-line',
+        maxWidth: hasCode ? '94%' : '82%',
+        minWidth: 0, boxSizing: 'border-box', overflow: 'hidden',
         boxShadow: '0 1px 4px rgba(36,27,21,.07)',
       }}>
-        {text}
+        {renderMarkdown(text)}
       </div>
     </div>
   );
@@ -282,11 +471,16 @@ export default function ChatbotWidget() {
     const withUser = [...messages, { type: 'user', text: q }];
     setMessages(withUser);
 
-    // 즉답 키워드 매칭은 대화 맥락이 없는 "첫 질문"에만 쓴다. 대화가 이어진 뒤에는
-    // "이용신청 페이지는 어디야?"처럼 단어 하나만 겹쳐도 완전히 다른 질문인 이전 FAQ
-    // 답변이 튀어나오는 문제가 있어서, 후속 질문은 항상 대화 맥락을 보는 백엔드로 보낸다.
+    // 즉답 키워드 매칭은 대화 맥락이 없는 "첫 질문"이면서, FAQ 문항과 비슷하게 짧고
+    // 단순한 질문일 때만 쓴다. 대화가 이어진 뒤에는 "이용신청 페이지는 어디야?"처럼
+    // 단어 하나만 겹쳐도 다른 질문인 이전 FAQ 답변이 튀어나오는 문제가 있었고, 첫
+    // 질문이라도 "React 쇼핑몰에 붙이려면? 코드 예시와 소요 시간도 알려줘"처럼 길고
+    // 구체적인 요청은 키워드 하나(react/sdk)에 걸려 뻔한 FAQ 답변으로 가로채이면 안
+    // 되므로, 길이가 짧은 질문(대략 한 문장)에만 즉답을 쓰고 나머지는 백엔드로 보낸다.
+    const FAQ_SHORTCUT_MAX_LEN = 25;
     const isFirstQuestion = !messages.some(m => m.type === 'user');
-    const matched = isFirstQuestion ? matchFaqByKeyword(q) : null;
+    const isSimpleQuestion = q.length <= FAQ_SHORTCUT_MAX_LEN;
+    const matched = (isFirstQuestion && isSimpleQuestion) ? matchFaqByKeyword(q) : null;
     if (matched) {
       setMessages([...withUser, { type: 'bot', text: matched.a }]);
       return;
@@ -375,6 +569,7 @@ export default function ChatbotWidget() {
             flex: 1,
             minHeight: 0,
             overflowY: 'auto',
+            overflowX: 'hidden',
             padding: '16px 14px',
             display: 'flex',
             flexDirection: 'column',
