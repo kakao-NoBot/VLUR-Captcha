@@ -267,6 +267,17 @@ function CodeBlock({ lang, code }) {
 }
 
 // ```코드``` 펜스는 CodeBlock으로, 나머지는 renderTextBlock으로 렌더링한다.
+// 단, LLM이 표를 실수로 코드 펜스(```markdown, ```code 등)로 감싸는 경우가 있어 —
+// 펜스 안 내용이 표 형태(첫 줄이 | ... |, 둘째 줄이 |---|)면 코드블록이 아니라
+// renderTextBlock으로 보내 실제 표로 그린다.
+function looksLikeTableFence(code) {
+  const lines = code.split('\n').map((l) => l.trim()).filter(Boolean);
+  if (lines.length < 2) return false;
+  const isRow = /^\|.*\|$/.test(lines[0]);
+  const isSep = /^\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|?$/.test(lines[1]);
+  return isRow && isSep;
+}
+
 function renderMarkdown(text) {
   const nodes = [];
   const fenceRegex = /```(\w+)?\n?([\s\S]*?)```/g;
@@ -278,7 +289,13 @@ function renderMarkdown(text) {
       const block = renderTextBlock(text.slice(lastIndex, m.index), `t${idx}`);
       if (block) nodes.push(...block);
     }
-    nodes.push(<CodeBlock key={`code${idx}`} lang={m[1]} code={m[2].replace(/\n$/, '')} />);
+    const fenced = m[2].replace(/\n$/, '');
+    if (looksLikeTableFence(fenced)) {
+      const block = renderTextBlock(fenced, `tbl${idx}`);
+      if (block) nodes.push(...block);
+    } else {
+      nodes.push(<CodeBlock key={`code${idx}`} lang={m[1]} code={fenced} />);
+    }
     idx += 1;
     lastIndex = fenceRegex.lastIndex;
   }
