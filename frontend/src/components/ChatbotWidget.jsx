@@ -12,13 +12,13 @@ const FAQ_TREE = [
   },
   {
     q: '봇 차단율이 얼마나 되나요?',
-    a: '자체 데이터셋 기준 분류 정확도는 97.5%, 실제 사람을 봇으로 오판정하는 오탐률은 0.3% 이하입니다. 드래그 궤적 검증으로 스크립트 봇도 탐지합니다.',
+    a: '메인페이지 상단 기준 봇 차단율은 88.3%입니다. 참고로 모델 자체 검증 지표로는 분류 정확도 97.5%, 실제 사람을 봇으로 오판정하는 오탐률은 0.3% 이하예요. 드래그 궤적 검증으로 스크립트 봇도 탐지합니다.',
     follow: ['CAPTCHA 유형은 몇 가지인가요?', '검증 속도가 궁금해요'],
     keywords: ['차단율', '봇 차단', '정확도', '탐지율', '오탐률', '오탐율'],
   },
   {
     q: 'CAPTCHA 유형은 몇 가지인가요?',
-    a: '현재 두 가지 유형이 있습니다. 둘 다 4지선다 보기 중 정답을 경유 지점을 지나 드래그하는 방식이고, 문제를 아스키아트로 보여주는 방식이 다릅니다.\n• 유형 1 — 아스키 아트 한글 지시문을 읽고 지시에 맞는 보기를 4지선다 중에서 선택\n• 유형 2 — 아스키 아트 이미지를 보고 같은 대상을 4지선다 중에서 선택\n유형 1 실패 시 유형 2로 자동 전환하여 봇의 연속 시도를 차단합니다.',
+    a: '핵심 동작은 두 유형 모두 같은 드래그 앤 드롭이에요. 4지선다 보기 중 정답을 경유 지점을 거쳐 목표 위치까지 끌어다 놓으면, 그 이동 궤적을 분석해 사람인지 봇인지 판별해요. 차이는 "무엇을 드래그하게 하는가"뿐이에요.\n• 유형 1 — 아스키 아트 한글 지시문을 보여주고 그에 맞는 보기를 드래그\n• 유형 2 — 아스키 아트 이미지를 보여주고 같은 대상을 보기 중에서 찾아 드래그\n유형 1 실패 시 유형 2로 자동 전환하여 봇의 연속 시도를 차단합니다.',
     follow: ['API Key 발급은 어떻게 하나요?', '요금제 종류가 궁금해요'],
     keywords: ['유형', '캡차 종류', 'captcha 유형', '종류', '타입'],
   },
@@ -146,9 +146,58 @@ function renderTextBlock(block, keyPrefix) {
     para = [];
   };
 
-  for (const line of lines) {
+  const isTableRow = (line) => /^\s*\|.*\|\s*$/.test(line);
+  const isTableSep = (line) => /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|?\s*$/.test(line);
+  const splitRow = (line) => line.trim().replace(/^\||\|$/g, '').split('|').map(c => c.trim());
+
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
     const numbered = line.match(/^\s*\d+\.\s+(.*)/);
     const bulleted = line.match(/^\s*[-•]\s+(.*)/);
+
+    if (isTableRow(line) && i + 1 < lines.length && isTableSep(lines[i + 1])) {
+      flushList();
+      flushPara();
+      const header = splitRow(line);
+      const rows = [];
+      let j = i + 2;
+      while (j < lines.length && isTableRow(lines[j])) {
+        rows.push(splitRow(lines[j]));
+        j += 1;
+      }
+      const tkey = `${keyPrefix}-table${nodes.length}`;
+      nodes.push(
+        <div key={tkey} className="chatbot-suggest-scroll" style={{ overflowX: 'auto', margin: '2px 0 8px' }}>
+          <table style={{ borderCollapse: 'collapse', fontSize: 12.5, minWidth: '100%' }}>
+            <thead>
+              <tr>
+                {header.map((cell, ci) => (
+                  <th key={ci} style={{
+                    textAlign: 'left', padding: '6px 10px', background: 'var(--peach)',
+                    borderBottom: '1px solid var(--line)', whiteSpace: 'nowrap', fontWeight: 700,
+                  }}>{renderInline(cell, `${tkey}-h${ci}`)}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, ri) => (
+                <tr key={ri}>
+                  {row.map((cell, ci) => (
+                    <td key={ci} style={{
+                      textAlign: 'left', padding: '6px 10px', borderBottom: '1px solid var(--line-soft, var(--line))',
+                    }}>{renderInline(cell, `${tkey}-r${ri}c${ci}`)}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+      i = j;
+      continue;
+    }
+
     if (numbered) {
       flushPara();
       if (listType !== 'ol') flushList();
@@ -166,6 +215,7 @@ function renderTextBlock(block, keyPrefix) {
       flushList();
       para.push(line);
     }
+    i += 1;
   }
   flushList();
   flushPara();
@@ -241,6 +291,8 @@ function renderMarkdown(text) {
 
 function BotBubble({ text }) {
   const hasCode = text.includes('```');
+  const hasTable = /^\s*\|.*\|\s*$/m.test(text);
+  const isWide = hasCode || hasTable;
   return (
     <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
       <div style={{
@@ -254,7 +306,7 @@ function BotBubble({ text }) {
       <div style={{
         background: 'var(--card)', border: '1px solid var(--line)', borderRadius: '4px 14px 14px 14px',
         padding: '10px 14px', fontSize: 13.5, color: 'var(--ink)', lineHeight: 1.6,
-        maxWidth: hasCode ? '94%' : '82%',
+        maxWidth: isWide ? '94%' : '82%',
         minWidth: 0, boxSizing: 'border-box',
         boxShadow: '0 1px 4px rgba(36,27,21,.07)',
       }}>

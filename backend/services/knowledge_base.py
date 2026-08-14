@@ -260,3 +260,24 @@ def search(question: str, top_k: int = 3, min_score: float = RAG_MIN_SCORE) -> l
 
     scored.sort(key=lambda pair: pair[0], reverse=True)
     return [item for _, item in scored[:top_k]]
+
+
+def latest_board_posts(board_type: str = "notice", limit: int = 3) -> list[dict[str, Any]]:
+    """"최근 공지 알려줘"류 질문은 의미 유사도 검색(search())으로 풀 수 없다 — 임베딩은
+    "무엇에 관한 글인지"만 비교할 뿐 "언제 올라왔는지"는 전혀 반영하지 않기 때문이다.
+    이런 질문은 대신 작성일 기준으로 직접 최신 글을 가져와야 한다."""
+    conn = get_conn()
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT title, content, created_at FROM boards
+                   WHERE board_type = %s
+                   ORDER BY created_at DESC
+                   LIMIT %s""",
+                (board_type, limit),
+            )
+            rows = cur.fetchall()
+    return [
+        {"title": r["title"], "content": r["content"], "created_at": str(r["created_at"])}
+        for r in rows
+    ]
