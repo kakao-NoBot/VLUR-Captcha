@@ -67,7 +67,11 @@ spec:
           args:
             - --model=$(MODEL_ID)
             - --served-model-name=vlur-chatbot   # 요청에 쓰는 이름을 모델 경로와 분리
-            - --max-model-len=8192               # RAG 문서 3건 + 시스템 프롬프트 + 최근 10개 메시지 여유분
+            - --max-model-len=16384               # 8192로는 부족해서 다시 올림 — 시스템 프롬프트가
+                                                   # [핵심 요약] 안전망 추가로 다시 커졌고(현재 ~5,100자),
+                                                   # 여기에 RAG 문서 3건 + 대화가 길어지며 쌓이는 최근 10개
+                                                   # 메시지(긴 답변 여러 개면 수천 자)까지 더해지면 8192
+                                                   # 토큰을 넘는 경우가 생겨 "됐다가 안됐다가" 하는 502가 남.
                                                    # (T4 15GB, 3B 가중치 ~6GB로 KV 캐시 여력 충분)
             - --gpu-memory-utilization=0.90
             # T4는 Turing 세대라 bfloat16 연산 유닛이 없다. Qwen2.5의 기본 dtype이
