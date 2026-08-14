@@ -7,6 +7,7 @@ import httpx
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from services.chatbot_rate_limit import consume_request
+from services.chatbot_fixed_faq import fixed_faq_answer
 from services import knowledge_base
 
 logger = logging.getLogger(__name__)
@@ -232,6 +233,14 @@ async def chat(body: ChatRequest, request: Request):
             },
             headers={"Retry-After": str(retry_after)},
         )
+
+    last_user_message = next(
+        (message["content"] for message in reversed(history) if message["role"] == "user"),
+        "",
+    )
+    fixed_answer = fixed_faq_answer(last_user_message)
+    if fixed_answer:
+        return {"answer": fixed_answer}
 
     system_prompt = _build_system_prompt(history)
 
