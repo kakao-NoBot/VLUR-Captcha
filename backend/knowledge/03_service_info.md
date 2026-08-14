@@ -50,27 +50,61 @@ AI 에이전트로도 실제 테스트를 진행했습니다. 사이트 URL과 "
 
 VLUR CAPTCHA는 다른 유명 캡차 서비스들처럼, API Key를 발급할 때 "이 캡차는 어느 웹사이트 주소에서만 쓸 수 있다"는 걸 미리 등록해두는 방식을 씁니다. 그래서 등록해둔 주소가 아닌 다른 곳에서 요청이 오면 캡차가 동작하지 않습니다. 이 등록된 주소는 마이페이지 > API Key 관리에서 언제든 바꿀 수 있습니다. 그러니 개발 중에 내 컴퓨터(localhost)에서 테스트하고 싶다면 등록 주소를 "localhost"로 바꿔두면 되고, 나중에 실제 서비스를 오픈할 때 실제 도메인 주소로 다시 바꿔주면 됩니다.
 
-# API Key와 토큰
+# API Key와 Site Key
 
-API Key 발급은 홈페이지 [요금제] 섹션에서 원하는 요금제 버튼(무료로 시작하기/결제하고 시작하기)을 눌러 가입을 완료한 뒤, 마이페이지 > API Key 관리 탭으로 이동해 "사이트 도메인"(예: example.com, 개발 환경은 프로토콜·경로 없이 localhost 입력 가능)을 입력하고 [키 발급] 버튼을 누르면 Site Key와 Secret Key가 발급됩니다. 가입만으로 자동 발급되는 것이 아니라 도메인 입력과 발급 버튼 클릭이 필요합니다. Secret Key 원문은 발급 시 한 번만 표시됩니다.
+API Key 발급은 홈페이지 [요금제] 섹션에서 원하는 요금제를 선택한 뒤, 마이페이지 > API Key 관리에서 사용할 사이트 도메인을 입력하고 [키 발급] 버튼을 눌러 진행합니다. 가입만으로 자동 발급되는 것은 아닙니다.
 
-API Key가 노출·유출됐을 때는 마이페이지 > API Key 관리에서 [키 재발급] 버튼을 누르면 기존 키가 즉시 무효화되고 새 키가 발급됩니다.
+공개 CAPTCHA API는 브라우저에 노출할 수 있는 Site Key를 `X-Site-Key` 요청 헤더로 전달합니다. `Authorization: Bearer ...` 방식은 사용하지 않습니다. 서버는 요청의 `Origin` 또는 `Referer` 호스트가 Site Key에 등록된 도메인과 일치하는지도 확인합니다. 개발 환경에서는 등록 도메인을 `localhost`로 설정할 수 있습니다.
 
-검증 성공 시 발급되는 one-time token의 기본 유효 시간은 180초(3분)입니다. 재사용 불가하며 만료 시 CAPTCHA를 다시 풀어야 합니다.
+Site Key가 노출되거나 교체가 필요한 경우에는 마이페이지 > API Key 관리에서 키를 재발급합니다.
 
-일회성 토큰과 rate limit으로 대량 시도를 막는 방식: 토큰이 한 번 검증에 쓰이면 즉시 소모되어 재사용이 불가능하므로, 같은 토큰을 반복 제출하는 방식의 매크로 공격이 통하지 않습니다. 여기에 더해 짧은 시간에 몰리는 대량 요청은 별도로 속도 제한(rate limit)을 걸어 걸러내고, 문제의 선택지 순서·배치도 매번 무작위로 섞어 좌표만 외워서 반복 클릭하는 매크로 패턴 학습을 막습니다. 정확한 제한 수치는 보안상 비공개입니다.
+CAPTCHA 문제의 `challenge_token`은 발급 후 120초 동안 유효합니다. 검증에 성공하면 응답에 `token`이 포함됩니다. 현재 CAPTCHA 라우터에는 이 성공 토큰을 별도로 검증·소모하는 엔드포인트가 구현되어 있지 않으므로, `180초`, `1회 사용`, `X-Captcha-Token` 검증을 현재 제공되는 기능처럼 안내하지 않습니다.
 
 # 가이드 페이지 (연동 방법 3단계)
 
-가이드는 별도의 상단 메뉴나 푸터 링크가 아니라, 메인 페이지와 마이페이지의 API Key 관리에서 확인할 수 있습니다. API Key 발급부터 토큰 검증까지 3단계로 안내합니다.
+가이드는 메인 페이지와 마이페이지의 API Key 관리에서 확인할 수 있습니다.
 
-1단계 — API Key 발급: 회원가입/로그인 → 요금제 선택(Basic은 즉시 발급) → 마이페이지 > API Key 탭에서 키 확인. 키 형식은 `vlur_live_sk_...`로 시작합니다. API Key는 반드시 서버 환경변수(.env)에만 저장하고, 클라이언트(브라우저) 코드에 넣거나 깃허브 같은 공개 저장소에 커밋하면 안 됩니다.
+1단계 — Site Key 발급: 회원가입과 요금제 선택을 완료한 뒤, 마이페이지 > API Key 관리에서 사이트 도메인을 등록하고 Site Key를 발급합니다.
 
-2단계 — CAPTCHA 요청: 서버에서 `GET https://api.vlur.dev/v1/captcha`를 `Authorization: Bearer $VLUR_API_KEY` 헤더와 함께 호출하면, `captcha_id`, `ascii_image`(아스키아트), `ui_type`, `options`(보기 목록)가 담긴 응답을 받습니다. 이 `ui_type` 값(choice/drag)은 API 응답 필드일 뿐, 앞서 설명한 "유형1/유형2"(문제를 한글 지시문으로 보여주는지 이미지로 보여주는지의 구분)와는 다른 개념입니다 — 서로 대응시켜 설명하지 마세요. 모든 CAPTCHA는 결국 경유 지점을 지나 정답 보기를 드래그해서 제출합니다. CAPTCHA 요청은 사용자 행동이 필요한 시점 직전(예: 결제 버튼 클릭 직후)에 하는 것을 권장합니다.
+2단계 — CAPTCHA 문제 요청: `POST /api/v1/captcha/challenge`를 호출합니다. 인증에는 `X-Site-Key` 헤더를 사용합니다. 요청 본문에는 `captcha_type`과 `theme_mode`를 전달합니다.
 
-3단계 — 검증/Token: 사용자 응답을 `POST https://api.vlur.dev/v1/verify`로 `captcha_id`와 `answer`를 담아 보내면, 성공 시 `{ success: true, token, expires_in: 180 }`을 받습니다. 이 일회성 token을 이후 요청(예: 주문 생성)의 `X-Captcha-Token` 헤더에 담아 보내면 되고, 서버는 최종 처리 전에 token을 다시 검증해야 합니다. token은 1회 사용 후 즉시 만료되며 발급 후 180초(3분) 이내에만 유효합니다.
+`captcha_type`은 `type1_drag` 또는 `type2_identify`이며, `theme_mode`는 `light` 또는 `dark`입니다.
 
-빠른 연동(위젯 한 줄): 프론트엔드에 아래 스크립트 태그만 추가하면 위젯이 붙습니다.
+문제 생성 응답에는 다음 필드가 포함됩니다.
+
+- `challenge_token`
+- `captcha_type`
+- `theme`
+- `expires_in`
+- `question_image_url`
+- `options`
+
+각 보기에는 `option_id`, `position`, `image_url`이 포함됩니다. 정답 정보는 클라이언트에 전달되지 않습니다.
+
+3단계 — CAPTCHA 검증: 사용자의 드래그 결과를 `POST /api/v1/captcha/verify`로 전송합니다. 이 요청에도 `X-Site-Key` 헤더가 필요합니다.
+
+필수 요청 필드는 다음과 같습니다.
+
+- `challenge_token`
+- `selected_option_id`
+
+행동 분석을 위해 `drop_position`, `drag_trace`, `response_time_ms`, `pointer_type`, `waypoints`, `start_center`, `drop_center`를 추가로 전달할 수 있습니다. `drag_trace`의 각 좌표는 `x`, `y`, `t`로 구성됩니다.
+
+검증 응답에는 다음 필드가 포함됩니다.
+
+- `verified`
+- `ambiguous`
+- `blocked`
+- `answerCorrect`
+- `behaviorTier`
+- `botScore`
+- `reasons`
+- `token` — 최종 인증 성공 시에만 포함
+
+정답을 맞히더라도 드래그 행동이 봇으로 판정되면 인증에 실패할 수 있습니다.
+
+빠른 연동 위젯을 사용하는 경우 프론트엔드에 다음 코드를 추가합니다.
+
 ```html
 <div class="vlur-captcha" data-sitekey="YOUR_SITE_KEY"></div>
 <script src="https://js.vlur.dev/v1/api.js" async defer></script>
@@ -78,9 +112,9 @@ API Key가 노출·유출됐을 때는 마이페이지 > API Key 관리에서 [�
 
 # 개발자 연동 (SDK, 위젯 커스터마이징)
 
-SDK는 React, Vue, FastAPI, Node.js, Django 등을 지원합니다. 가입 완료 후 가이드 페이지에서 확인할 수 있고, 마이페이지에서도 동일하게 확인할 수 있습니다. SDK란 VLUR CAPTCHA를 개발자가 자기 서비스에 쉽게 연동할 수 있도록 제공하는 코드 패키지·도구 모음을 뜻합니다.
+SDK는 React, Vue, FastAPI, Node.js, Django 등을 지원합니다. 가입 완료 후 가이드와 마이페이지에서 확인할 수 있습니다.
 
-통합 코드 예시를 요청받으면 거절하지 않고, 위 가이드 페이지의 실제 엔드포인트(문제 요청 `GET /v1/captcha`, 검증 `POST /v1/verify`)와 응답 형식을 근거로 코드 예시를 보여줍니다.
+통합 코드 예시를 요청받으면 현재 구현된 문제 요청 `POST /api/v1/captcha/challenge`, 검증 `POST /api/v1/captcha/verify`, `X-Site-Key` 인증 방식과 실제 요청·응답 필드명을 기준으로 안내합니다.
 
 CAPTCHA 위젯의 크기 변경은 지원하지 않지만, 색상(브랜드 HEX 색상)은 변경할 수 있습니다. 마이페이지 > API Key 관리에서 해당 API Key로 표시되는 CAPTCHA의 강조 색상을 지정할 수 있습니다.
 
@@ -102,7 +136,7 @@ CAPTCHA 위젯의 크기 변경은 지원하지 않지만, 색상(브랜드 HEX 
 
 공지사항은 홈페이지 상단 메뉴의 [공지사항] 링크를 클릭하면 공지사항 게시판으로 이동해 확인할 수 있습니다.
 
-메인페이지 맨 아래쪽(하단)에는 [이용약관], [개인정보처리방침], [GitHub], [문의하기] 링크가 있습니다. 이용약관과 개인정보처리방침은 누르면 그 자리에서 내용을 보여주는 창(모달)이 뜨고, GitHub는 새 탭으로 저장소(https://github.com/kakao-NoBot/AI-Captcha)가 열리며, 문의하기는 누르면 문의 작성 창이 뜹니다. 별도로 이동하는 "이용약관 페이지"나 "일반 문의 페이지" 같은 건 없고, 전부 같은 화면에서 버튼 클릭으로 바로 열립니다.
+메인페이지 맨 아래쪽(하단)에는 [이용약관], [개인정보처리방침], [GitHub], [문의하기] 링크가 있습니다. 이용약관과 개인정보처리방침은 누르면 그 자리에서 내용을 보여주는 창(모달)이 뜨고, GitHub는 새 탭으로 저장소(https://github.com/kakao-NoBot/VLUR-Captcha)가 열리며, 문의하기는 누르면 문의 작성 창이 뜹니다. 별도로 이동하는 "이용약관 페이지"나 "일반 문의 페이지" 같은 건 없고, 전부 같은 화면에서 버튼 클릭으로 바로 열립니다.
 
 # 챗봇 UI 사용법
 
