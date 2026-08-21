@@ -1,6 +1,6 @@
 // AdminPage.jsx
 
-import React, { useEffect, useMemo, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import api from '../api/axios';
 import { CAPTCHA_THEME_PRESETS, normalizeHexColor, resolveCaptchaTheme } from '../utils/captchaTheme';
@@ -1159,30 +1159,28 @@ export default function AdminPage() {
     return businessInquiries.filter(isNew).length;
   }, [businessInquiries, inquiryLastSeen]);
 
-  useEffect(() => {
-    let ignore = false;
-
-    (async () => {
-      try {
-        const { data } = await api.get('/admin/api-keys');
-        if (ignore) return;
-        const users = (data.users || []).map(mapAdminUser);
-        setPersonalUsers(users.filter((user) => !user.isBusiness));
-        setBusinessUsers(users.filter((user) => user.isBusiness));
-        setUsersError('');
-      } catch (err) {
-        if (!ignore) {
-          setPersonalUsers([]);
-          setBusinessUsers([]);
-          setUsersError(err.response?.data?.detail || '사용자와 API Key 정보를 불러오지 못했습니다.');
-        }
-      } finally {
-        if (!ignore) setUsersLoading(false);
-      }
-    })();
-
-    return () => { ignore = true; };
+  // 사용자/API Key 목록 fetch. 최초 마운트 시뿐 아니라, 기업 문의를 '답변' 처리해서
+  // 계정이 자동 생성된 직후에도 다시 호출해 사용자 관리 탭에 바로 반영되게 한다.
+  const fetchUsers = useCallback(async () => {
+    setUsersLoading(true);
+    try {
+      const { data } = await api.get('/admin/api-keys');
+      const users = (data.users || []).map(mapAdminUser);
+      setPersonalUsers(users.filter((user) => !user.isBusiness));
+      setBusinessUsers(users.filter((user) => user.isBusiness));
+      setUsersError('');
+    } catch (err) {
+      setPersonalUsers([]);
+      setBusinessUsers([]);
+      setUsersError(err.response?.data?.detail || '사용자와 API Key 정보를 불러오지 못했습니다.');
+    } finally {
+      setUsersLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
   useEffect(() => {
     let ignore = false;
@@ -1483,6 +1481,7 @@ const usagePlanSummary = useMemo(() => {
       const { data } = await api.patch(`/admin/inquiries/${key}/status`, { status: backendStatus });
       if (data?.account_created) {
         setToast({ type: 'success', message: '기업 계정이 자동 생성되어 안내 메일이 발송되었습니다.' });
+        fetchUsers(); // 새로 생성된 기업 계정을 사용자 관리 탭에 즉시 반영
       } else if (willAutoProvision) {
         // 이미 가입된 이메일 등으로 계정이 생성되지 않은 경우, 조용히 토스트를 닫는다.
         setToast(null);
